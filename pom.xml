@@ -2,7 +2,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>net.ssethub.program-repair</groupId>
+	<groupId>net.ssehub.program-repair</groupId>
 	<artifactId>geneseer</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 
@@ -37,6 +37,42 @@
 				<version>3.3.0</version>
 			</plugin>
 			<plugin>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>3.5.0</version>
+				<executions>
+					<execution>
+						<id>copy-geneseer-test-driver</id>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<includeArtifactIds>geneseer-test-driver</includeArtifactIds>
+							<classifier>jar-with-dependencies</classifier>
+							<failOnMissingClassifierArtifact>true</failOnMissingClassifierArtifact>
+							<outputDirectory>src/main/resources/net/ssehub/program_repair/geneseer/evaluation</outputDirectory>
+							<stripVersion>true</stripVersion>
+							<stripClassifier>true</stripClassifier>
+						</configuration>
+					</execution>
+					<execution>
+						<id>copy-jacocoagent</id>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<includeArtifactIds>org.jacoco.agent</includeArtifactIds>
+							<classifier>runtime</classifier>
+							<failOnMissingClassifierArtifact>true</failOnMissingClassifierArtifact>
+							<outputDirectory>src/main/resources/net/ssehub/program_repair/geneseer/evaluation</outputDirectory>
+							<stripVersion>true</stripVersion>
+							<stripClassifier>true</stripClassifier>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.11.0</version>
 			</plugin>
@@ -61,6 +97,23 @@
 				<version>3.3.0</version>
 			</plugin>
 			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>3.5.0</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+				</configuration>
+			</plugin>
+			<plugin>
 				<artifactId>maven-install-plugin</artifactId>
 				<version>3.1.0</version>
 			</plugin>
@@ -69,16 +122,42 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>net.ssehub.program-repair</groupId>
+			<artifactId>geneseer-test-driver</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+			<!-- don't include in compile or runtime classpath; only make it available for the maven-dependency-plugin to copy it 
+				to the resource folder -->
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.jacoco</groupId>
+			<artifactId>org.jacoco.agent</artifactId>
+			<version>0.8.8</version>
+			<!-- don't include in compile or runtime classpath; only make it available for the maven-dependency-plugin to copy it 
+				to the resource folder -->
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
 			<groupId>fr.inria.gforge.spoon</groupId>
 			<artifactId>spoon-core</artifactId>
 			<version>10.3.0</version>
 		</dependency>
+		<dependency>
+			<groupId>com.github.spoonlabs</groupId>
+			<artifactId>flacoco</artifactId>
+			<version>1.0.6</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-jdk14</artifactId>
+			<version>1.7.36</version>
+		</dependency>
 
 		<dependency>
-			<groupId>org.junit.jupiter</groupId>
-			<artifactId>junit-jupiter-api</artifactId>
-			<version>5.9.2</version>
-			<scope>test</scope>
+			<groupId>org.jacoco</groupId>
+			<artifactId>org.jacoco.core</artifactId>
+			<version>0.8.8</version>
 		</dependency>
 	</dependencies>
 </project>

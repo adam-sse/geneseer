@@ -124,7 +124,7 @@
 		<dependency>
 			<groupId>net.ssehub.program-repair</groupId>
 			<artifactId>geneseer-test-driver</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>1.0.0</version>
 			<!-- don't include in compile or runtime classpath; only make it available for the maven-dependency-plugin to copy it 
 				to the resource folder -->
 			<scope>provided</scope>

@@ -3,26 +3,15 @@ package net.ssehub.program_repair.geneseer.evaluation;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import org.jacoco.core.analysis.Analyzer;
-import org.jacoco.core.analysis.IClassCoverage;
-import org.jacoco.core.analysis.ICounter;
-import org.jacoco.core.analysis.ICoverageVisitor;
-import org.jacoco.core.data.ExecutionDataReader;
-import org.jacoco.core.data.ExecutionDataStore;
-import org.jacoco.core.data.SessionInfoStore;
 
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
@@ -32,8 +21,6 @@ import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 public class JunitEvaluation {
 
     private static final Logger LOG = Logger.getLogger(JunitEvaluation.class.getName());
-    
-    private static final Path JACOCOAGENT;
     
     private static final Path GENESEER_TEST_DRIVER;
     
@@ -50,19 +37,16 @@ public class JunitEvaluation {
             
             Path tempDir = tempDirManager.createTemporaryDirectory();
             
-            JACOCOAGENT = tempDir.resolve("jacocoagent.jar");
             GENESEER_TEST_DRIVER = tempDir.resolve("geneseer-test-driver.jar");
             
-            Files.write(JACOCOAGENT, JunitEvaluation.class.getClassLoader()
-                    .getResourceAsStream("net/ssehub/program_repair/geneseer/evaluation/org.jacoco.agent.jar").readAllBytes());
             Files.write(GENESEER_TEST_DRIVER, JunitEvaluation.class.getClassLoader()
-                    .getResourceAsStream("net/ssehub/program_repair/geneseer/evaluation/geneseer-test-driver.jar").readAllBytes());
+                    .getResourceAsStream("net/ssehub/program_repair/geneseer/evaluation/geneseer-test-driver.jar")
+                    .readAllBytes());
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "Failed to create temporary directory with evaluation jars", e);
             throw new UncheckedIOException(e);
         }
-        
     }
     
     @SuppressWarnings("unchecked")
@@ -118,68 +102,7 @@ public class JunitEvaluation {
             EvaluationResult result = new EvaluationResult();
             result.setFailures(failures);
             
-            parseCoverageOutput(workingDirectory, classes, result);
-            
             return result;
-        }
-    }
-
-    private void parseCoverageOutput(Path workingDirectory, Path classDirectory, EvaluationResult evaluationResult)
-            throws EvaluationException {
-        
-        Path jacocoExec = workingDirectory.resolve("jacoco.exec");
-        
-        try (InputStream jacocoExecStream = Files.newInputStream(jacocoExec)) {
-            ExecutionDataStore executionDataStore = new ExecutionDataStore();
-            SessionInfoStore sessionInfoStore = new SessionInfoStore();
-            
-            ExecutionDataReader executionDataReader = new ExecutionDataReader(jacocoExecStream);
-            executionDataReader.setExecutionDataVisitor(executionDataStore);
-            executionDataReader.setSessionInfoVisitor(sessionInfoStore);
-            executionDataReader.read();
-            
-            Analyzer analyzer = new Analyzer(executionDataStore, new ICoverageVisitor() {
-                
-                @Override
-                public void visitCoverage(IClassCoverage classCoverage) {
-                    Set<Integer> coveredLines = new HashSet<>(classCoverage.getLastLine() - classCoverage.getLastLine());
-                    Set<Integer> partiallyCoveredLines = new HashSet<>(classCoverage.getLastLine() - classCoverage.getLastLine());
-                    
-                    for (int i = classCoverage.getFirstLine(); i <= classCoverage.getLastLine(); i++) {
-                        int status = classCoverage.getLine(i).getStatus();
-                        switch (status) {
-                        case ICounter.FULLY_COVERED:
-                            coveredLines.add(i);
-                            break;
-                        case ICounter.PARTLY_COVERED:
-                            partiallyCoveredLines.add(i);
-                            break;
-                            
-                        default:
-                            // ignore
-                            break;
-                        }
-                    }
-                    
-                    evaluationResult.addClassCoverage(new ClassCoverage(
-                            classCoverage.getName(), coveredLines, partiallyCoveredLines));
-                }
-                
-            });
-            analyzer.analyzeAll(classDirectory.toFile());
-            
-        } catch (IOException e) {
-            LOG.log(Level.SEVERE, "Failed to analyze coverage", e);
-            throw new EvaluationException("Failed to analyze coverage", e);
-            
-        } finally {
-            if (Files.isRegularFile(jacocoExec)) {
-                try {
-                    Files.delete(jacocoExec);
-                } catch (IOException e) {
-                    LOG.log(Level.WARNING, "Failed to delete jacoco.exec", e);
-                }
-            }
         }
     }
 
@@ -205,7 +128,6 @@ public class JunitEvaluation {
     private List<String> createCommand(List<Path> classpath, List<String> testClasses) {
         List<String> command = new LinkedList<>();
         command.add("java");
-        command.add("-javaagent:" + JACOCOAGENT.toAbsolutePath());
         command.add("-Djava.awt.headless=true");
         command.add("-cp");
         command.add(GENESEER_TEST_DRIVER.toAbsolutePath().toString() + File.pathSeparatorChar
@@ -213,7 +135,7 @@ public class JunitEvaluation {
                     .map(Path::toString)
                     .reduce((p1, p2) -> p1 + File.pathSeparatorChar + p2)
                     .get());
-        command.add("net.ssehub.program_repair.geneseer.evaluation.JunitRunnerClient"); // TODO?
+        command.add("net.ssehub.program_repair.geneseer.evaluation.JunitRunnerClient");
         command.addAll(testClasses);
         return command;
     }

@@ -51,21 +51,6 @@
 							<stripClassifier>true</stripClassifier>
 						</configuration>
 					</execution>
-					<execution>
-						<id>copy-jacocoagent</id>
-						<phase>generate-resources</phase>
-						<goals>
-							<goal>copy-dependencies</goal>
-						</goals>
-						<configuration>
-							<includeArtifactIds>org.jacoco.agent</includeArtifactIds>
-							<classifier>runtime</classifier>
-							<failOnMissingClassifierArtifact>true</failOnMissingClassifierArtifact>
-							<outputDirectory>src/main/resources/net/ssehub/program_repair/geneseer/evaluation</outputDirectory>
-							<stripVersion>true</stripVersion>
-							<stripClassifier>true</stripClassifier>
-						</configuration>
-					</execution>
 				</executions>
 			</plugin>
 			<plugin>
@@ -129,14 +114,6 @@
 				to the resource folder -->
 			<scope>provided</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.jacoco</groupId>
-			<artifactId>org.jacoco.agent</artifactId>
-			<version>0.8.8</version>
-			<!-- don't include in compile or runtime classpath; only make it available for the maven-dependency-plugin to copy it 
-				to the resource folder -->
-			<scope>provided</scope>
-		</dependency>
 
 		<dependency>
 			<groupId>fr.inria.gforge.spoon</groupId>
@@ -152,12 +129,6 @@
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-jdk14</artifactId>
 			<version>1.7.36</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.jacoco</groupId>
-			<artifactId>org.jacoco.core</artifactId>
-			<version>0.8.8</version>
 		</dependency>
 	</dependencies>
 </project>

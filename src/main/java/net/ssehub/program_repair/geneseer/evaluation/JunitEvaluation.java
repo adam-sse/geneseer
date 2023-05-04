@@ -2,7 +2,6 @@ package net.ssehub.program_repair.geneseer.evaluation;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -217,28 +216,6 @@ public class JunitEvaluation {
         command.add("net.ssehub.program_repair.geneseer.evaluation.JunitRunnerClient"); // TODO?
         command.addAll(testClasses);
         return command;
-    }
-    
-    @SuppressWarnings("unchecked")
-    public static void main(String[] args) throws EvaluationException {
-        List<TestFailure> failures;
-        try {
-            ObjectInputStream in = new ObjectInputStream(new FileInputStream(new File("out.bin")));
-            
-            String stdout = (String) in.readObject();
-            String stderr = (String) in.readObject();
-            
-            logProcessResult(stdout, stderr, 1);
-            
-            failures = (List<TestFailure>) in.readObject();
-            LOG.info(() -> "Failures: " + failures);
-            
-            
-        } catch (IOException | ClassNotFoundException e) {
-            LOG.log(Level.SEVERE, "Failed to read process output", e);
-            
-            throw new EvaluationException("Failed to read process output", e);
-        }
     }
 
 }

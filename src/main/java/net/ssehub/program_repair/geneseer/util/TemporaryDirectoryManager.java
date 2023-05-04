@@ -2,15 +2,12 @@ package net.ssehub.program_repair.geneseer.util;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 public class TemporaryDirectoryManager implements Closeable {
 
@@ -26,7 +23,7 @@ public class TemporaryDirectoryManager implements Closeable {
         if (!temporaryDirectories.remove(temporaryDirectory)) {
             throw new IllegalArgumentException(temporaryDirectory + " is not a directory created by this manager");
         }
-        deleteDirectory(temporaryDirectory);
+        FileUtils.deleteDirectory(temporaryDirectory);
     }
     
     @Override
@@ -35,7 +32,7 @@ public class TemporaryDirectoryManager implements Closeable {
         
         for (Path path : temporaryDirectories) {
             try {
-                deleteDirectory(path);
+                FileUtils.deleteDirectory(path);
             } catch (IOException e) {
                 exceptions.add(e);
             }
@@ -51,21 +48,6 @@ public class TemporaryDirectoryManager implements Closeable {
                 }
                 throw combined;
             }
-        }
-    }
-    
-    private static void deleteDirectory(Path directory) throws IOException {
-        try (Stream<Path> walk = Files.walk(directory)) {
-            walk.sorted(Comparator.reverseOrder())
-                .forEach(file -> {
-                    try {
-                        Files.delete(file);
-                    } catch (IOException e) {
-                        throw new UncheckedIOException(e);
-                    }
-                });
-        } catch (UncheckedIOException e) {
-            throw e.getCause();
         }
     }
 

@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.stream.Stream;
 
 public class FileUtils {
 
@@ -24,6 +26,21 @@ public class FileUtils {
                             throw new UncheckedIOException(e);
                         }
                     });
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
+        }
+    }
+    
+    public static void deleteDirectory(Path directory) throws IOException {
+        try (Stream<Path> walk = Files.walk(directory)) {
+            walk.sorted(Comparator.reverseOrder())
+                .forEach(file -> {
+                    try {
+                        Files.delete(file);
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                });
         } catch (UncheckedIOException e) {
             throw e.getCause();
         }

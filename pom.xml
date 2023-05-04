@@ -33,16 +33,12 @@
 	<build>
 		<plugins>
 			<plugin>
-				<artifactId>maven-resources-plugin</artifactId>
-				<version>3.3.0</version>
-			</plugin>
-			<plugin>
 				<artifactId>maven-dependency-plugin</artifactId>
 				<version>3.5.0</version>
 				<executions>
 					<execution>
 						<id>copy-geneseer-test-driver</id>
-						<phase>process-resources</phase>
+						<phase>generate-resources</phase>
 						<goals>
 							<goal>copy-dependencies</goal>
 						</goals>
@@ -57,7 +53,7 @@
 					</execution>
 					<execution>
 						<id>copy-jacocoagent</id>
-						<phase>process-resources</phase>
+						<phase>generate-resources</phase>
 						<goals>
 							<goal>copy-dependencies</goal>
 						</goals>
@@ -71,6 +67,10 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>3.3.0</version>
 			</plugin>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>

@@ -52,6 +52,7 @@ public class Flacoco {
                 .collect(Collectors.joining(File.pathSeparator)));
         
         flacocoConfig.setTestRunnerTimeoutInMs(Configuration.INSTANCE.getTestExecutionTimeoutMs());
+        flacocoConfig.setTestRunnerJVMArgs("-Dfile.encoding=" + Configuration.INSTANCE.getEncoding());
         
         flacocoConfig.setFamily(FaultLocalizationFamily.SPECTRUM_BASED);
         flacocoConfig.setSpectrumFormula(SpectrumFormula.OCHIAI);

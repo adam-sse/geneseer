@@ -30,6 +30,7 @@ public class JunitEvaluation {
             
             EntryPoint.timeoutInMs = Configuration.INSTANCE.getTestExecutionTimeoutMs();
             EntryPoint.workingDirectory = workingDirectory.toFile();
+            EntryPoint.JVMArgs = "-Dfile.encoding=" + Configuration.INSTANCE.getEncoding();
             EntryPoint.persistence = false;
             
             try {

@@ -16,6 +16,7 @@ import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationResult;
 import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
 import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
+import net.ssehub.program_repair.geneseer.evaluation.TestFailure;
 import net.ssehub.program_repair.geneseer.fault_localization.Flacoco;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.mutations.IMutation;
@@ -69,12 +70,12 @@ public class Geneseer {
             codeModel = new CodeModelFactory(sourceDir);
             unmodifiedModel = codeModel.createModel();
             
-            FitnessAndBinDirectory res = compileAndEvaluateVariant(unmodifiedModel, project, compiler, tempDirManager);
+            EvaluationResultAndBinDirectory res = compileAndEvaluateVariant(unmodifiedModel, project, compiler, tempDirManager);
             int originalFitness = res.fitness;
             Path unmodifiedBindir = res.binDirectory;
             
             LOG.info(() -> "Fitness of original variant without mutations: " + originalFitness);
-            if (originalFitness == Integer.MAX_VALUE) {
+            if (originalFitness == Integer.MAX_VALUE || res.failingTests == null) {
                 LOG.severe("Failed to compile or run tests on unmodified code");
                 System.out.println(originalFitness);
                 return;
@@ -82,7 +83,15 @@ public class Geneseer {
             
             LOG.info("Measuring suspiciousness");
             Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPath());
-            LinkedHashMap<CtStatement, Double> suspiciousness = flacoco.run(sourceDir, unmodifiedBindir);
+            flacoco.setExpectedFailures(res.failingTests);
+            LinkedHashMap<CtStatement, Double> suspiciousness;
+            try {
+                suspiciousness = flacoco.run(sourceDir, unmodifiedBindir);
+            } catch (EvaluationException e) {
+                LOG.severe("Flacoco failures do not equal previous evaluation result");
+                System.out.println(originalFitness);
+                return;
+            }
             
             for (Map.Entry<CtStatement, Double> entry : suspiciousness.entrySet()) {
                 SourcePosition pos = entry.getKey().getPosition();
@@ -140,12 +149,12 @@ public class Geneseer {
     }
 
     
-    static class FitnessAndBinDirectory {int fitness; Path binDirectory; }
+    static class EvaluationResultAndBinDirectory {int fitness; List<TestFailure> failingTests; Path binDirectory; }
     
     private static int evaluateVariant(CodeModel variant, Project project, ProjectCompiler compiler,
     TemporaryDirectoryManager tempDirManager) throws IOException {
         
-        FitnessAndBinDirectory result = null;
+        EvaluationResultAndBinDirectory result = null;
         try {
             result = compileAndEvaluateVariant(variant, project, compiler, tempDirManager);
             return result.fitness;
@@ -156,10 +165,11 @@ public class Geneseer {
         }
     }
     
-    private static FitnessAndBinDirectory compileAndEvaluateVariant(CodeModel variant, Project project,
+    private static EvaluationResultAndBinDirectory compileAndEvaluateVariant(CodeModel variant, Project project,
             ProjectCompiler compiler, TemporaryDirectoryManager tempDirManager) throws IOException {
         
         int fitness;
+        List<TestFailure> failingTests = null;
         
         Path sourceDirectory = tempDirManager.createTemporaryDirectory();
         Path binDirectory = tempDirManager.createTemporaryDirectory();
@@ -176,7 +186,8 @@ public class Geneseer {
                 EvaluationResult evalResult = evaluation.runTests(
                         project.getProjectDirectory(), classpath, binDirectory, project.getTestClassNames());
                 
-                fitness = evalResult.getFailures().size();
+                failingTests = evalResult.getFailures();
+                fitness = failingTests.size();
                 
             } catch (EvaluationException e) {
                 LOG.log(Level.WARNING, "Failed to run tests on mutant", e);
@@ -195,8 +206,9 @@ public class Geneseer {
             // ignore, will be cleaned up later when tempDirManager is closed
         }
         
-        FitnessAndBinDirectory result = new FitnessAndBinDirectory();
+        EvaluationResultAndBinDirectory result = new EvaluationResultAndBinDirectory();
         result.fitness = fitness;
+        result.failingTests = failingTests;
         result.binDirectory = binDirectory;
         return result;
     }

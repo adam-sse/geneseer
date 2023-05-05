@@ -181,7 +181,7 @@ public class Geneseer {
             
             try {
                 EvaluationResult evalResult = evaluation.runTests(
-                        project.getProjectDirectory(), project.getTestExecutionClassPath(), binDirectory, project.getTestClassNames());
+                        project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute(), binDirectory, project.getTestClassNames());
                 
                 failingTests = evalResult.getFailures();
                 fitness = failingTests.size();

@@ -155,6 +155,14 @@ public class Project {
     public List<Path> getTestExecutionClassPath() {
         return testExecutionClassPath;
     }
+    
+    /**
+     * Same as {@link #getTestExecutionClassPath}, but if necessary resolves any relative paths against the
+     * {@link #getProjectDirectory() project directory}.
+     */
+    public List<Path> getTestExecutionClassPathAbsolute() {
+        return compilationClasspath.stream().map(p -> projectDirectory.resolve(p)).toList();
+    }
 
     /**
      * A list of fully qualified names for all test classes.

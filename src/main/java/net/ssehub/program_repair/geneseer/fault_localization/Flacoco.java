@@ -1,6 +1,8 @@
 package net.ssehub.program_repair.geneseer.fault_localization;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Comparator;
@@ -13,6 +15,7 @@ import java.util.stream.Collectors;
 
 import org.apache.log4j.LogManager;
 
+import eu.stamp_project.testrunner.EntryPoint;
 import fr.spoonlabs.flacoco.api.result.FlacocoResult;
 import fr.spoonlabs.flacoco.api.result.Suspiciousness;
 import fr.spoonlabs.flacoco.core.config.FlacocoConfig;
@@ -53,6 +56,7 @@ public class Flacoco {
         
         flacocoConfig.setTestRunnerTimeoutInMs(Configuration.INSTANCE.getTestExecutionTimeoutMs());
         flacocoConfig.setTestRunnerJVMArgs("-Dfile.encoding=" + Configuration.INSTANCE.getEncoding());
+        flacocoConfig.setTestRunnerVerbose(true);
         
         flacocoConfig.setFamily(FaultLocalizationFamily.SPECTRUM_BASED);
         flacocoConfig.setSpectrumFormula(SpectrumFormula.OCHIAI);
@@ -67,6 +71,9 @@ public class Flacoco {
     }
     
     public LinkedHashMap<CtStatement, Double> run(Path sourceDir, Path binDir) throws EvaluationException {
+        ByteArrayOutputStream captured = new ByteArrayOutputStream();
+        EntryPoint.outPrintStream = new PrintStream(captured);
+        
         try (Probe probe = Measurement.INSTANCE.start("flacoco")) {
             
             flacocoConfig.setBinJavaDir(List.of(binDir.toString()));
@@ -106,6 +113,11 @@ public class Flacoco {
             
         } finally {
             JunitEvaluation.resetEntryPoint();
+            
+            String output = captured.toString();
+            if (!output.isEmpty()) {
+                LOG.fine(() -> "Test output:\n" + output);
+            }
         }
     }
     

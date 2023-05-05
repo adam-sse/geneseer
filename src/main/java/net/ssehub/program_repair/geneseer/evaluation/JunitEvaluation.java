@@ -1,6 +1,8 @@
 package net.ssehub.program_repair.geneseer.evaluation;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -32,6 +34,10 @@ public class JunitEvaluation {
             EntryPoint.workingDirectory = workingDirectory.toFile();
             EntryPoint.JVMArgs = "-Dfile.encoding=" + Configuration.INSTANCE.getEncoding();
             
+            ByteArrayOutputStream captured = new ByteArrayOutputStream();
+            EntryPoint.outPrintStream = new PrintStream(captured);
+            EntryPoint.verbose = true;
+            
             try {
                 TestResult testRunnerResult = EntryPoint.runTests(
                         cp.toString(), testClasses.toArray(String[]::new));
@@ -53,6 +59,11 @@ public class JunitEvaluation {
                 
             } finally {
                 resetEntryPoint();
+                
+                String output = captured.toString();
+                if (!output.isEmpty()) {
+                    LOG.fine(() -> "Test output:\n" + output);
+                }
             }
         }
     }

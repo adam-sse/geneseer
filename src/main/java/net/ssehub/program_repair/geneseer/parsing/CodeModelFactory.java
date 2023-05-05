@@ -28,7 +28,7 @@ public class CodeModelFactory {
         launcher.getEnvironment().setSourceClasspath(this.classpath.stream()
                 .map(Path::toAbsolutePath)
                 .map(Path::toString)
-                .toArray(size -> new String[size]));
+                .toArray(String[]::new));
 //        launcher.getEnvironment().setPreserveLineNumbers(true);
         return launcher;
     }

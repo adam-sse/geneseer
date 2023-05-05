@@ -161,7 +161,7 @@ public class Project {
      * {@link #getProjectDirectory() project directory}.
      */
     public List<Path> getTestExecutionClassPathAbsolute() {
-        return compilationClasspath.stream().map(p -> projectDirectory.resolve(p)).toList();
+        return testExecutionClassPath.stream().map(p -> projectDirectory.resolve(p)).toList();
     }
 
     /**

@@ -88,7 +88,7 @@
 		<dependency>
 			<groupId>eu.stamp-project</groupId>
 			<artifactId>test-runner</artifactId>
-			<version>4.13</version>
+			<version>4.12</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.slf4j</groupId>

@@ -1,6 +1,7 @@
 package net.ssehub.program_repair.geneseer;
 
 import java.nio.charset.Charset;
+import java.util.concurrent.TimeUnit;
 
 public class Configuration {
 
@@ -22,6 +23,10 @@ public class Configuration {
     
     public Charset getEncoding() {
         return encoding;
+    }
+    
+    public int getTestExecutionTimeoutMs() {
+        return (int) TimeUnit.MINUTES.toMillis(5);
     }
     
 }

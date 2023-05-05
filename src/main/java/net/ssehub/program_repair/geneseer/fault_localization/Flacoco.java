@@ -19,6 +19,7 @@ import fr.spoonlabs.flacoco.core.config.FlacocoConfig;
 import fr.spoonlabs.flacoco.core.config.FlacocoConfig.FaultLocalizationFamily;
 import fr.spoonlabs.flacoco.core.test.method.TestMethod;
 import fr.spoonlabs.flacoco.localization.spectrum.SpectrumFormula;
+import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.TestFailure;
 import net.ssehub.program_repair.geneseer.util.Measurement;
@@ -47,6 +48,8 @@ public class Flacoco {
         flacocoConfig.setClasspath(testExecutionClassPath.stream()
                 .map(Path::toString)
                 .collect(Collectors.joining(File.pathSeparator)));
+        
+        flacocoConfig.setTestRunnerTimeoutInMs(Configuration.INSTANCE.getTestExecutionTimeoutMs());
         
         flacocoConfig.setFamily(FaultLocalizationFamily.SPECTRUM_BASED);
         flacocoConfig.setSpectrumFormula(SpectrumFormula.OCHIAI);

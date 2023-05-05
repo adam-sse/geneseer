@@ -9,7 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -62,7 +61,7 @@ public class JunitEvaluation {
             try {
                 process = new ProcessRunner.Builder(command)
                         .workingDirectory(workingDirectory)
-                        .timeout(TimeUnit.MINUTES.toMillis(5)) // TODO: make this configurable
+                        .timeout(Configuration.INSTANCE.getTestExecutionTimeoutMs())
                         .run();
             } catch (IOException e) {
                 LOG.log(Level.SEVERE, "Failed to start process for running tests", e);

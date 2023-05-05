@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 
 import org.apache.log4j.LogManager;
 
-import eu.stamp_project.testrunner.EntryPoint;
 import fr.spoonlabs.flacoco.api.result.FlacocoResult;
 import fr.spoonlabs.flacoco.api.result.Suspiciousness;
 import fr.spoonlabs.flacoco.core.config.FlacocoConfig;
@@ -22,6 +21,7 @@ import fr.spoonlabs.flacoco.core.test.method.TestMethod;
 import fr.spoonlabs.flacoco.localization.spectrum.SpectrumFormula;
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
+import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
 import net.ssehub.program_repair.geneseer.evaluation.TestFailure;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
@@ -72,9 +72,6 @@ public class Flacoco {
             flacocoConfig.setBinJavaDir(List.of(binDir.toString()));
             flacocoConfig.setSrcJavaDir(List.of(sourceDir.toString()));
             
-            // make sure that there are no leftovers by Flacocos usage of the test runner
-            EntryPoint.persistence = false;
-            
             fr.spoonlabs.flacoco.api.Flacoco flacoco = new fr.spoonlabs.flacoco.api.Flacoco(flacocoConfig);
             FlacocoResult flacocoResult = flacoco.run();
             
@@ -106,6 +103,9 @@ public class Flacoco {
                     .forEach(e -> suspiciousness.put(e.getKey(), e.getValue().getScore() / totalSuspiciousness));
             
             return suspiciousness;
+            
+        } finally {
+            JunitEvaluation.resetEntryPoint();
         }
     }
     

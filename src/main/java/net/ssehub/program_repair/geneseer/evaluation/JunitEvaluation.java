@@ -31,7 +31,6 @@ public class JunitEvaluation {
             EntryPoint.timeoutInMs = Configuration.INSTANCE.getTestExecutionTimeoutMs();
             EntryPoint.workingDirectory = workingDirectory.toFile();
             EntryPoint.JVMArgs = "-Dfile.encoding=" + Configuration.INSTANCE.getEncoding();
-            EntryPoint.persistence = false;
             
             try {
                 TestResult testRunnerResult = EntryPoint.runTests(
@@ -51,9 +50,22 @@ public class JunitEvaluation {
                 
             } catch (TimeoutException e) {
                 throw new EvaluationException("Running tests timed out", e);
+                
+            } finally {
+                resetEntryPoint();
             }
-            
         }
+    }
+    
+    public static void resetEntryPoint() {
+        EntryPoint.JVMArgs = null;
+        EntryPoint.workingDirectory = null;
+        EntryPoint.timeoutInMs = Configuration.INSTANCE.getTestExecutionTimeoutMs();
+        EntryPoint.outPrintStream = null;
+        EntryPoint.errPrintStream = null;
+        EntryPoint.blackList.clear();
+        EntryPoint.jacocoAgentIncludes = null;
+        EntryPoint.jacocoAgentExcludes = null;
     }
 
 }

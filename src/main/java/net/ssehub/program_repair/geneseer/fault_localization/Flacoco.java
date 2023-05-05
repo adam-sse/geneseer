@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 import org.apache.log4j.LogManager;
 
+import eu.stamp_project.testrunner.EntryPoint;
 import fr.spoonlabs.flacoco.api.result.FlacocoResult;
 import fr.spoonlabs.flacoco.api.result.Suspiciousness;
 import fr.spoonlabs.flacoco.core.config.FlacocoConfig;
@@ -69,6 +70,9 @@ public class Flacoco {
             
             flacocoConfig.setBinJavaDir(List.of(binDir.toString()));
             flacocoConfig.setSrcJavaDir(List.of(sourceDir.toString()));
+            
+            // make sure that there are no leftovers by Flacocos usage of the test runner
+            EntryPoint.persistence = false;
             
             fr.spoonlabs.flacoco.api.Flacoco flacoco = new fr.spoonlabs.flacoco.api.Flacoco(flacocoConfig);
             FlacocoResult flacocoResult = flacoco.run();

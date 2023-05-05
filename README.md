@@ -73,7 +73,3 @@ or `1.0.1-SNAPSHOT`):
 * `geneseer-$version-jar-with-dependencies.jar` includes the class files of this program, plus all
 dependencies. This means that this jar can be used when you don't want to manually provide all dependencies of this
 program each time you execute it.
-
-This project has `geneseer-test-driver` as a dependency in Maven. This is not available in the default Maven
-repositories, so you need to install it to your local Maven repository. See
-[the README of geneseer-test-driver](https://github.com/adam-sse/geneseer-test-driver#compiling).

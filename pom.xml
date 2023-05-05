@@ -33,27 +33,6 @@
 	<build>
 		<plugins>
 			<plugin>
-				<artifactId>maven-dependency-plugin</artifactId>
-				<version>3.5.0</version>
-				<executions>
-					<execution>
-						<id>copy-geneseer-test-driver</id>
-						<phase>generate-resources</phase>
-						<goals>
-							<goal>copy-dependencies</goal>
-						</goals>
-						<configuration>
-							<includeArtifactIds>geneseer-test-driver</includeArtifactIds>
-							<classifier>jar-with-dependencies</classifier>
-							<failOnMissingClassifierArtifact>true</failOnMissingClassifierArtifact>
-							<outputDirectory>src/main/resources/net/ssehub/program_repair/geneseer/evaluation</outputDirectory>
-							<stripVersion>true</stripVersion>
-							<stripClassifier>true</stripClassifier>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
 				<artifactId>maven-resources-plugin</artifactId>
 				<version>3.3.1</version>
 			</plugin>
@@ -107,24 +86,51 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>net.ssehub.program-repair</groupId>
-			<artifactId>geneseer-test-driver</artifactId>
-			<version>1.1.0</version>
-			<!-- don't include in compile or runtime classpath; only make it available for the maven-dependency-plugin to copy it 
-				to the resource folder -->
-			<scope>provided</scope>
+			<groupId>eu.stamp-project</groupId>
+			<artifactId>test-runner</artifactId>
+			<version>4.13</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-log4j12</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 		<dependency>
 			<groupId>fr.inria.gforge.spoon</groupId>
 			<artifactId>spoon-core</artifactId>
 			<version>10.3.0</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
+
 		<dependency>
 			<groupId>com.github.spoonlabs</groupId>
 			<artifactId>flacoco</artifactId>
 			<version>1.0.6</version>
+			<exclusions>
+				<!-- flacoco has a wrong dependency on log4j... -->
+				<exclusion>
+					<groupId>org.apache.logging.log4j</groupId>
+					<artifactId>log4j-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+			<version>1.2.17</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-jdk14</artifactId>

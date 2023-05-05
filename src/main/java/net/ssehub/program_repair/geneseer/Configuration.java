@@ -13,10 +13,6 @@ public class Configuration {
         encoding = Charset.defaultCharset();
     }
     
-    public String getJvmBinaryPath() {
-        return "java";
-    }
-    
     public String getJavaCompilerBinaryPath() {
         return "javac";
     }

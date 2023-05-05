@@ -2,7 +2,6 @@ package net.ssehub.program_repair.geneseer.evaluation;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedList;
@@ -11,9 +10,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
+import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.util.FileUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
+import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
 
 public class ProjectCompiler {
@@ -22,11 +22,8 @@ public class ProjectCompiler {
     
     private List<Path> classpath;
     
-    private Charset encoding;
-    
-    public ProjectCompiler(List<Path> classpath, Charset encoding) {
+    public ProjectCompiler(List<Path> classpath) {
         this.classpath = classpath;
-        this.encoding = encoding;
     }
 
     public boolean compile(Path sourceDirectory, Path outputDirectory) {
@@ -71,12 +68,12 @@ public class ProjectCompiler {
     
     private List<String> buildCommand(Path sourceDirectory, Path outputDirectory, List<Path> classpath) throws IOException {
         List<String> command = new LinkedList<>();
-        command.add("javac");
+        command.add(Configuration.INSTANCE.getJavaCompilerBinaryPath());
         
         command.add("-nowarn");
         
         command.add("-encoding");
-        command.add(encoding.toString());
+        command.add(Configuration.INSTANCE.getEncoding().toString());
         
         command.add("-d");
         command.add(outputDirectory.toString());

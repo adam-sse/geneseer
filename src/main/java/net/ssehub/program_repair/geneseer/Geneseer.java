@@ -2,7 +2,6 @@ package net.ssehub.program_repair.geneseer;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -53,11 +52,12 @@ public class Geneseer {
         LOG.info("    compilation classpath: " + project.getCompilationClasspath());
         LOG.info("    test execution classpath: " + project.getTestExecutionClassPath());
         LOG.info("    test classes (" + project.getTestClassNames().size() + "): " + project.getTestClassNames());
+        LOG.fine("Using encoding " + Configuration.INSTANCE.getEncoding());
         
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
             CodeModelFactory codeModel = new CodeModelFactory(project.getSourceDirectoryAbsolute());
-            ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute(), StandardCharsets.UTF_8);
+            ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute());
             
             LOG.info("Compiling and evaluating unmodified variant");
             CodeModel unmodifiedModel = codeModel.createModel();

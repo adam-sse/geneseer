@@ -1,8 +1,8 @@
 package net.ssehub.program_repair.geneseer.parsing;
 
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
+import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 import spoon.Launcher;
@@ -20,7 +20,7 @@ public class CodeModelFactory {
     private Launcher createLauncher() {
         Launcher launcher = new Launcher();
         launcher.addInputResource(sourceDir);
-        launcher.getEnvironment().setEncoding(StandardCharsets.ISO_8859_1);
+        launcher.getEnvironment().setEncoding(Configuration.INSTANCE.getEncoding());
 //        launcher.getEnvironment().setPreserveLineNumbers(true);
         return launcher;
     }

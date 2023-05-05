@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
@@ -127,8 +128,9 @@ public class JunitEvaluation {
 
     private List<String> createCommand(List<Path> classpath, List<String> testClasses) {
         List<String> command = new LinkedList<>();
-        command.add("java");
+        command.add(Configuration.INSTANCE.getJvmBinaryPath());
         command.add("-Djava.awt.headless=true");
+        command.add("-Dfile.encoding=" + Configuration.INSTANCE.getEncoding());
         command.add("-cp");
         command.add(GENESEER_TEST_DRIVER.toAbsolutePath().toString() + File.pathSeparatorChar
                 + classpath.stream()

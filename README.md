@@ -27,8 +27,12 @@ suite.
 The classpaths (command line arguments 3 and 4) can be specified with the platform-specific file separator character
 (`;` on Windows, `:` on Unix-likes). If `;` is not used, then `:` may also be used on Windows.
 
-To get prettier and filtered log output, add the following JVM arguments (*not* command line arguments for this program,
-they need to be specified before the main class or `-jar` parameter):
+To specify the encoding of the source files of the project to repair, pass the JVM argument `file.encoding`. Note that
+this is *not* a command line argument for this program, it needs to be specified before the main class or `-jar`
+parameter with `-D`. For example `-Dfile.encoding=ISO-8859-1`. If this is not specified, the default encoding of the
+operating system is used.
+
+To get prettier and filtered log output, add the following JVM arguments:
 
 * `-Djava.util.logging.config.class=net.ssehub.program_repair.geneseer.logging.LoggingConfiguration`
 * `-Djava.util.logging.config.file=logging.properties`
@@ -38,7 +42,7 @@ directory where you launch this program, copy it there or specify the full path 
 
 As an example, a full execution of geneseer may look like this:
 ```
-java -Djava.util.logging.config.class=net.ssehub.program_repair.geneseer.logging.LoggingConfiguration -Djava.util.logging.config.file=logging.properties -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.Geneseer /path/to/project-to-fix src/main/java lib/some-lib.jar:lib/other-lib.jar target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar com.example.TestClass1 com.example.TestClass2
+java -Djava.util.logging.config.class=net.ssehub.program_repair.geneseer.logging.LoggingConfiguration -Djava.util.logging.config.file=logging.properties -Dfile.encoding=ISO-8859-1 -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.Geneseer /path/to/project-to-fix src/main/java lib/some-lib.jar:lib/other-lib.jar target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar com.example.TestClass1 com.example.TestClass2
 ```
 
 ### Environment

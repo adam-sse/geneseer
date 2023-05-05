@@ -57,7 +57,7 @@ public class Geneseer {
         
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
-            CodeModelFactory codeModel = new CodeModelFactory(project.getSourceDirectoryAbsolute());
+            CodeModelFactory codeModel = new CodeModelFactory(project.getSourceDirectoryAbsolute(), project.getCompilationClasspathAbsolute());
             ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute());
             
             LOG.info("Compiling and evaluating unmodified variant");
@@ -67,7 +67,7 @@ public class Geneseer {
             unmodifiedModel.write(sourceDir);
             
             // dump model into "new" source directory, as line numbers change (preserving line numbers is buggy)
-            codeModel = new CodeModelFactory(sourceDir);
+            codeModel = new CodeModelFactory(sourceDir, project.getCompilationClasspathAbsolute());
             unmodifiedModel = codeModel.createModel();
             
             EvaluationResultAndBinDirectory res = compileAndEvaluateVariant(unmodifiedModel, project, compiler, tempDirManager);

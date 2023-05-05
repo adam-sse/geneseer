@@ -3,6 +3,7 @@ package net.ssehub.program_repair.geneseer;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import net.ssehub.program_repair.geneseer.parsing.CodeModel;
 import net.ssehub.program_repair.geneseer.parsing.CodeModelFactory;
@@ -24,7 +25,7 @@ public class ParseAndWrite {
         }
         Files.createDirectory(out);
         
-        CodeModelFactory factory = new CodeModelFactory(in);
+        CodeModelFactory factory = new CodeModelFactory(in, List.of());
         CodeModel model = factory.createModel();
         System.out.println("Parsed model with " + model.getSpoonModel().getAllTypes().size() + " types");
         

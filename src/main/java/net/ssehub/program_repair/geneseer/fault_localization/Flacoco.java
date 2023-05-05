@@ -44,6 +44,7 @@ public class Flacoco {
     public Flacoco(Path rootDirectory, List<Path> testExecutionClassPath) {
         flacocoConfig = new FlacocoConfig();
         flacocoConfig.setProjectPath(rootDirectory.toString());
+        flacocoConfig.setWorkspace(rootDirectory.toString());
         
         flacocoConfig.setClasspath(testExecutionClassPath.stream()
                 .map(Path::toString)

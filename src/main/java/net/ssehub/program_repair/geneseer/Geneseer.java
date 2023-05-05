@@ -179,12 +179,9 @@ public class Geneseer {
         if (compiled) {
             JunitEvaluation evaluation = new JunitEvaluation();
             
-            List<Path> classpath = new LinkedList<>(project.getTestExecutionClassPath());
-            classpath.add(binDirectory);
-            
             try {
                 EvaluationResult evalResult = evaluation.runTests(
-                        project.getProjectDirectory(), classpath, binDirectory, project.getTestClassNames());
+                        project.getProjectDirectory(), project.getTestExecutionClassPath(), binDirectory, project.getTestClassNames());
                 
                 failingTests = evalResult.getFailures();
                 fitness = failingTests.size();

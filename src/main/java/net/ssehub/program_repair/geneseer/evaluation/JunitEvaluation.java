@@ -55,7 +55,7 @@ public class JunitEvaluation {
         
         try (Probe probe = Measurement.INSTANCE.start("junit-evaluation")) {
             
-            List<String> command = createCommand(classpath, testClasses);
+            List<String> command = createCommand(classpath, classes, testClasses);
             LOG.log(Level.FINE, () -> "Runnning " + command);
             ProcessRunner process;
             try {
@@ -125,16 +125,22 @@ public class JunitEvaluation {
         }
     }
 
-    private List<String> createCommand(List<Path> classpath, List<String> testClasses) {
+    private List<String> createCommand(List<Path> classpath, Path classes, List<String> testClasses) {
         List<String> command = new LinkedList<>();
         command.add(Configuration.INSTANCE.getJvmBinaryPath());
         command.add("-Dfile.encoding=" + Configuration.INSTANCE.getEncoding());
+        
+        StringBuilder cp = new StringBuilder(GENESEER_TEST_DRIVER.toAbsolutePath().toString());
+        cp.append(File.pathSeparatorChar);
+        cp.append(classes.toString());
+        for (Path element : classpath) {
+            cp.append(File.pathSeparatorChar);
+            cp.append(element.toString());
+        }
+        
         command.add("-cp");
-        command.add(GENESEER_TEST_DRIVER.toAbsolutePath().toString() + File.pathSeparatorChar
-                + classpath.stream()
-                    .map(Path::toString)
-                    .reduce((p1, p2) -> p1 + File.pathSeparatorChar + p2)
-                    .get());
+        command.add(cp.toString());
+        
         command.add("net.ssehub.program_repair.geneseer.evaluation.JunitRunnerClient");
         command.addAll(testClasses);
         return command;

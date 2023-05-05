@@ -82,7 +82,7 @@ public class Geneseer {
             }
             
             LOG.info("Measuring suspiciousness");
-            Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPath());
+            Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute());
             flacoco.setExpectedFailures(res.failingTests);
             LinkedHashMap<CtStatement, Double> suspiciousness;
             try {

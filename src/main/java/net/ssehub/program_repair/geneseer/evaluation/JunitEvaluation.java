@@ -129,7 +129,6 @@ public class JunitEvaluation {
     private List<String> createCommand(List<Path> classpath, List<String> testClasses) {
         List<String> command = new LinkedList<>();
         command.add(Configuration.INSTANCE.getJvmBinaryPath());
-        command.add("-Djava.awt.headless=true");
         command.add("-Dfile.encoding=" + Configuration.INSTANCE.getEncoding());
         command.add("-cp");
         command.add(GENESEER_TEST_DRIVER.toAbsolutePath().toString() + File.pathSeparatorChar

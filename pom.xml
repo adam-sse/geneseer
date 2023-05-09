@@ -98,6 +98,11 @@
 					<groupId>org.slf4j</groupId>
 					<artifactId>slf4j-api</artifactId>
 				</exclusion>
+				<!-- pitest jar has org.ow2.asm classes with a different version bundled for some reason  -->
+				<exclusion>
+					<groupId>org.pitest</groupId>
+					<artifactId>pitest-entry</artifactId>
+				</exclusion>
 			</exclusions>
 		</dependency>
 

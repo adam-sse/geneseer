@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -53,6 +54,11 @@ public class Flacoco {
         flacocoConfig.setClasspath(testExecutionClassPath.stream()
                 .map(Path::toString)
                 .collect(Collectors.joining(File.pathSeparator)));
+        
+        flacocoConfig.setCustomJUnitClasspath("");
+        flacocoConfig.setCustomJacocoClasspath("");
+        
+        flacocoConfig.setBinTestDir(Collections.emptyList());
         
         flacocoConfig.setTestRunnerTimeoutInMs(Configuration.INSTANCE.getTestExecutionTimeoutMs());
         flacocoConfig.setTestRunnerJVMArgs("-Dfile.encoding=" + Configuration.INSTANCE.getEncoding());

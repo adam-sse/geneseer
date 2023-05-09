@@ -77,7 +77,7 @@ public class Geneseer {
             LOG.info(() -> "Fitness of original variant without mutations: " + originalFitness);
             if (originalFitness == Integer.MAX_VALUE || res.failingTests == null) {
                 LOG.severe("Failed to compile or run tests on unmodified code");
-                System.out.println(originalFitness);
+                System.out.print(originalFitness);
                 return;
             }
             
@@ -89,7 +89,7 @@ public class Geneseer {
                 suspiciousness = flacoco.run(sourceDir, unmodifiedBindir);
             } catch (EvaluationException e) {
                 LOG.severe("Flacoco failures do not equal previous evaluation result");
-                System.out.println(originalFitness);
+                System.out.print(originalFitness);
                 return;
             }
             
@@ -133,14 +133,14 @@ public class Geneseer {
                 }
             }
             
-            System.out.println(originalFitness + ";" + bestFitness + ";"
+            System.out.print(originalFitness + ";" + bestFitness + ";"
                     + (bestMutation != null ? bestMutation.textDescription() : "<no mutation>"));
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);
-            System.out.println();
             
         } finally {
+            System.out.println();
             LOG.info("Timing measurements:");
             for (Map.Entry<String, Long> entry : Measurement.INSTANCE.finishedProbes()) {
                 LOG.info(() -> "    " + entry.getKey() + ": " + entry.getValue() + " ms");

@@ -84,14 +84,7 @@ public class Geneseer {
             LOG.info("Measuring suspiciousness");
             Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute());
             flacoco.setExpectedFailures(res.failingTests);
-            LinkedHashMap<CtStatement, Double> suspiciousness;
-            try {
-                suspiciousness = flacoco.run(sourceDir, unmodifiedBindir);
-            } catch (EvaluationException e) {
-                LOG.severe("Flacoco failures do not equal previous evaluation result");
-                System.out.print(originalFitness);
-                return;
-            }
+            LinkedHashMap<CtStatement, Double> suspiciousness = flacoco.run(sourceDir, unmodifiedBindir);
             
             for (Map.Entry<CtStatement, Double> entry : suspiciousness.entrySet()) {
                 SourcePosition pos = entry.getKey().getPosition();

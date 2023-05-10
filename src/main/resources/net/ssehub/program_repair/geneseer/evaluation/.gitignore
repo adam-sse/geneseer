@@ -1,2 +1,3 @@
-# this file is copied here by the maven-dependency-plugin
+# these files are copied here by the maven-dependency-plugin
 /geneseer-test-driver.jar
+/org.jacoco.agent.jar

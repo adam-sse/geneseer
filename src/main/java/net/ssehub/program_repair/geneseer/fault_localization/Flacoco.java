@@ -1,8 +1,6 @@
 package net.ssehub.program_repair.geneseer.fault_localization;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
@@ -24,7 +22,6 @@ import fr.spoonlabs.flacoco.core.config.FlacocoConfig.FaultLocalizationFamily;
 import fr.spoonlabs.flacoco.core.test.method.TestMethod;
 import fr.spoonlabs.flacoco.localization.spectrum.SpectrumFormula;
 import net.ssehub.program_repair.geneseer.Configuration;
-import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
@@ -41,11 +38,18 @@ public class Flacoco {
 
     private static final Logger LOG = Logger.getLogger(Flacoco.class.getName());
     
+    private Path rootDirectory;
+    
+    private List<Path> testExecutionClassPath;
+    
     private FlacocoConfig flacocoConfig;
     
     private Set<String> expectedFailures;
     
     public Flacoco(Path rootDirectory, List<Path> testExecutionClassPath) {
+        this.rootDirectory = rootDirectory;
+        this.testExecutionClassPath = testExecutionClassPath;
+        
         flacocoConfig = new FlacocoConfig();
         flacocoConfig.setProjectPath(rootDirectory.toString());
         flacocoConfig.setWorkspace(rootDirectory.toString());
@@ -75,11 +79,10 @@ public class Flacoco {
                 .collect(Collectors.toSet());
     }
     
-    public LinkedHashMap<CtStatement, Double> run(Path sourceDir, Path binDir) throws EvaluationException {
-        ByteArrayOutputStream captured = new ByteArrayOutputStream();
-        EntryPoint.outPrintStream = new PrintStream(captured);
-        
+    public LinkedHashMap<CtStatement, Double> run(Path sourceDir, Path binDir) {
         try (Probe probe = Measurement.INSTANCE.start("flacoco")) {
+            
+            EntryPoint.INSTANCE.setup(rootDirectory, testExecutionClassPath, binDir);
             
             flacocoConfig.setBinJavaDir(List.of(binDir.toString()));
             flacocoConfig.setSrcJavaDir(List.of(sourceDir.toString()));
@@ -116,22 +119,17 @@ public class Flacoco {
             
             return suspiciousness;
             
-        } finally {
-            String output = captured.toString();
-            if (!output.isEmpty()) {
-                LOG.fine(() -> "Test output:\n" + output);
-            }
         }
     }
     
-    private void compareExpectedFailures(Set<TestMethod> flacocoFailures) throws EvaluationException {
+    private void compareExpectedFailures(Set<TestMethod> flacocoFailures) {
         Set<String> actualFailingTests = flacocoFailures.stream()
             .map(TestMethod::getFullyQualifiedMethodName)
             .map(name -> name.replace("#", "::"))
             .collect(Collectors.toSet());
         
         if (!actualFailingTests.equals(expectedFailures)) {
-            throw new EvaluationException("Flacoco failures are different from expected failures");
+            LOG.warning("Flacoco failures are different from expected failures");
         }
     }
     

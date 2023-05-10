@@ -108,7 +108,7 @@ public class JunitEvaluation {
             return result;
         }
     }
-
+    
     private static void logProcessResult(String stdout, String stderr, int exitCode) {
         Level level = Level.FINE;
         if (exitCode != 0) {
@@ -144,7 +144,7 @@ public class JunitEvaluation {
         command.add("-cp");
         command.add(cp.toString());
 
-        command.add("net.ssehub.program_repair.geneseer.evaluation.JunitRunnerClient");
+        command.add("net.ssehub.program_repair.geneseer.evaluation.ClassListRunner");
         command.addAll(testClasses);
         return command;
     }

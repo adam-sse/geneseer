@@ -16,7 +16,7 @@ import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationResult;
 import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
 import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
-import net.ssehub.program_repair.geneseer.evaluation.TestFailure;
+import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.fault_localization.Flacoco;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.mutations.IMutation;
@@ -149,7 +149,7 @@ public class Geneseer {
     }
 
     
-    static class EvaluationResultAndBinDirectory {int fitness; List<TestFailure> failingTests; Path binDirectory; }
+    static class EvaluationResultAndBinDirectory {int fitness; List<TestResult> failingTests; Path binDirectory; }
     
     private static int evaluateVariant(CodeModel variant, Project project, ProjectCompiler compiler,
     TemporaryDirectoryManager tempDirManager) throws IOException {
@@ -169,7 +169,7 @@ public class Geneseer {
             ProjectCompiler compiler, TemporaryDirectoryManager tempDirManager) throws IOException {
         
         int fitness;
-        List<TestFailure> failingTests = null;
+        List<TestResult> failingTests = null;
         
         Path sourceDirectory = tempDirManager.createTemporaryDirectory();
         Path binDirectory = tempDirManager.createTemporaryDirectory();

@@ -25,8 +25,7 @@ import fr.spoonlabs.flacoco.core.test.method.TestMethod;
 import fr.spoonlabs.flacoco.localization.spectrum.SpectrumFormula;
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
-import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
-import net.ssehub.program_repair.geneseer.evaluation.TestFailure;
+import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 import spoon.reflect.code.CtBlock;
@@ -70,9 +69,9 @@ public class Flacoco {
         flacocoConfig.setComputeSpoonResults(true);
     }
     
-    public void setExpectedFailures(Collection<TestFailure> expectedFailures) {
+    public void setExpectedFailures(Collection<TestResult> expectedFailures) {
         this.expectedFailures = expectedFailures.stream()
-                .map(TestFailure::toString)
+                .map(TestResult::toString)
                 .collect(Collectors.toSet());
     }
     
@@ -118,8 +117,6 @@ public class Flacoco {
             return suspiciousness;
             
         } finally {
-            JunitEvaluation.resetEntryPoint();
-            
             String output = captured.toString();
             if (!output.isEmpty()) {
                 LOG.fine(() -> "Test output:\n" + output);

@@ -4,14 +4,18 @@ import java.util.List;
 
 public class EvaluationResult {
 
-    private List<TestFailure> failures;
+    private List<TestResult> executedTests;
 
-    public List<TestFailure> getFailures() {
-        return failures;
+    public List<TestResult> getFailures() {
+        return executedTests.stream().filter(TestResult::isFailure).toList();
     }
     
-    void setFailures(List<TestFailure> failures) {
-        this.failures = failures;
+    public List<TestResult> getExecutedTests() {
+        return executedTests;
+    }
+    
+    void setExecutedTests(List<TestResult> executedTests) {
+        this.executedTests = executedTests;
     }
     
 }

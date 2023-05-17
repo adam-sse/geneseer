@@ -67,10 +67,11 @@ public abstract class AbstractTestExecution {
     
     @SuppressWarnings("unchecked")
     protected List<TestResult> executeTests(Path workingDirectory) throws EvaluationException {
-        List<String> command = createCommand();
-        LOG.log(Level.FINE, () -> "Runnning " + command);
         ProcessRunner process;
-        try {
+        try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
+            List<String> command = createCommand(tempDirManager.createTemporaryDirectory());
+            LOG.log(Level.FINE, () -> "Runnning " + command);
+            
             process = new ProcessRunner.Builder(command)
                     .workingDirectory(workingDirectory)
                     .timeout(Configuration.INSTANCE.getTestExecutionTimeoutMs())
@@ -132,7 +133,7 @@ public abstract class AbstractTestExecution {
         }
     }
     
-    private List<String> createCommand() {
+    private List<String> createCommand(Path tempDir) throws IOException {
         List<String> command = new LinkedList<>();
         command.add(Configuration.INSTANCE.getJvmBinaryPath());
         
@@ -141,6 +142,7 @@ public abstract class AbstractTestExecution {
         }
         
         command.add("-Dfile.encoding=" + Configuration.INSTANCE.getEncoding());
+        command.add("-Djava.io.tmpdir=" + tempDir);
 
         StringBuilder cp = new StringBuilder(GENESEER_TEST_DRIVER.toAbsolutePath().toString());
         cp.append(File.pathSeparatorChar);

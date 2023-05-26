@@ -91,6 +91,10 @@ public abstract class AbstractTestExecution {
             logProcessResult(stdout, stderr, process.getExitCode());
 
             executedTests = (List<TestResult>) in.readObject();
+            if (executedTests == null) {
+                throw new IOException("read null as list of executed tests");
+            }
+            
             LOG.info(() -> executedTests.size() + " tests executed, "
                         + executedTests.stream().filter(TestResult::isFailure).count() + " failures");
             for (TestResult test : executedTests) {
@@ -125,10 +129,10 @@ public abstract class AbstractTestExecution {
         }
 
         LOG.log(level, () -> "Evaluation process finished with exit code " + exitCode);
-        if (!stdout.isEmpty()) {
+        if (stdout != null && !stdout.isEmpty()) {
             LOG.log(level, () -> "stdout:\n" + stdout);
         }
-        if (!stderr.isEmpty()) {
+        if (stderr != null && !stderr.isEmpty()) {
             LOG.log(level, () -> "stderr:\n" + stderr);
         }
     }

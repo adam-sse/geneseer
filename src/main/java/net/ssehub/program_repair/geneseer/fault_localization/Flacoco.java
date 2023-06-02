@@ -99,12 +99,6 @@ public class Flacoco {
                 compareExpectedFailures(flacocoResult.getFailingTests());
             }
             
-            double totalSuspiciousness = flacocoResult.getSpoonSuspiciousnessMap().entrySet().stream()
-                    .filter(e -> !(e.getKey() instanceof CtClass))
-                    .filter(e -> !(e.getKey() instanceof CtBlock))
-                    .mapToDouble(e -> e.getValue().getScore())
-                    .sum();
-            
             LinkedHashMap<CtStatement, Double> suspiciousness = new LinkedHashMap<>(
                     flacocoResult.getSpoonSuspiciousnessMap().size());
             
@@ -115,7 +109,7 @@ public class Flacoco {
                     .filter(e -> !(e.getKey() instanceof CtClass))
                     .filter(e -> !(e.getKey() instanceof CtBlock))
                     .sorted(comparingScore.reversed())
-                    .forEach(e -> suspiciousness.put(e.getKey(), e.getValue().getScore() / totalSuspiciousness));
+                    .forEach(e -> suspiciousness.put(e.getKey(), e.getValue().getScore()));
             
             return suspiciousness;
             

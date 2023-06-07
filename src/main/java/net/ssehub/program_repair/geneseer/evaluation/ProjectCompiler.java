@@ -45,16 +45,16 @@ public class ProjectCompiler {
                 return false;
             }
             
-            String stdout = new String(process.getStdout());
-            String stderr = new String(process.getStderr());
+//            String stdout = new String(process.getStdout());
+//            String stderr = new String(process.getStderr());
             
             LOG.info(() -> "Compilation " + (process.getExitCode() == 0 ? "" : "not ") + "successful");
-            if (!stdout.isEmpty()) {
-                LOG.fine(() -> "Compiler stdout:\n" + stdout);
-            }
-            if (!stderr.isEmpty()) {
-                LOG.fine(() -> "Compiler stderr:\n" + stderr);
-            }
+//            if (!stdout.isEmpty()) {
+//                LOG.fine(() -> "Compiler stdout:\n" + stdout);
+//            }
+//            if (!stderr.isEmpty()) {
+//                LOG.fine(() -> "Compiler stderr:\n" + stderr);
+//            }
             
             try {
                 FileUtils.copyAllNonJavaSourceFiles(sourceDirectory, outputDirectory);

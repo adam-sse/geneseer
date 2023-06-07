@@ -80,7 +80,7 @@ public class EntryPoint {
                     coverage.getCoverageResultsMap().put(className + "#" + methodName, new CoverageDetailed(coverageInformation));
                     
                 } else {
-                    LOG.fine("Test seems to be ignored");
+                    LOG.fine("Test " + className + "::" + methodName + " seems to be ignored");
                     coverage.addIgnored(className + "#" + methodName);
                 }
             }

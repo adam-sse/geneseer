@@ -100,7 +100,7 @@ public class TestExecution implements AutoCloseable {
     
     private void startProcess(Path workingDirectory, List<Path> classpath, boolean withCoverage) throws IOException {
         List<String> command = createCommand(classpath, withCoverage);
-        LOG.fine(() -> "Running test runner proces: " + command);
+        LOG.fine(() -> "Starting test runner proces: " + command);
         ProcessBuilder builder = new ProcessBuilder(command);
         builder.directory(workingDirectory.toFile());
         builder.redirectError(Redirect.INHERIT); // TODO: for now, we just hope there is no error output

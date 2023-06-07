@@ -6,6 +6,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.UncheckedIOException;
 import java.lang.ProcessBuilder.Redirect;
+import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedList;
@@ -25,8 +26,6 @@ import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 public class TestExecution implements AutoCloseable {
 
     private static final Logger LOG = Logger.getLogger(TestExecution.class.getName());
-    
-    private static final int JACOCO_PORT = 6300;
     
     private static final Path GENESEER_TEST_DRIVER;
     
@@ -69,14 +68,34 @@ public class TestExecution implements AutoCloseable {
     
     private ObjectOutputStream out;
     
+    private int jacocoPort;
+    
     public TestExecution(Path workingDirectory, List<Path> classpath, boolean withCoverage) throws EvaluationException {
         tempDirManager = new TemporaryDirectoryManager();
+        
+        if (withCoverage) {
+            jacocoPort = generateRandomPort();
+        }
         
         try {
             startProcess(workingDirectory, classpath, withCoverage);
         } catch (IOException e) {
             throw new EvaluationException("Failed to start runner process", e);
         }
+    }
+    
+    private int generateRandomPort() {
+        int port;
+        try (ServerSocket socket = new ServerSocket(0)) {
+            socket.setReuseAddress(true);
+            port = socket.getLocalPort();
+            
+        } catch (IOException e) {
+            LOG.log(Level.WARNING, "Failed to get free port; using random port number (might not be free)", e);
+            port = (int) (Math.random() * (65535 - 49152)) + 49152;
+        }
+        
+        return port;
     }
     
     private void startProcess(Path workingDirectory, List<Path> classpath, boolean withCoverage) throws IOException {
@@ -155,7 +174,7 @@ public class TestExecution implements AutoCloseable {
             ExecDumpClient jacocoClient = new ExecDumpClient();
             jacocoClient.setReset(true);
             jacocoClient.setDump(false);
-            jacocoClient.dump("localhost", JACOCO_PORT);
+            jacocoClient.dump("localhost", jacocoPort);
             
             out.writeObject("METHOD");
             out.writeObject(className);
@@ -165,7 +184,7 @@ public class TestExecution implements AutoCloseable {
             TestResult result = (TestResult) in.readObject();
             
             jacocoClient.setDump(true);
-            ExecFileLoader loader = jacocoClient.dump("localhost", JACOCO_PORT);
+            ExecFileLoader loader = jacocoClient.dump("localhost", jacocoPort);
             
             return new TestResultWithCoverage(result, loader.getExecutionDataStore());
             
@@ -181,7 +200,7 @@ public class TestExecution implements AutoCloseable {
         command.add(Configuration.INSTANCE.getJvmBinaryPath());
         
         if (withCoverage) {
-            command.add("-javaagent:" + JACOCO_AGENT.toAbsolutePath() + "=output=tcpserver,port=" + JACOCO_PORT);
+            command.add("-javaagent:" + JACOCO_AGENT.toAbsolutePath() + "=output=tcpserver,port=" + jacocoPort);
         }
         
         command.add("-Dfile.encoding=" + Configuration.INSTANCE.getEncoding());

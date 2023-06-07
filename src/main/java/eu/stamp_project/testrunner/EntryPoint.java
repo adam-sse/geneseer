@@ -2,23 +2,18 @@ package eu.stamp_project.testrunner;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.jacoco.core.analysis.Analyzer;
 import org.jacoco.core.analysis.CoverageBuilder;
 import org.jacoco.core.analysis.IClassCoverage;
 import org.jacoco.core.analysis.IMethodCoverage;
-import org.jacoco.core.data.ExecutionDataReader;
 import org.jacoco.core.data.ExecutionDataStore;
-import org.jacoco.core.data.SessionInfoStore;
 
 import eu.stamp_project.testrunner.listener.CoveredTestResultPerTestMethod;
 import eu.stamp_project.testrunner.listener.CoveredTestResultPerTestMethodImpl;
@@ -26,14 +21,15 @@ import eu.stamp_project.testrunner.listener.impl.CoverageDetailed;
 import eu.stamp_project.testrunner.listener.impl.CoverageFromClass;
 import eu.stamp_project.testrunner.listener.impl.CoverageInformation;
 import eu.stamp_project.testrunner.runner.ParserOptions;
-import net.ssehub.program_repair.geneseer.evaluation.AbstractTestExecution;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
+import net.ssehub.program_repair.geneseer.evaluation.TestExecution;
+import net.ssehub.program_repair.geneseer.evaluation.TestExecution.TestResultWithCoverage;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
-public class EntryPoint extends AbstractTestExecution {
+public class EntryPoint {
     
     public static final EntryPoint INSTANCE = new EntryPoint();
     
@@ -45,10 +41,6 @@ public class EntryPoint extends AbstractTestExecution {
     
     private Path classesDirectory;
     
-    private String testClass;
-    
-    private String testMethod;
-    
     public void setup(Path workingDirectory, List<Path> classpath, Path classesDirectory) {
         this.workingDirectoryInternal = workingDirectory;
         
@@ -59,94 +51,45 @@ public class EntryPoint extends AbstractTestExecution {
         this.classesDirectory = classesDirectory;
     }
     
-    @Override
-    protected List<Path> getClasspath() {
-        return classpath;
-    }
-    
-    @Override
-    protected String getMainClass() {
-        return SINGLE_METHOD_RUNNER;
-    }
-    
-    @Override
-    protected List<String> getArguments() {
-        return List.of(testClass, testMethod);
-    }
-    
-    @Override
-    protected boolean withJacoco() {
-        return true;
-    }
-    
     public CoveredTestResultPerTestMethod run(String... methodNames) throws EvaluationException {
         LOG.info(() -> "Running coverage on " + methodNames.length + " test methods");
         
-        CoveredTestResultPerTestMethodImpl coverageResult = new CoveredTestResultPerTestMethodImpl();
+        CoveredTestResultPerTestMethodImpl coverage = new CoveredTestResultPerTestMethodImpl();
         
-        try (Probe probe = Measurement.INSTANCE.start("junit-coverage-matrix")) {
+        try (Probe probe = Measurement.INSTANCE.start("junit-coverage-matrix");
+                TestExecution testExec = new TestExecution(workingDirectoryInternal, classpath, true)) {
             
             for (String methodName : methodNames) {
                 String className = methodName.split("#")[0];
                 methodName = methodName.split("#")[1];
                 
-                runCoverage(className, methodName, coverageResult);
-            }
-        }
-        
-        return coverageResult;
-    }
-    
-    private void runCoverage(String testClass, String testMethod, CoveredTestResultPerTestMethodImpl coverage)
-            throws EvaluationException {
-        
-        TestResult result = runSingleTestMethod(testClass, testMethod);
-        
-        if (result != null) {
-            if (result.isFailure()) {
-                coverage.addFailingTest(result);
-                LOG.fine(() -> "Failure: " + result + " " + result.failureMessage());
-            } else {
-                coverage.addPassingTest(result);
-                LOG.fine(() -> "Passed: " + result);
-            }
-            
-            Path jacocoExec = workingDirectoryInternal.resolve("jacoco.exec");
-            CoverageInformation coverageInformation = parseCoverage(jacocoExec);
-            
-            coverage.getCoverageResultsMap().put(testClass + "#" + testMethod, new CoverageDetailed(coverageInformation));
-            
-        } else {
-            LOG.fine("Test seems to be ignored");
-            coverage.addIgnored(testClass + "#" + testMethod);
-        }
-    }
-    
-    private CoverageInformation parseCoverage(Path jacocoExec) throws EvaluationException {
-        try (InputStream jacocoExecStream = Files.newInputStream(jacocoExec)) {
-            ExecutionDataStore executionDataStore = new ExecutionDataStore();
-            SessionInfoStore sessionInfoStore = new SessionInfoStore();
-
-            ExecutionDataReader executionDataReader = new ExecutionDataReader(jacocoExecStream);
-            executionDataReader.setExecutionDataVisitor(executionDataStore);
-            executionDataReader.setSessionInfoVisitor(sessionInfoStore);
-            executionDataReader.read();
-
-            return transformJacocoObject(executionDataStore);
-
-        } catch (IOException e) {
-            LOG.log(Level.SEVERE, "Failed to analyze coverage", e);
-            throw new EvaluationException("Failed to analyze coverage", e);
-
-        } finally {
-            if (Files.isRegularFile(jacocoExec)) {
-                try {
-                    Files.delete(jacocoExec);
-                } catch (IOException e) {
-                    LOG.log(Level.WARNING, "Failed to delete jacoco.exec", e);
+                TestResultWithCoverage result = testExec.executeTestMethodWithCoverage(className, methodName);
+                TestResult testResult = result.getTestResult();
+                
+                if (testResult != null) {
+                    if (testResult.isFailure()) {
+                        coverage.addFailingTest(testResult);
+                        LOG.fine(() -> "Failure: " + testResult + " " + testResult.failureMessage());
+                    } else {
+                        coverage.addPassingTest(testResult);
+                        LOG.fine(() -> "Passed: " + testResult);
+                    }
+                    
+                    CoverageInformation coverageInformation = transformJacocoObject(result.getCoverage());
+                    
+                    coverage.getCoverageResultsMap().put(className + "#" + methodName, new CoverageDetailed(coverageInformation));
+                    
+                } else {
+                    LOG.fine("Test seems to be ignored");
+                    coverage.addIgnored(className + "#" + methodName);
                 }
             }
+            
+        } catch (IOException e) {
+            throw new EvaluationException("Failed to parse jacoco data", e);
         }
+        
+        return coverage;
     }
     
     private CoverageInformation transformJacocoObject(ExecutionDataStore executionData)
@@ -180,14 +123,6 @@ public class EntryPoint extends AbstractTestExecution {
 
         }
         return covered;
-    }
-    
-    
-    private TestResult runSingleTestMethod(String testClass, String testMethod) throws EvaluationException {
-        this.testClass = testClass;
-        this.testMethod = testMethod;
-        List<TestResult> executedTests = executeTests(workingDirectoryInternal);
-        return executedTests.size() == 1 ? executedTests.get(0) : null;
     }
     
     /*

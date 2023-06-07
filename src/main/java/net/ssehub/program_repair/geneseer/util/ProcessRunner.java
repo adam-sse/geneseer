@@ -107,11 +107,11 @@ public class ProcessRunner {
         });
     }
     
-    private interface Interruptable<T> {
+    public interface Interruptable<T> {
         T run() throws InterruptedException;
     }
     
-    private static <T> T untilNoInterruptedException(Interruptable<T> function) {
+    public static <T> T untilNoInterruptedException(Interruptable<T> function) {
         T result = null;
         boolean waitSuccess = false;
         do {

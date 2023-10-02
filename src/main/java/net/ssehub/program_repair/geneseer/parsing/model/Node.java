@@ -1,11 +1,13 @@
 package net.ssehub.program_repair.geneseer.parsing.model;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 
-public abstract class Node {
+public abstract class Node implements Cloneable {
 
     public enum Type {
         COMPILATION_UNIT,
@@ -49,6 +51,11 @@ public abstract class Node {
     
     public abstract String getText();
     
+    @Override
+    public String toString() {
+        return dumpTree();
+    }
+    
     public final String dumpTree() {
         StringBuilder sb = new StringBuilder();
         dumpTree(sb, "");
@@ -66,6 +73,47 @@ public abstract class Node {
                 child.stream().forEach(consumer::accept);
             }
         });
+    }
+    
+    public Node cheapClone(Node modifiableAt) {
+        if (modifiableAt == this) {
+            return clone();
+        }
+        
+        boolean anyChildDifferent = false;
+        List<Node> clonedChildren = children().size() > 0 ? new LinkedList<>() : null;
+        for (Node child : children()) {
+            Node cloned = child.cheapClone(modifiableAt);
+            clonedChildren.add(cloned);
+            if (cloned != child) {
+                anyChildDifferent = true;
+            }
+        }
+        
+        if (!anyChildDifferent) {
+            return this;
+        } else {
+            return cloneWithGivenChildren(clonedChildren);
+        }
+    }
+    
+    @Override
+    protected abstract Node clone();
+    
+    protected abstract Node cloneWithGivenChildren(List<Node> clonedChildren);
+    
+    public Optional<Node> findParent(Node child) {
+        if (children().contains(child)) {
+            return Optional.of(this);
+        }
+        
+        for (Node c : children()) {
+            Optional<Node> found = c.findParent(child);
+            if (found.isPresent()) {
+                return found;
+            }
+        }
+        return Optional.empty();
     }
     
 }

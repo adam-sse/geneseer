@@ -3,6 +3,7 @@ package net.ssehub.program_repair.geneseer;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedList;
 import java.util.List;
 
 import net.ssehub.program_repair.geneseer.parsing.CodeModel;
@@ -35,10 +36,13 @@ public class ParseAndWrite {
         
 //        System.out.println(model.getParseTree().children().get(0).dumpTree());
 
+        
         System.out.println("### Single statements ###");
+        List<Node> statements = new LinkedList<>();
         model.getParseTree().children().stream()
             .flatMap(Node::stream)
             .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+            .peek(statements::add)
             .forEach(n -> {
                 List<LeafNode> leafNodes = n.stream().filter(l -> l.getType() == Type.LEAF).map(l -> (LeafNode) l).toList();
                 int minLine = -1;
@@ -62,7 +66,6 @@ public class ParseAndWrite {
                 
                 System.out.println(n.getText());
             });
-        
     }
     
 }

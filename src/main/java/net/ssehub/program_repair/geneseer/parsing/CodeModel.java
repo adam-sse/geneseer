@@ -157,7 +157,7 @@ public class CodeModel {
         }
     }
     
-    private static String toText(Node root) {
+    public static String toText(Node root) {
         int currentLine = 1;
         int currentColumn = 0;
         

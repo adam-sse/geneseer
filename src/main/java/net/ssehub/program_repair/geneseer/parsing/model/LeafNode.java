@@ -34,4 +34,14 @@ public final class LeafNode extends Node {
         target.append(indentation).append(text).append('\n');
     }
 
+    @Override
+    protected Node clone() {
+        return new LeafNode(text, originalPosition);
+    }
+
+    @Override
+    protected Node cloneWithGivenChildren(List<Node> clonedChildren) {
+        throw new UnsupportedOperationException();
+    }
+
 }

@@ -32,4 +32,20 @@ public final class InnerNode extends Node {
         }
     }
 
+    @Override
+    public InnerNode clone() {
+        InnerNode clone = new InnerNode(getType());
+        for (Node child : children) {
+            clone.children.add(child.clone());
+        }
+        return clone;
+    }
+
+    @Override
+    protected Node cloneWithGivenChildren(List<Node> clonedChildren) {
+        InnerNode clone = new InnerNode(getType());
+        clone.children.addAll(clonedChildren);
+        return clone;
+    }
+
 }

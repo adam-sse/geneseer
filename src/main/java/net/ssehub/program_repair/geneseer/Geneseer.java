@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import fr.spoonlabs.flacoco.api.result.Location;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationResult;
 import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
@@ -19,15 +20,9 @@ import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.fault_localization.Flacoco;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
-import net.ssehub.program_repair.geneseer.mutations.IMutation;
-import net.ssehub.program_repair.geneseer.mutations.MutationException;
-import net.ssehub.program_repair.geneseer.mutations.RemoveStatementMutation;
 import net.ssehub.program_repair.geneseer.parsing.CodeModel;
-import net.ssehub.program_repair.geneseer.parsing.CodeModelFactory;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
-import spoon.reflect.code.CtStatement;
-import spoon.reflect.cu.SourcePosition;
 
 public class Geneseer {
     
@@ -57,20 +52,15 @@ public class Geneseer {
         
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
-            CodeModelFactory codeModel = new CodeModelFactory(project.getSourceDirectoryAbsolute(), project.getCompilationClasspathAbsolute());
+            LOG.info("Parsing code model");
+            CodeModel codeModel = new CodeModel(project.getSourceDirectoryAbsolute());
             ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute());
             
             LOG.info("Compiling and evaluating unmodified variant");
-            CodeModel unmodifiedModel = codeModel.createModel();
-            
             Path sourceDir = tempDirManager.createTemporaryDirectory();
-            unmodifiedModel.write(sourceDir);
+            codeModel.write(sourceDir);
             
-            // dump model into "new" source directory, as line numbers change (preserving line numbers is buggy)
-            codeModel = new CodeModelFactory(sourceDir, project.getCompilationClasspathAbsolute());
-            unmodifiedModel = codeModel.createModel();
-            
-            EvaluationResultAndBinDirectory res = compileAndEvaluateVariant(unmodifiedModel, project, compiler, tempDirManager);
+            EvaluationResultAndBinDirectory res = compileAndEvaluateVariant(codeModel, project, compiler, tempDirManager);
             int originalFitness = res.fitness;
             Path unmodifiedBindir = res.binDirectory;
             
@@ -84,50 +74,46 @@ public class Geneseer {
             LOG.info("Measuring suspiciousness");
             Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute());
             flacoco.setExpectedFailures(res.failingTests);
-            LinkedHashMap<CtStatement, Double> suspiciousness = flacoco.run(sourceDir, unmodifiedBindir);
+            LinkedHashMap<Location, Double> suspiciousness = flacoco.run(sourceDir, unmodifiedBindir);
             
-            for (Map.Entry<CtStatement, Double> entry : suspiciousness.entrySet()) {
-                SourcePosition pos = entry.getKey().getPosition();
-
+            for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
                 LOG.fine(() -> "Suspicous: " + String.format(Locale.ROOT, "%2.2f %%", entry.getValue() * 100) + " "
-                        + sourceDir.relativize(pos.getFile().toPath()) + ": " + pos.getLine() + " "
-                        + entry.getKey().getClass().getSimpleName() + " "
-                        + entry.getKey().toString().replaceAll("[\n\r]", "[\\\\n]"));
+                        + entry.getKey().getClassName() + ": " + entry.getKey().getLineNumber());
             }
             
-            int bestFitness = originalFitness;
-            IMutation bestMutation = null;
-
-            int i = 0;
-            for (CtStatement toRemove : suspiciousness.keySet()) {
-                i++;
-                RemoveStatementMutation mutation = new RemoveStatementMutation(toRemove);
-                int ii = i;
-                LOG.info(() -> "Mutation " + ii + "/" + suspiciousness.size() + ": " + mutation.textDescription());
-                
-                CodeModel mutated = codeModel.createModel();
-                
-                try {
-                    mutation.apply(mutated.getSpoonModel());
-                    int fitness = evaluateVariant(mutated, project, compiler, tempDirManager);
-                    LOG.info(() -> "Mutant fitness: " + fitness);
-                    
-                    if (fitness < bestFitness) {
-                        bestFitness = fitness;
-                        bestMutation = mutation;
-                        
-                        if (fitness == 0) {
-                            break;
-                        }
-                    }
-                    
-                } catch (MutationException e) {
-                    LOG.log(Level.WARNING, "Failed to apply mutation", e);
-                }
-            }
-            
-            System.out.print(originalFitness + ";" + bestFitness + ";"
-                    + (bestMutation != null ? bestMutation.textDescription() : "<no mutation>"));
+//            int bestFitness = originalFitness;
+//            IMutation bestMutation = null;
+//
+//            int i = 0;
+//            for (CtStatement toRemove : suspiciousness.keySet()) {
+//                i++;
+//                RemoveStatementMutation mutation = new RemoveStatementMutation(toRemove);
+//                int ii = i;
+//                LOG.info(() -> "Mutation " + ii + "/" + suspiciousness.size() + ": " + mutation.textDescription());
+//                
+//                CodeModel mutated = codeModel.createModel();
+//                
+//                try {
+//                    mutation.apply(mutated.getSpoondel());
+//                    int fitness = evaluateVariant(mutated, project, compiler, tempDirManager);
+//                    LOG.info(() -> "Mutant fitness: " + fitness);
+//                    
+//                    if (fitness < bestFitness) {
+//                        bestFitness = fitness;
+//                        bestMutation = mutation;
+//                        
+//                        if (fitness == 0) {
+//                            break;
+//                        }
+//                    }
+//                    
+//                } catch (MutationException e) {
+//                    LOG.log(Level.WARNING, "Failed to apply mutation", e);
+//                }
+//            }
+//            
+//            System.out.print(originalFitness + ";" + bestFitness + ";"
+//                    + (bestMutation != null ? bestMutation.textDescription() : "<no mutation>"));
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);

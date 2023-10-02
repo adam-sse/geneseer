@@ -4,7 +4,6 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +15,7 @@ import org.apache.log4j.LogManager;
 
 import eu.stamp_project.testrunner.EntryPoint;
 import fr.spoonlabs.flacoco.api.result.FlacocoResult;
+import fr.spoonlabs.flacoco.api.result.Location;
 import fr.spoonlabs.flacoco.api.result.Suspiciousness;
 import fr.spoonlabs.flacoco.core.config.FlacocoConfig;
 import fr.spoonlabs.flacoco.core.config.FlacocoConfig.FaultLocalizationFamily;
@@ -25,9 +25,6 @@ import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
-import spoon.reflect.code.CtBlock;
-import spoon.reflect.code.CtStatement;
-import spoon.reflect.declaration.CtClass;
 
 public class Flacoco {
     
@@ -70,7 +67,7 @@ public class Flacoco {
         flacocoConfig.setFamily(FaultLocalizationFamily.SPECTRUM_BASED);
         flacocoConfig.setSpectrumFormula(SpectrumFormula.OCHIAI);
         
-        flacocoConfig.setComputeSpoonResults(true);
+        flacocoConfig.setComputeSpoonResults(false);
     }
     
     public void setExpectedFailures(Collection<TestResult> expectedFailures) {
@@ -79,7 +76,7 @@ public class Flacoco {
                 .collect(Collectors.toSet());
     }
     
-    public LinkedHashMap<CtStatement, Double> run(Path sourceDir, Path binDir) {
+    public LinkedHashMap<Location, Double> run(Path sourceDir, Path binDir) {
         try (Probe probe = Measurement.INSTANCE.start("flacoco")) {
             
             EntryPoint.INSTANCE.setup(rootDirectory, testExecutionClassPath, binDir);
@@ -99,19 +96,30 @@ public class Flacoco {
                 compareExpectedFailures(flacocoResult.getFailingTests());
             }
             
-            LinkedHashMap<CtStatement, Double> suspiciousness = new LinkedHashMap<>(
-                    flacocoResult.getSpoonSuspiciousnessMap().size());
+            Map<Location, Suspiciousness> flacocoSus = flacocoResult.getDefaultSuspiciousnessMap();
             
-            Comparator<Map.Entry<CtStatement, Suspiciousness>> comparingScore
-                    = Comparator.comparingDouble(e -> e.getValue().getScore());
-            
-            flacocoResult.getSpoonSuspiciousnessMap().entrySet().stream()
-                    .filter(e -> !(e.getKey() instanceof CtClass))
-                    .filter(e -> !(e.getKey() instanceof CtBlock))
-                    .sorted(comparingScore.reversed())
-                    .forEach(e -> suspiciousness.put(e.getKey(), e.getValue().getScore()));
+            LinkedHashMap<Location, Double> suspiciousness = new LinkedHashMap<>(flacocoSus.size());
+            for (Map.Entry<Location, Suspiciousness> entry : flacocoSus.entrySet()) {
+                suspiciousness.put(entry.getKey(), entry.getValue().getScore());
+            }
             
             return suspiciousness;
+            
+//            flacocoResult.getDefaultSuspiciousnessMap()
+//            
+//            LinkedHashMap<CtStatement, Double> suspiciousness = new LinkedHashMap<>(
+//                    flacocoResult.getSpoonSuspiciousnessMap().size());
+//            
+//            Comparator<Map.Entry<CtStatement, Suspiciousness>> comparingScore
+//                    = Comparator.comparingDouble(e -> e.getValue().getScore());
+//            
+//            flacocoResult.getSpoonSuspiciousnessMap().entrySet().stream()
+//                    .filter(e -> !(e.getKey() instanceof CtClass))
+//                    .filter(e -> !(e.getKey() instanceof CtBlock))
+//                    .sorted(comparingScore.reversed())
+//                    .forEach(e -> suspiciousness.put(e.getKey(), e.getValue().getScore()));
+//            
+//            return suspiciousness;
             
         }
     }

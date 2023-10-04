@@ -29,4 +29,8 @@ public class Configuration {
         return (int) TimeUnit.MINUTES.toMillis(5);
     }
     
+    public long getRandomSeed() {
+        return 1;
+    }
+    
 }

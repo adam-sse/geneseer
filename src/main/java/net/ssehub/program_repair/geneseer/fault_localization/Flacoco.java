@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,12 +23,11 @@ import fr.spoonlabs.flacoco.core.config.FlacocoConfig.FaultLocalizationFamily;
 import fr.spoonlabs.flacoco.core.test.method.TestMethod;
 import fr.spoonlabs.flacoco.localization.spectrum.SpectrumFormula;
 import net.ssehub.program_repair.geneseer.Configuration;
-import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
-import spoon.reflect.code.CtBlock;
+import net.ssehub.program_repair.geneseer.util.SpoonUtils;
 import spoon.reflect.code.CtStatement;
-import spoon.reflect.declaration.CtClass;
+import spoon.reflect.path.CtPath;
 
 public class Flacoco {
     
@@ -73,13 +73,11 @@ public class Flacoco {
         flacocoConfig.setComputeSpoonResults(true);
     }
     
-    public void setExpectedFailures(Collection<TestResult> expectedFailures) {
-        this.expectedFailures = expectedFailures.stream()
-                .map(TestResult::toString)
-                .collect(Collectors.toSet());
+    public void setExpectedFailures(Collection<String> expectedFailures) {
+        this.expectedFailures = new HashSet<>(expectedFailures);
     }
     
-    public LinkedHashMap<CtStatement, Double> run(Path sourceDir, Path binDir) {
+    public LinkedHashMap<CtPath, Double> run(Path sourceDir, Path binDir) {
         try (Probe probe = Measurement.INSTANCE.start("flacoco")) {
             
             EntryPoint.INSTANCE.setup(rootDirectory, testExecutionClassPath, binDir);
@@ -99,17 +97,16 @@ public class Flacoco {
                 compareExpectedFailures(flacocoResult.getFailingTests());
             }
             
-            LinkedHashMap<CtStatement, Double> suspiciousness = new LinkedHashMap<>(
+            LinkedHashMap<CtPath, Double> suspiciousness = new LinkedHashMap<>(
                     flacocoResult.getSpoonSuspiciousnessMap().size());
             
             Comparator<Map.Entry<CtStatement, Suspiciousness>> comparingScore
                     = Comparator.comparingDouble(e -> e.getValue().getScore());
             
             flacocoResult.getSpoonSuspiciousnessMap().entrySet().stream()
-                    .filter(e -> !(e.getKey() instanceof CtClass))
-                    .filter(e -> !(e.getKey() instanceof CtBlock))
+                    .filter(e -> SpoonUtils.isSingleStatement(e.getKey()))
                     .sorted(comparingScore.reversed())
-                    .forEach(e -> suspiciousness.put(e.getKey(), e.getValue().getScore()));
+                    .forEach(e -> suspiciousness.put(e.getKey().getPath(), e.getValue().getScore()));
             
             return suspiciousness;
             

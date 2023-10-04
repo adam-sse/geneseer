@@ -2,6 +2,7 @@ package net.ssehub.program_repair.geneseer.evaluation;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.UncheckedIOException;
@@ -66,7 +67,11 @@ public class TestExecution implements AutoCloseable {
     
     private ObjectInputStream in;
     
+    private InputStream rawIn;
+    
     private ObjectOutputStream out;
+    
+    private long timeoutMs = -1;
     
     private int jacocoPort;
     
@@ -77,11 +82,12 @@ public class TestExecution implements AutoCloseable {
             jacocoPort = generateRandomPort();
         }
         
-        try {
-            startProcess(workingDirectory, classpath, withCoverage);
-        } catch (IOException e) {
-            throw new EvaluationException("Failed to start runner process", e);
-        }
+        
+        startProcess(workingDirectory, classpath, withCoverage);
+    }
+    
+    public void setTimeout(long timeoutMs) {
+        this.timeoutMs = timeoutMs;
     }
     
     private int generateRandomPort() {
@@ -98,16 +104,23 @@ public class TestExecution implements AutoCloseable {
         return port;
     }
     
-    private void startProcess(Path workingDirectory, List<Path> classpath, boolean withCoverage) throws IOException {
-        List<String> command = createCommand(classpath, withCoverage);
-        LOG.fine(() -> "Starting test runner proces: " + command);
-        ProcessBuilder builder = new ProcessBuilder(command);
-        builder.directory(workingDirectory.toFile());
-        builder.redirectError(Redirect.INHERIT); // TODO: for now, we just hope there is no error output
-        
-        process = builder.start();
-        out = new ObjectOutputStream(process.getOutputStream());
-        in = new ObjectInputStream(process.getInputStream());
+    private void startProcess(Path workingDirectory, List<Path> classpath, boolean withCoverage)
+            throws EvaluationException {
+        try {
+            List<String> command = createCommand(classpath, withCoverage);
+            LOG.fine(() -> "Starting test runner proces: " + command);
+            ProcessBuilder builder = new ProcessBuilder(command);
+            builder.directory(workingDirectory.toFile());
+            builder.redirectError(Redirect.INHERIT); // TODO: for now, we just hope there is no error output
+            
+            process = builder.start();
+            out = new ObjectOutputStream(process.getOutputStream());
+            rawIn = process.getInputStream();
+            in = new ObjectInputStream(rawIn);
+            
+        } catch (IOException e) {
+            throw new EvaluationException("Failed to start runner process", e);
+        }
     }
     
     @Override
@@ -127,23 +140,54 @@ public class TestExecution implements AutoCloseable {
             LOG.log(Level.WARNING, "Failed to close temporary directory manager", e);
         }
     }
+    
+    @SuppressWarnings("unchecked")
+    private <T> T readResult() throws EvaluationException, TimeoutException {
+        try {
+            if (timeoutMs > 0) {
+                long t0 = System.currentTimeMillis();
+                
+                // ObjectInputStream.available() always seems to return 0, so ask the ras InputStream from the process
+                // how many bytes are available
+                while (System.currentTimeMillis() - t0 < timeoutMs && rawIn.available() == 0) {
+                    try {
+                        Thread.sleep(1);
+                    } catch (InterruptedException e) {
+                        // ignore
+                    }
+                }
+                
+                if (rawIn.available() == 0) {
+                    throw new TimeoutException("Test execution did not finish in " + timeoutMs +" ms");
+                }
+            }
+            
+            return (T) in.readObject();
+            
+        } catch (IOException | ClassNotFoundException e) {
+            throw new EvaluationException("Failed to read result from runner process", e);
+        }
+    }
 
-    public List<TestResult> executeTestClass(String className) throws EvaluationException {
+    public List<TestResult> executeTestClass(String className) throws EvaluationException, TimeoutException {
         try {
             out.writeObject("CLASS");
             out.writeObject(className);
             out.flush();
             
-            @SuppressWarnings("unchecked")
-            List<TestResult> result = (List<TestResult>) in.readObject();
+            List<TestResult> result = readResult();
             
             LOG.fine(() -> result.size() + " tests run in test class " + className + ", "
                     + result.stream().filter(TestResult::isFailure).count() + " failures");
             
             return result;
             
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (IOException e) {
             throw new EvaluationException("Communication with runner process failed", e);
+            
+        } catch (TimeoutException e) {
+            LOG.fine(() -> "Test class " + className + " timed out");
+            throw e;
         }
     }
     
@@ -168,7 +212,7 @@ public class TestExecution implements AutoCloseable {
     }
     
     public TestResultWithCoverage executeTestMethodWithCoverage(String className, String methodName)
-            throws EvaluationException {
+            throws EvaluationException, TimeoutException {
         
         try {
             ExecDumpClient jacocoClient = new ExecDumpClient();
@@ -181,15 +225,19 @@ public class TestExecution implements AutoCloseable {
             out.writeObject(methodName);
             out.flush();
             
-            TestResult result = (TestResult) in.readObject();
+            TestResult result = readResult();
             
             jacocoClient.setDump(true);
             ExecFileLoader loader = jacocoClient.dump("localhost", jacocoPort);
             
             return new TestResultWithCoverage(result, loader.getExecutionDataStore());
             
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (IOException e) {
             throw new EvaluationException("Communication with runner process failed", e);
+            
+        } catch (TimeoutException e) {
+            LOG.fine(() -> "Test method " + className + "::" + methodName + " timed out");
+            throw e;
         }
     }
     

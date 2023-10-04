@@ -8,6 +8,7 @@ import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 import spoon.Launcher;
 import spoon.reflect.CtModel;
+import spoon.reflect.factory.Factory;
 import spoon.support.JavaOutputProcessor;
 
 public class CodeModel {
@@ -26,6 +27,10 @@ public class CodeModel {
     
     public CtModel getSpoonModel() {
         return this.model;
+    }
+    
+    public Factory getFactory() {
+        return spoonLauncher.getFactory();
     }
     
     public void write(Path outputDirectory) throws IOException {

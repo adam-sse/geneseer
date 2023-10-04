@@ -4,21 +4,19 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
-import gumtree.spoon.AstComparator;
-import gumtree.spoon.diff.Diff;
-import gumtree.spoon.diff.operations.InsertOperation;
-import gumtree.spoon.diff.operations.Operation;
+import fr.spoonlabs.flacoco.api.result.Location;
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
@@ -27,14 +25,13 @@ import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
 import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.fault_localization.Flacoco;
-import net.ssehub.program_repair.geneseer.parsing.CodeModel;
-import net.ssehub.program_repair.geneseer.parsing.CodeModelFactory;
-import net.ssehub.program_repair.geneseer.util.SpoonUtils;
+import net.ssehub.program_repair.geneseer.parsing.Parser;
+import net.ssehub.program_repair.geneseer.parsing.Writer;
+import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
+import net.ssehub.program_repair.geneseer.parsing.model.Node;
+import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
+import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
-import spoon.reflect.CtModel;
-import spoon.reflect.code.CtStatement;
-import spoon.reflect.declaration.CtElement;
-import spoon.reflect.path.CtPath;
 
 public class GeneticAlgorithm {
 
@@ -49,8 +46,6 @@ public class GeneticAlgorithm {
     
     private Random random = new Random(Configuration.INSTANCE.getRandomSeed());
     
-    private CodeModelFactory codeModelFactory;
-    
     private ProjectCompiler compiler;
     
     private Project project;
@@ -60,16 +55,12 @@ public class GeneticAlgorithm {
     private Set<String> negativeTests;
     private Set<String> positiveTests;
     
-    private List<SuspiciousStatement> suspiciousStatements;
-    
     private int generation;
     private Variant unmodifiedVariant;
     private double bestFitness;
     
-    public GeneticAlgorithm(CodeModelFactory codeModelFactory, ProjectCompiler compiler, Project project,
-            TemporaryDirectoryManager tempDirManager) {
+    public GeneticAlgorithm(ProjectCompiler compiler, Project project, TemporaryDirectoryManager tempDirManager) {
         
-        this.codeModelFactory = codeModelFactory;
         this.compiler = compiler;
         this.project = project;
         this.tempDirManager = tempDirManager;
@@ -89,19 +80,14 @@ public class GeneticAlgorithm {
         this.random = random;
     }
     
-    void createUnmodifiedVariant() throws IOException {
-        unmodifiedVariant = new Variant(codeModelFactory.createModel());
-    }
-    
     private Result runInternal() throws IOException {
         LOG.info("Evaluating unmodified variant");
-        
         createUnmodifiedVariant();
         
         Path sourceDir = tempDirManager.createTemporaryDirectory();
-        unmodifiedVariant.getCodeModel().write(sourceDir);
+        Writer.write(unmodifiedVariant.getAst(), project.getSourceDirectoryAbsolute(), sourceDir);
         
-        EvaluationResultAndBinDirectory r = compileAndEvaluateVariant(unmodifiedVariant.getCodeModel());
+        EvaluationResultAndBinDirectory r = compileAndEvaluateVariant(unmodifiedVariant.getAst());
         if (r.evaluation == null) {
             return Result.originalUnfit();
         }
@@ -127,16 +113,67 @@ public class GeneticAlgorithm {
         LOG.info("Measuring suspiciousness");
         Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute());
         flacoco.setExpectedFailures(negativeTests);
-        LinkedHashMap<CtPath, Double> suspiciousness = flacoco.run(sourceDir, r.binDirectory);
+        LinkedHashMap<Location, Double> suspiciousness = flacoco.run(sourceDir, r.binDirectory);
         
-        suspiciousStatements = new ArrayList<>(suspiciousness.size());
-        for (Map.Entry<CtPath, Double> entry : suspiciousness.entrySet()) {
-            SuspiciousStatement statement = new SuspiciousStatement(entry.getKey(), entry.getValue());
-            LOG.fine(() -> "Suspicious: " + statement);
-            suspiciousStatements.add(statement);
+        Map<String, Node> classes = new HashMap<>(unmodifiedVariant.getAst().children().size());
+        for (Node file : unmodifiedVariant.getAst().children()) {
+            String className = file.getMetadata(Metadata.FILENAME).toString().replaceAll("[/\\\\]", ".");
+            if (className.endsWith(".java")) {
+                className = className.substring(0, className.length() - ".java".length());
+            }
+            classes.put(className, file);
         }
         
-        LOG.info(suspiciousStatements.size() + " suspicious statements");
+        AtomicInteger suspiciousStatementCount = new AtomicInteger();
+        for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
+            String className = entry.getKey().getClassName();
+            int dollarIndex = className.indexOf('$');
+            if (dollarIndex != -1) {
+                className = className.substring(0, dollarIndex);
+            }
+            
+            int line = entry.getKey().getLineNumber();
+            
+            Node ast = classes.get(className);
+            if (ast != null) {
+                List<Node> matchingStatements = ast.stream()
+                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT || n.getType() == Type.COMPOSIT_STATEMENT)
+                        .filter(n -> n.hasLine(line))
+                        .toList();
+                
+                if (matchingStatements.isEmpty()) {
+                    String cn = className;
+                    LOG.warning(() -> "Found no statements for suspicious " + entry.getValue() + " at "
+                            + cn + ":" + line);
+                    
+                } else {
+                    long numberOfSingleStatements = matchingStatements.stream()
+                            .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+                            .count();
+                    if (numberOfSingleStatements > 1) {
+                        String cn = className;
+                        LOG.warning(() -> "Found " + numberOfSingleStatements + " statements for " + cn
+                                + ":" + line + "; adding suspiciousness to all of them");
+                    }
+                    
+                    String cn = className;
+                    matchingStatements.stream()
+                            .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+                            .forEach(n -> {
+                                LOG.fine(() -> "Suspicious " + entry.getValue() + " at " + cn + ":" + line
+                                        + " '" + n.getText() + "'");
+                                suspiciousStatementCount.incrementAndGet();
+                                n.setMetadata(Metadata.SUSPICIOUSNESS, entry.getValue());
+                            });
+                }
+                
+            } else {
+                String cn = className;
+                LOG.warning(() -> "Can't find class name " + cn);
+            }
+        }
+        LOG.info(() -> suspiciousStatementCount.get() + " suspicious statements");
+        
         
         List<Variant> population = new ArrayList<>(POPULATION_SIZE);
         for (int i = 0; i < POPULATION_SIZE; i++) {
@@ -201,7 +238,7 @@ public class GeneticAlgorithm {
                 boolean mutated = mutate(variant);
                 
                 if (mutated || !variant.hasFitness()) {
-                    double fitness = getFitness(evaluateVariant(variant.getCodeModel()));
+                    double fitness = getFitness(evaluateVariant(variant.getAst()));
                     LOG.fine(() -> "Fitness: " + fitness);
                     variant.setFitness(fitness);
                     if (fitness > bestFitness) {
@@ -225,12 +262,18 @@ public class GeneticAlgorithm {
         }
     }
     
+    private void createUnmodifiedVariant() throws IOException {
+        Node ast = Parser.parse(project.getSourceDirectoryAbsolute());
+        
+        this.unmodifiedVariant = new Variant(ast);
+    }
+    
     private Variant newVariant() throws IOException {
         LOG.fine("Creating new variant");
-        Variant variant = new Variant(codeModelFactory.createModel());
+        Variant variant = new Variant(unmodifiedVariant.getAst());
         mutate(variant);
         
-        double fitness = getFitness(evaluateVariant(variant.getCodeModel()));
+        double fitness = getFitness(evaluateVariant(variant.getAst()));
         LOG.fine(() -> "Fitness: " + fitness);
         variant.setFitness(fitness);
         if (fitness > bestFitness) {
@@ -243,135 +286,74 @@ public class GeneticAlgorithm {
     private boolean mutate(Variant variant) {
         boolean mutated = false;
         
-        for (SuspiciousStatement suspicious : suspiciousStatements) {
-            if (random.nextDouble() < MUTATION_PROBABILITY && random.nextDouble() < suspicious.getSuspiciousness()) {
+        Node astRoot = variant.getAst();
+        
+        List<Node> suspiciousStatements = astRoot.stream()
+                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                .toList();
+        
+        for (int i = 0; i < suspiciousStatements.size(); i++) {
+            Node suspicious = suspiciousStatements.get(i);
+            if (random.nextDouble() < MUTATION_PROBABILITY && random.nextDouble() < (double) suspicious.getMetadata(Metadata.SUSPICIOUSNESS)) {
                 
-                try {
-                    CtStatement statement = (CtStatement) SpoonUtils.resolvePath(
-                            variant.getCodeModel().getSpoonModel(), suspicious.getPath());
+                Node parent = astRoot.findParent(suspicious).get();
+                
+                mutated = true;
+                Node oldAstRoot = astRoot;
+                astRoot = astRoot.cheapClone(parent);
+                parent = astRoot.findEquivalentPath(oldAstRoot, parent);
+                suspicious = astRoot.findEquivalentPath(oldAstRoot, suspicious);
+                variant.setAst(astRoot);
+                
+                int rand = random.nextInt(2); // TODO: no swap yet
+                if (rand == 0) {
+                    // delete
+                    Node s = suspicious;
+                    LOG.fine(() -> "New mutation: deleting " + s.toString());
                     
-                    mutated = true;
-                    
-                    int rand = random.nextInt(3);
-                    if (rand == 1) {
-                        // delete
-                        LOG.fine(() -> "New mutation: deleting " + suspicious.toString());
-                        
-                        statement.delete();
-                        
-                    } else {
-                        List<CtStatement> allStatements = variant.getCodeModel().getSpoonModel()
-                                .getElements(e -> SpoonUtils.isStatement(e));
-                        CtStatement other = allStatements.get(random.nextInt(allStatements.size()));
-                        
-                        
-                        if (rand == 2) {
-                            // insert
-                            LOG.fine(() -> "New mutation: inserting " + SpoonUtils.statementToStringWithLocation(other) + " after "
-                                    + suspicious.toString());
-                            
-                            statement.insertAfter(other);
-                            
-                        } else {
-                            // swap
-                            LOG.fine(() -> "New mutation: swapping " + suspicious.toString() + " and "
-                                    + SpoonUtils.statementToStringWithLocation(other));
-                            
-                            statement.replace(other);
-                            other.replace(statement);
-                        }
+                    boolean removed = parent.children().remove(suspicious);
+                    if (!removed) {
+                        LOG.warning(() -> "Failed to delete statement " + s.toString());
                     }
                     
-                } catch (NoSuchElementException e) {
-                    // ignore
+                } else {
+                    List<Node> allStatements = astRoot.stream()
+                            .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+                            .toList();
+                    Node otherStatement = allStatements.get(random.nextInt(allStatements.size())).clone();
+                    otherStatement.stream()
+                            .filter(n -> n.getType() == Type.LEAF)
+                            .forEach(n -> ((LeafNode) n).clearOriginalPosition());
+                    
+                    if (rand == 1) {
+                        Node s = suspicious;
+                        LOG.fine(() -> "New mutation: inserting " + otherStatement.toString() + " after "
+                                + s.toString());
+                        
+                        // insert
+                        int index = parent.children().indexOf(suspicious);
+                        parent.children().add(index + 1, otherStatement);
+                        
+                        
+                    } else {
+                        // swap
+                        // TODO
+                    }
                 }
+                
+                suspiciousStatements = astRoot.stream()
+                        .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                        .toList();
             }
         }
         
         return mutated;
     }
     
-    private void apply(CtModel model, Operation<?> operation) {
-        switch (operation.getAction().getName()) {
+    private List<Variant> crossover(Variant p1, Variant p2) {
+        // TODO
         
-        case "delete-node":
-            try {
-                CtElement toDelete = SpoonUtils.resolvePath(model, operation.getSrcNode().getPath());
-                toDelete.delete();
-                LOG.fine(() -> "Applied delete-node on " + operation.getSrcNode().getPath());
-            } catch (NoSuchElementException e) {
-                // ignore
-                LOG.fine(() -> "Failed to apply delete-node on " + operation.getSrcNode().getPath());
-            }
-            break;
-        
-        case "insert-node":
-            try {
-                InsertOperation insOp = (InsertOperation) operation;
-                CtElement parent = SpoonUtils.resolvePath(model, insOp.getSrcNode().getParent().getPath());
-                int position = insOp.getSrcNode().getParent().getDirectChildren().indexOf(insOp.getSrcNode());
-                
-                if (position > 0) {
-                    if (position > parent.getDirectChildren().size()) {
-                        position = parent.getDirectChildren().size();
-                    }
-                    
-                    CtStatement neighbor = (CtStatement) parent.getDirectChildren().get(position - 1);
-                    neighbor.insertAfter((CtStatement) insOp.getSrcNode());
-                } else {
-                    CtStatement neighbor = (CtStatement) parent.getDirectChildren().get(0);
-                    neighbor.insertBefore((CtStatement) insOp.getSrcNode());
-                }
-                
-                LOG.fine(() -> "Applied insert-node on " + operation.getSrcNode().getPath());
-            } catch (NoSuchElementException e) {
-                // ignore
-                LOG.fine(() -> "Failed to apply insert-node on " + operation.getSrcNode().getPath());
-            }
-            break;
-            
-        default:
-            LOG.warning(() -> "Unknown operation: " + operation.getAction().getName());
-            break;
-        }
-    }
-    
-    List<Variant> crossover(Variant p1, Variant p2) {
-        Variant c1 = new Variant(codeModelFactory.createModel());
-        Variant c2 = new Variant(codeModelFactory.createModel());
-        
-        Diff d1 = new AstComparator().compare(
-                unmodifiedVariant.getCodeModel().getSpoonModel().getRootPackage(),
-                p1.getCodeModel().getSpoonModel().getRootPackage());
-        Diff d2 = new AstComparator().compare(
-                unmodifiedVariant.getCodeModel().getSpoonModel().getRootPackage(),
-                p2.getCodeModel().getSpoonModel().getRootPackage());
-        
-        if (!d1.getRootOperations().isEmpty()) {
-            int d1Cutoff = random.nextInt(d1.getRootOperations().size());
-            for (int i = 0; i < d1.getRootOperations().size(); i++) {
-                if (i <= d1Cutoff) {
-                    apply(c1.getCodeModel().getSpoonModel(), d1.getRootOperations().get(i));
-                } else {
-                    apply(c2.getCodeModel().getSpoonModel(), d1.getRootOperations().get(i));
-                }
-            }
-        }
-        
-        System.out.println(d2.getRootOperations());
-        
-        if (!d2.getRootOperations().isEmpty()) {
-            int d2Cutoff = random.nextInt(d2.getRootOperations().size());
-            for (int i = 0; i < d2.getRootOperations().size(); i++) {
-                if (i <= d2Cutoff) {
-                    apply(c2.getCodeModel().getSpoonModel(), d2.getRootOperations().get(i));
-                } else {
-                    apply(c1.getCodeModel().getSpoonModel(), d2.getRootOperations().get(i));
-                }
-            }
-        }
-        
-        return List.of(c1, c2);
+        return List.of();
     }
     
     private List<Integer> stochasticUniversalSampling(List<Double> cummulativeProbabilityDistribution, int sampleSize) {
@@ -388,7 +370,7 @@ public class GeneticAlgorithm {
         return result;
     }
     
-    private EvaluationResult evaluateVariant(CodeModel variant) throws IOException {
+    private EvaluationResult evaluateVariant(Node variant) throws IOException {
         
         EvaluationResultAndBinDirectory result = null;
         try {
@@ -403,13 +385,13 @@ public class GeneticAlgorithm {
     
     private static class EvaluationResultAndBinDirectory {EvaluationResult evaluation; Path binDirectory; }
     
-    private EvaluationResultAndBinDirectory compileAndEvaluateVariant(CodeModel variant) throws IOException {
+    private EvaluationResultAndBinDirectory compileAndEvaluateVariant(Node variant) throws IOException {
         EvaluationResult evalResult = null;
         
         Path sourceDirectory = tempDirManager.createTemporaryDirectory();
         Path binDirectory = tempDirManager.createTemporaryDirectory();
             
-        variant.write(sourceDirectory);
+        Writer.write(variant, project.getSourceDirectoryAbsolute(), sourceDirectory);
         boolean compiled = compiler.compile(sourceDirectory, binDirectory);
         if (compiled) {
             JunitEvaluation evaluation = new JunitEvaluation();

@@ -14,7 +14,6 @@ import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
 import net.ssehub.program_repair.geneseer.genetic.GeneticAlgorithm;
 import net.ssehub.program_repair.geneseer.genetic.Result;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
-import net.ssehub.program_repair.geneseer.parsing.CodeModelFactory;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
@@ -47,15 +46,9 @@ public class Geneseer {
         Result result = null;
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
-            CodeModelFactory codeModel = new CodeModelFactory(project.getSourceDirectoryAbsolute(), project.getCompilationClasspathAbsolute());
-            
-            Path unmodifiedSourceDirectory = tempDirManager.createTemporaryDirectory();
-            codeModel.createModel().write(unmodifiedSourceDirectory);
-            codeModel = new CodeModelFactory(unmodifiedSourceDirectory, project.getCompilationClasspathAbsolute());
-            
             ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute());
             
-            result = new GeneticAlgorithm(codeModel, compiler, project, tempDirManager).run();
+            result = new GeneticAlgorithm(compiler, project, tempDirManager).run();
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);

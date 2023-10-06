@@ -4,7 +4,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public final class InnerNode extends Node {
 
@@ -17,7 +16,16 @@ public final class InnerNode extends Node {
 
     @Override
     public String getText() {
-        return children.stream().map(Node::getText).collect(Collectors.joining(" "));
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (Node child : children) {
+            if (!first) {
+                sb.append(' ');
+            }
+            first = false;
+            sb.append(child.getText());
+        }
+        return sb.toString();
     }
 
     @Override

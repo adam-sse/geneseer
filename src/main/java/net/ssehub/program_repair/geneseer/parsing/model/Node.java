@@ -76,12 +76,7 @@ public abstract class Node implements Cloneable {
     public abstract List<Node> children();
     
     public Stream<Node> stream() {
-        return Stream.of(this).mapMulti((node, consumer) -> {
-            consumer.accept(node);
-            for (Node child : node.children()) {
-                child.stream().forEach(consumer::accept);
-            }
-        });
+        return Stream.concat(Stream.of(this), children().stream().flatMap(Node::stream));
     }
     
     public Node cheapClone(Node modifiableAt) {

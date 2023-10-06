@@ -30,7 +30,7 @@ public class ParseAndWrite {
         Files.createDirectory(out);
         
         Node ast = Parser.parse(in);
-        System.out.println("Parsed ast with " + ast.children().size() + " files");
+        System.out.println("Parsed ast with " + ast.childCount() + " files");
         
         Writer.write(ast, in, out);
         System.out.println("Wrote model to " + out.toAbsolutePath());

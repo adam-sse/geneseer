@@ -21,7 +21,7 @@ public class Writer {
     public static void write(Node parseTree, Path sourceDirectory, Path outputDirectory) throws IOException {
         try (Probe probe = Measurement.INSTANCE.start("code-writing")) {
             
-            for (Node compilationUnit : parseTree.children()) {
+            for (Node compilationUnit : parseTree.childIterator()) {
                 Path file = outputDirectory.resolve((Path) compilationUnit.getMetadata(Metadata.FILENAME));
                 Files.createDirectories(file.getParent());
                 
@@ -65,8 +65,8 @@ public class Writer {
                 str.append(text);
                 
             } else {
-                for (int i = currentNode.children().size() - 1; i >= 0; i--) {
-                    nodes.push(currentNode.children().get(i));
+                for (int i = currentNode.childCount() - 1; i >= 0; i--) {
+                    nodes.push(currentNode.get(i));
                 }
             }
         }

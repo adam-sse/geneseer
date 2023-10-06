@@ -15,7 +15,7 @@ public final class InnerNode extends Node {
     }
 
     @Override
-    public String getText() {
+    public String getTextImpl() {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
         for (Node child : children) {

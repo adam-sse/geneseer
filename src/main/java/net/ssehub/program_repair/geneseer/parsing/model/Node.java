@@ -26,6 +26,10 @@ public abstract class Node implements Cloneable {
     
     private Map<Metadata, Object> metadata;
     
+    protected boolean locked;
+    
+    private String textCache;
+    
     public Node(Type type) {
         this.type = type;
     }
@@ -35,6 +39,9 @@ public abstract class Node implements Cloneable {
     }
     
     public void setType(Type type) {
+        if (locked) {
+            throw new IllegalStateException("Node is locked");
+        }
         this.type = type;
     }
     
@@ -58,7 +65,30 @@ public abstract class Node implements Cloneable {
         this.metadata = metadata;
     }
     
-    public abstract String getText();
+    public final void lock() {
+        if (!locked) {
+            locked = true;
+            for (Node child : children()) {
+                child.lock();
+            }
+        }
+    }
+    
+    public final boolean isLocked() {
+        return locked;
+    }
+    
+    public final String getText() {
+        if (locked) {
+            if (textCache == null) {
+                textCache = getTextImpl();
+            }
+            return textCache;
+        }
+        return getTextImpl();
+    }
+    
+    protected abstract String getTextImpl();
     
     @Override
     public String toString() {
@@ -73,7 +103,7 @@ public abstract class Node implements Cloneable {
     
     protected abstract void dumpTree(StringBuilder target, String indentation);
     
-    public abstract List<Node> children();
+    protected abstract List<Node> children();
     
     public Stream<Node> stream() {
         return Stream.concat(Stream.of(this), children().stream().flatMap(Node::stream));
@@ -123,7 +153,7 @@ public abstract class Node implements Cloneable {
     public abstract boolean hasLine(int lineNumber);
     
     public Node findEquivalentPath(Node otherRoot, Node toFind) throws IllegalArgumentException {
-        if (toFind.getText().equals(this.getText())) {
+        if (otherRoot == toFind) {
             return this;
         }
         
@@ -139,6 +169,57 @@ public abstract class Node implements Cloneable {
         }
         
         return null;
+    }
+
+    public Iterable<Node> childIterator() {
+        return children();
+    }
+    
+    public int childCount() {
+        return children().size();
+    }
+    
+    public boolean remove(Node child) {
+        if (locked) {
+            throw new IllegalStateException("Node is locked");
+        }
+        return children().remove(child);
+    }
+    
+    public void add(int index, Node child) {
+        if (locked) {
+            throw new IllegalStateException("Node is locked");
+        }
+        children().add(index, child);
+    }
+    
+    public void add(Node child) {
+        if (locked) {
+            throw new IllegalStateException("Node is locked");
+        }
+        children().add(child);
+    }
+    
+    public void set(int index, Node child) {
+        if (locked) {
+            throw new IllegalStateException("Node is locked");
+        }
+        children().set(index, child);
+    }
+    
+    public void remove(int index) {
+        if (locked) {
+            throw new IllegalStateException("Node is locked");
+        }
+        children().remove(index);
+    }
+    
+    public int indexOf(Node child) {
+        return children().indexOf(child);
+    }
+    
+    public Node get(int index) {
+        return children().get(index);
     }
     
 }

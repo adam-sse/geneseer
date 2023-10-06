@@ -32,6 +32,8 @@ import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
+import net.ssehub.program_repair.geneseer.util.Measurement;
+import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
 public class GeneticAlgorithm {
@@ -69,7 +71,7 @@ public class GeneticAlgorithm {
     
     public Result run() {
         Result result;
-        try {
+        try (Probe measure = Measurement.INSTANCE.start("genetic-algorithm")) {
             result = runInternal();
         } catch (IOException e) {
             result = Result.ioException(e, generation);
@@ -117,8 +119,8 @@ public class GeneticAlgorithm {
         flacoco.setExpectedFailures(negativeTests);
         LinkedHashMap<Location, Double> suspiciousness = flacoco.run(sourceDir, r.binDirectory);
         
-        Map<String, Node> classes = new HashMap<>(unmodifiedVariant.getAst().children().size());
-        for (Node file : unmodifiedVariant.getAst().children()) {
+        Map<String, Node> classes = new HashMap<>(unmodifiedVariant.getAst().childCount());
+        for (Node file : unmodifiedVariant.getAst().childIterator()) {
             String className = file.getMetadata(Metadata.FILENAME).toString().replaceAll("[/\\\\]", ".");
             if (className.endsWith(".java")) {
                 className = className.substring(0, className.length() - ".java".length());
@@ -266,6 +268,7 @@ public class GeneticAlgorithm {
     
     private void createUnmodifiedVariant() throws IOException {
         Node ast = Parser.parse(project.getSourceDirectoryAbsolute());
+        ast.lock();
         
         this.unmodifiedVariant = new Variant(ast);
     }
@@ -298,14 +301,13 @@ public class GeneticAlgorithm {
             Node suspicious = suspiciousStatements.get(i);
             if (random.nextDouble() < MUTATION_PROBABILITY && random.nextDouble() < (double) suspicious.getMetadata(Metadata.SUSPICIOUSNESS)) {
                 
-                Node parent = astRoot.findParent(suspicious).get();
                 
                 mutated = true;
                 Node oldAstRoot = astRoot;
-                astRoot = astRoot.cheapClone(parent);
-                parent = astRoot.findEquivalentPath(oldAstRoot, parent);
-                suspicious = astRoot.findEquivalentPath(oldAstRoot, suspicious);
+                astRoot = astRoot.cheapClone(suspicious);
                 variant.setAst(astRoot);
+                suspicious = astRoot.findEquivalentPath(oldAstRoot, suspicious);
+                Node parent = astRoot.findParent(suspicious).get();
                 
                 int rand = random.nextInt(2); // TODO: no swap yet
                 if (rand == 0) {
@@ -313,7 +315,7 @@ public class GeneticAlgorithm {
                     Node s = suspicious;
                     LOG.fine(() -> "New mutation: deleting " + s.toString());
                     
-                    boolean removed = parent.children().remove(suspicious);
+                    boolean removed = parent.remove(suspicious);
                     if (!removed) {
                         LOG.warning(() -> "Failed to delete statement " + s.toString());
                     }
@@ -334,8 +336,8 @@ public class GeneticAlgorithm {
                                 + s.toString());
                         
                         // insert
-                        int index = parent.children().indexOf(suspicious);
-                        parent.children().add(index + 1, otherStatement);
+                        int index = parent.indexOf(suspicious);
+                        parent.add(index + 1, otherStatement);
                         
                         
                     } else {
@@ -344,6 +346,7 @@ public class GeneticAlgorithm {
                     }
                 }
                 
+                astRoot.lock();
                 suspiciousStatements = astRoot.stream()
                         .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                         .toList();
@@ -430,49 +433,56 @@ public class GeneticAlgorithm {
                 
                 if (p1Node != null && p2Node != null) {
                     Node oldC1 = c1;
-                    c1 = c1.cheapClone(c1.findParent(p1Node).get());
+                    c1 = c1.cheapClone(p1Node);
                     p1Node = c1.findEquivalentPath(oldC1, p1Node);
                     Node c1Parent = c1.findParent(p1Node).get();
                     
                     Node oldC2 = c2;
-                    c2 = c2.cheapClone(c2.findParent(p2Node).get());
+                    c2 = c2.cheapClone(p2Node);
                     p2Node = c2.findEquivalentPath(oldC2, p2Node);
                     Node c2Parent = c2.findParent(p2Node).get();
                     
-                    int c1Index = c1Parent.children().indexOf(p1Node);
-                    int c2Index = c2Parent.children().indexOf(p2Node);
+                    int c1Index = c1Parent.indexOf(p1Node);
+                    int c2Index = c2Parent.indexOf(p2Node);
                     
                     if (c1Index != -1 && c2Index != -1) {
-                        c1Parent.children().set(c1Index, p2Node);
-                        c2Parent.children().set(c2Index, p1Node);
+                        c1Parent.set(c1Index, p2Node);
+                        c2Parent.set(c2Index, p1Node);
                         
                     } else {
                         LOG.warning("Failed to find statement in clone");
                     }
                     
+                    c1.lock();
+                    c2.lock();
+                    
                 } else if (p1Node != null) {
                     Node oldC1 = c1;
-                    c1 = c1.cheapClone(c1.findParent(p1Node).get());
+                    c1 = c1.cheapClone(p1Node);
                     p1Node = c1.findEquivalentPath(oldC1, p1Node);
                     Node c1Parent = c1.findParent(p1Node).get();
                     
-                    boolean removed = c1Parent.children().remove(p1Node);
+                    boolean removed = c1Parent.remove(p1Node);
                     if (!removed) {
                         Node p = p1Node;
                         LOG.warning(() -> "Failed to remove " + p.getText() + " from " + c1Parent.getText());
                     }
                     
+                    c1.lock();
+                    
                 } else if (p2Node != null) {
                     Node oldC2 = c2;
-                    c2 = c2.cheapClone(c2.findParent(p2Node).get());
+                    c2 = c2.cheapClone(p2Node);
                     p2Node = c2.findEquivalentPath(oldC2, p2Node);
                     Node c2Parent = c2.findParent(p2Node).get();
                     
-                    boolean removed = c2Parent.children().remove(p2Node);
+                    boolean removed = c2Parent.remove(p2Node);
                     if (!removed) {
                         Node p = p2Node;
                         LOG.warning(() -> "Failed to remove " + p.getText() + " from " + c2Parent.getText());
                     }
+                    
+                    c2.lock();
                 }
             }
         }

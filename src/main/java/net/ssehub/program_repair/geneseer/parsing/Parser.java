@@ -41,7 +41,7 @@ public class Parser {
                                 Node file = parseFile(f);
                                 fix(file);
                                 file.setMetadata(Metadata.FILENAME, sourceDirectory.relativize(f));
-                                parseTree.children().add(file);
+                                parseTree.add(file);
                             } catch (IOException e) {
                                 throw new UncheckedIOException(e);
                             }
@@ -101,7 +101,7 @@ public class Parser {
         } else {
             result = new InnerNode(getType(antlrTree.getClass().getSimpleName()));
             for (int i = 0; i < antlrTree.getChildCount(); i++) {
-                result.children().add(convert(antlrTree.getChild(i)));
+                result.add(convert(antlrTree.getChild(i)));
             }
         }
         return result;
@@ -113,30 +113,30 @@ public class Parser {
     }
     
     private static void removeEof(Node compilationUnit) {
-        if (compilationUnit.children().get(compilationUnit.children().size() - 1).getText().equals("<EOF>")) {
-            compilationUnit.children().remove(compilationUnit.children().size() - 1);
+        if (compilationUnit.get(compilationUnit.childCount() - 1).getText().equals("<EOF>")) {
+            compilationUnit.remove(compilationUnit.childCount() - 1);
         }
     }
     
     private static void removeOneChildCascade(Node node) {
-        for (int i = 0; i < node.children().size(); i++) {
-            Node child = node.children().get(i);
-            if (child.children().size() == 1) {
-                Node childChild = child.children().get(0);
+        for (int i = 0; i < node.childCount(); i++) {
+            Node child = node.get(i);
+            if (child.childCount() == 1) {
+                Node childChild = child.get(0);
                 
                 Type childType = child.getType();
-                Type childChildType = child.children().get(0).getType();
+                Type childChildType = child.get(0).getType();
                 if (childType == Type.OTHER || childChildType == Type.OTHER) {
                     if (childChildType == Type.OTHER) {
                         childChild.setType(childType);
                     }
-                    node.children().set(i, childChild);
+                    node.set(i, childChild);
                     i--;
                 }
             }
         }
         
-        for (Node child : node.children()) {
+        for (Node child : node.childIterator()) {
             removeOneChildCascade(child);
         }
     }

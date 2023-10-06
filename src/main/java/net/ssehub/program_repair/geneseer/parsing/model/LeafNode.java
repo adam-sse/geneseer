@@ -21,15 +21,21 @@ public final class LeafNode extends Node {
     }
     
     public void clearOriginalPosition() {
+        if (locked) {
+            throw new IllegalStateException("Node is locked");
+        }
         this.originalPosition = null;
     }
     
     public void setOriginalPosition(Position originalPosition) {
+        if (locked) {
+            throw new IllegalStateException("Node is locked");
+        }
         this.originalPosition = originalPosition;
     }
 
     @Override
-    public String getText() {
+    public String getTextImpl() {
         return text;
     }
 

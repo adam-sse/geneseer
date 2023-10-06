@@ -65,6 +65,9 @@ public class Parser {
     private static Type getType(String typeName) {
         switch (typeName) {
         
+        case "CompilationUnitContext":
+            return Type.COMPILATION_UNIT;
+        
         case "ReturnStatementContext":
         case "ExpressionStatementContext":
         case "LocalVariableDeclarationStatementContext":

@@ -141,35 +141,29 @@ public class GeneticAlgorithm {
             Node ast = classes.get(className);
             if (ast != null) {
                 List<Node> matchingStatements = ast.stream()
-                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT || n.getType() == Type.COMPOSIT_STATEMENT)
+                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
                         .filter(n -> n.hasLine(line))
                         .toList();
                 
                 if (matchingStatements.isEmpty()) {
                     String cn = className;
-                    LOG.warning(() -> "Found no statements for suspicious " + entry.getValue() + " at "
+                    LOG.info(() -> "Found no statements for suspicious " + entry.getValue() + " at "
                             + cn + ":" + line);
-                    
-                } else {
-                    long numberOfSingleStatements = matchingStatements.stream()
-                            .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
-                            .count();
-                    if (numberOfSingleStatements > 1) {
-                        String cn = className;
-                        LOG.warning(() -> "Found " + numberOfSingleStatements + " statements for " + cn
-                                + ":" + line + "; adding suspiciousness to all of them");
-                    }
-                    
+                } else if (matchingStatements.size() > 1) {
                     String cn = className;
-                    matchingStatements.stream()
-                            .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
-                            .forEach(n -> {
-                                LOG.fine(() -> "Suspicious " + entry.getValue() + " at " + cn + ":" + line
-                                        + " '" + n.getText() + "'");
-                                suspiciousStatementCount.incrementAndGet();
-                                n.setMetadata(Metadata.SUSPICIOUSNESS, entry.getValue());
-                            });
+                    LOG.warning(() -> "Found " + matchingStatements.size() + " statements for " + cn
+                            + ":" + line + "; adding suspiciousness to all of them");
                 }
+                    
+                String cn = className;
+                matchingStatements.stream()
+                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+                        .forEach(n -> {
+                            LOG.fine(() -> "Suspicious " + entry.getValue() + " at " + cn + ":" + line
+                                    + " '" + n.getText() + "'");
+                            suspiciousStatementCount.incrementAndGet();
+                            n.setMetadata(Metadata.SUSPICIOUSNESS, entry.getValue());
+                        });
                 
             } else {
                 String cn = className;

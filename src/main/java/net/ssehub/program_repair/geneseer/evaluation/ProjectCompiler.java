@@ -39,7 +39,7 @@ public class ProjectCompiler {
             LOG.fine(() -> "Running " + command);
             ProcessRunner process;
             try {
-                process = new ProcessRunner.Builder(command).captureOutput(true).run();
+                process = new ProcessRunner.Builder(command).captureOutput(false).run();
             } catch (IOException e) {
                 LOG.log(Level.SEVERE, "Failed to start compiler process", e);
                 return false;

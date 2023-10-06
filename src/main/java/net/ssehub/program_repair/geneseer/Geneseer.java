@@ -6,9 +6,9 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.StreamSupport;
 
 import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
 import net.ssehub.program_repair.geneseer.genetic.GeneticAlgorithm;
@@ -57,9 +57,9 @@ public class Geneseer {
         } finally {
             System.out.println(result != null ? result.toCsv() : "null");
             LOG.info("Timing measurements:");
-            for (Map.Entry<String, Long> entry : Measurement.INSTANCE.finishedProbes()) {
-                LOG.info(() -> "    " + entry.getKey() + ": " + entry.getValue() + " ms");
-            }
+            StreamSupport.stream(Measurement.INSTANCE.finishedProbes().spliterator(), false)
+                    .sorted((e1, e2) -> e1.getKey().compareTo(e2.getKey()))
+                    .forEach(e -> LOG.info(() -> "    " + e.getKey() + ": " + e.getValue() + " ms"));
         }
     }
     

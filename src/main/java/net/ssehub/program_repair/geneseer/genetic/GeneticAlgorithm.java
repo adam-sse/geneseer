@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -37,12 +38,12 @@ public class GeneticAlgorithm {
 
     private static final Logger LOG = Logger.getLogger(GeneticAlgorithm.class.getName());
     
-    private static final double WEIGHT_NEGATIVE_TESTS = 10; // W_negT
-    private static final double WEIGHT_POSITIVE_TESTS = 1; // W_posT
-    private static final int POPULATION_SIZE = 10; // pop_size
-    private static final double MUTATION_PROBABILITY = 0.06; // W_mut
+    private static final double WEIGHT_NEGATIVE_TESTS = 10; // W_negT = 10
+    private static final double WEIGHT_POSITIVE_TESTS = 1; // W_posT = 1
+    private static final int POPULATION_SIZE = 40; // pop_size = 10
+    private static final double MUTATION_PROBABILITY = 0.06; // W_mut = 0.06
     
-    private static final int MAX_GENERATIONS = 10;
+    private static final int MAX_GENERATIONS = 10; // generations = 10
     
     private Random random = new Random(Configuration.INSTANCE.getRandomSeed());
     
@@ -81,9 +82,10 @@ public class GeneticAlgorithm {
     }
     
     private Result runInternal() throws IOException {
-        LOG.info("Evaluating unmodified variant");
+        LOG.info("Parsing code");
         createUnmodifiedVariant();
         
+        LOG.info("Evaluating unmodified variant");
         Path sourceDir = tempDirManager.createTemporaryDirectory();
         Writer.write(unmodifiedVariant.getAst(), project.getSourceDirectoryAbsolute(), sourceDir);
         
@@ -324,6 +326,7 @@ public class GeneticAlgorithm {
                     otherStatement.stream()
                             .filter(n -> n.getType() == Type.LEAF)
                             .forEach(n -> ((LeafNode) n).clearOriginalPosition());
+                    otherStatement.setMetadata(Metadata.SUSPICIOUSNESS, suspicious.getMetadata(Metadata.SUSPICIOUSNESS));
                     
                     if (rand == 1) {
                         Node s = suspicious;
@@ -350,10 +353,131 @@ public class GeneticAlgorithm {
         return mutated;
     }
     
+    private static boolean equal(Node n1, Node n2) {
+        return n1 == null || n2 == null ? n1 == n2 : n1.getText().equals(n2.getText());
+    }
+    
+    private static String toText(Node n) {
+        return n != null ? n.getText() : "null";
+    }
+    
     private List<Variant> crossover(Variant p1, Variant p2) {
-        // TODO
         
-        return List.of();
+        List<Node> p1Suspicious = new LinkedList<>(p1.getAst().stream()
+                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                .toList());
+        
+        List<Node> p2Suspicious = new LinkedList<>(p2.getAst().stream()
+                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                .toList());
+        
+        if (p1Suspicious.size() != p2Suspicious.size()) {
+            for (int i = 0; i < Math.min(p1Suspicious.size(), p2Suspicious.size()); i++) {
+                if (!equal(p1Suspicious.get(i), p2Suspicious.get(i))) {
+                    boolean found = false;
+                    for (int j = i + 1; j < p2Suspicious.size(); j++) {
+                        if (equal(p1Suspicious.get(i), p2Suspicious.get(j))) {
+                            found = true;
+                            for (int k = 0; k < j - i; k++) {
+                                p1Suspicious.add(i, null);
+                            }
+                            break;
+                        }
+                    }
+                    
+                    if (!found) {
+                        for (int j = i + 1; j < p1Suspicious.size(); j++) {
+                            if (equal(p2Suspicious.get(i), p1Suspicious.get(j))) {
+                                for (int k = 0; k < j - i; k++) {
+                                    p2Suspicious.add(i, null);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (p1Suspicious.size() != p2Suspicious.size()) {
+                LOG.warning(() -> "Different number of suspicious statements: " + p1Suspicious.size()
+                        + " vs. " + p2Suspicious.size());
+            }
+        }
+        
+        List<Integer> diffStatements = new LinkedList<>();
+        for (int i = 0; i < Math.min(p1Suspicious.size(), p2Suspicious.size()); i++) {
+            if (!equal(p1Suspicious.get(i), p2Suspicious.get(i))) {
+                diffStatements.add(i);
+            }
+        }
+        
+        if (diffStatements.isEmpty()) {
+            LOG.warning("No differences between parents");
+        } else {
+            LOG.fine(() -> diffStatements.size() + " differing suspicious statements");
+        }
+        
+        Node c1 = p1.getAst();
+        Node c2 = p2.getAst();
+        
+        for (int i : diffStatements) {
+            Node p1Node = p1Suspicious.get(i);
+            Node p2Node = p2Suspicious.get(i);
+            
+            if (random.nextBoolean()) {
+                LOG.info(() -> "Swapping statements " + toText(p1Suspicious.get(i)) + " and "
+                        + toText(p2Suspicious.get(i)));
+                
+                if (p1Node != null && p2Node != null) {
+                    Node oldC1 = c1;
+                    c1 = c1.cheapClone(c1.findParent(p1Node).get());
+                    p1Node = c1.findEquivalentPath(oldC1, p1Node);
+                    Node c1Parent = c1.findParent(p1Node).get();
+                    
+                    Node oldC2 = c2;
+                    c2 = c2.cheapClone(c2.findParent(p2Node).get());
+                    p2Node = c2.findEquivalentPath(oldC2, p2Node);
+                    Node c2Parent = c2.findParent(p2Node).get();
+                    
+                    int c1Index = c1Parent.children().indexOf(p1Node);
+                    int c2Index = c2Parent.children().indexOf(p2Node);
+                    
+                    if (c1Index != -1 && c2Index != -1) {
+                        c1Parent.children().set(c1Index, p2Node);
+                        c2Parent.children().set(c2Index, p1Node);
+                        
+                    } else {
+                        LOG.warning("Failed to find statement in clone");
+                    }
+                    
+                } else if (p1Node != null) {
+                    Node oldC1 = c1;
+                    c1 = c1.cheapClone(c1.findParent(p1Node).get());
+                    p1Node = c1.findEquivalentPath(oldC1, p1Node);
+                    Node c1Parent = c1.findParent(p1Node).get();
+                    
+                    boolean removed = c1Parent.children().remove(p1Node);
+                    if (!removed) {
+                        Node p = p1Node;
+                        LOG.warning(() -> "Failed to remove " + p.getText() + " from " + c1Parent.getText());
+                    }
+                    
+                } else if (p2Node != null) {
+                    Node oldC2 = c2;
+                    c2 = c2.cheapClone(c2.findParent(p2Node).get());
+                    p2Node = c2.findEquivalentPath(oldC2, p2Node);
+                    Node c2Parent = c2.findParent(p2Node).get();
+                    
+                    boolean removed = c2Parent.children().remove(p2Node);
+                    if (!removed) {
+                        Node p = p2Node;
+                        LOG.warning(() -> "Failed to remove " + p.getText() + " from " + c2Parent.getText());
+                    }
+                }
+            }
+        }
+        
+        return List.of(new Variant(c1), new Variant(c2));
     }
     
     private List<Integer> stochasticUniversalSampling(List<Double> cummulativeProbabilityDistribution, int sampleSize) {

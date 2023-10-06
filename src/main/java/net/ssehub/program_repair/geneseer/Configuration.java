@@ -30,7 +30,7 @@ public class Configuration {
     }
     
     public long getRandomSeed() {
-        return 1;
+        return 0;
     }
     
 }

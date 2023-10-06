@@ -23,6 +23,10 @@ public final class LeafNode extends Node {
     public void clearOriginalPosition() {
         this.originalPosition = null;
     }
+    
+    public void setOriginalPosition(Position originalPosition) {
+        this.originalPosition = originalPosition;
+    }
 
     @Override
     public String getText() {

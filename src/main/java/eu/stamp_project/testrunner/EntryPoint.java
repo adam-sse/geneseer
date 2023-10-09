@@ -177,8 +177,11 @@ public class EntryPoint {
             
         if (!containsFailure) {
             
-            CoverageInformation coverageInformation = transformJacocoObject(results.get(0).getCoverage());
-            CoverageDetailed coverageDetailed = new CoverageDetailed(coverageInformation);
+            CoverageDetailed coverageDetailed = null;
+            if (results.size() > 0) {
+                CoverageInformation coverageInformation = transformJacocoObject(results.get(0).getCoverage());
+                coverageDetailed = new CoverageDetailed(coverageInformation);
+            }
             
             int numPassed = 0;
             int numIgnored = 0;

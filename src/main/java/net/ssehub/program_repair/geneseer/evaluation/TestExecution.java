@@ -147,7 +147,7 @@ public class TestExecution implements AutoCloseable {
             if (timeoutMs > 0) {
                 long t0 = System.currentTimeMillis();
                 
-                // ObjectInputStream.available() always seems to return 0, so ask the ras InputStream from the process
+                // ObjectInputStream.available() always seems to return 0, so ask the raw InputStream from the process
                 // how many bytes are available
                 while (System.currentTimeMillis() - t0 < timeoutMs && rawIn.available() == 0) {
                     try {

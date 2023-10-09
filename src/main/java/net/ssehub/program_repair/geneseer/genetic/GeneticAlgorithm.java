@@ -114,64 +114,7 @@ public class GeneticAlgorithm {
                 + unmodifiedVariant.getFitness() + " / " + getMaxFitness());
         bestFitness = unmodifiedVariant.getFitness();
         
-        LOG.info("Measuring suspiciousness");
-        Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute());
-        flacoco.setExpectedFailures(negativeTests);
-        LinkedHashMap<Location, Double> suspiciousness = flacoco.run(sourceDir, r.binDirectory);
-        
-        Map<String, Node> classes = new HashMap<>(unmodifiedVariant.getAst().childCount());
-        for (Node file : unmodifiedVariant.getAst().childIterator()) {
-            String className = file.getMetadata(Metadata.FILENAME).toString().replaceAll("[/\\\\]", ".");
-            if (className.endsWith(".java")) {
-                className = className.substring(0, className.length() - ".java".length());
-            }
-            classes.put(className, file);
-        }
-        
-        AtomicInteger suspiciousStatementCount = new AtomicInteger();
-        for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
-            String className = entry.getKey().getClassName();
-            int dollarIndex = className.indexOf('$');
-            if (dollarIndex != -1) {
-                className = className.substring(0, dollarIndex);
-            }
-            
-            int line = entry.getKey().getLineNumber();
-            
-            Node ast = classes.get(className);
-            if (ast != null) {
-                List<Node> matchingStatements = ast.stream()
-                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
-                        .filter(n -> n.hasLine(line))
-                        .toList();
-                
-                if (matchingStatements.isEmpty()) {
-                    String cn = className;
-                    LOG.info(() -> "Found no statements for suspicious " + entry.getValue() + " at "
-                            + cn + ":" + line);
-                } else if (matchingStatements.size() > 1) {
-                    String cn = className;
-                    LOG.warning(() -> "Found " + matchingStatements.size() + " statements for " + cn
-                            + ":" + line + "; adding suspiciousness to all of them");
-                }
-                    
-                String cn = className;
-                matchingStatements.stream()
-                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
-                        .forEach(n -> {
-                            LOG.fine(() -> "Suspicious " + entry.getValue() + " at " + cn + ":" + line
-                                    + " '" + n.getText() + "'");
-                            suspiciousStatementCount.incrementAndGet();
-                            n.setMetadata(Metadata.SUSPICIOUSNESS, entry.getValue());
-                        });
-                
-            } else {
-                String cn = className;
-                LOG.warning(() -> "Can't find class name " + cn);
-            }
-        }
-        LOG.info(() -> suspiciousStatementCount.get() + " suspicious statements");
-        
+        annotateSuspiciousness(unmodifiedVariant, sourceDir, r.binDirectory);
         
         List<Variant> population = new ArrayList<>(POPULATION_SIZE);
         for (int i = 0; i < POPULATION_SIZE; i++) {
@@ -258,6 +201,66 @@ public class GeneticAlgorithm {
             LOG.info(() -> "Stopping because limit of " + MAX_GENERATIONS + " generations reached");
             return Result.generationLimitReached(MAX_GENERATIONS, unmodifiedVariant.getFitness(), getMaxFitness(), bestFitness);
         }
+    }
+
+    private void annotateSuspiciousness(Variant variant, Path variantSourceDir, Path variantBinDir) {
+        LOG.info("Measuring suspiciousness");
+        Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute());
+        flacoco.setExpectedFailures(negativeTests);
+        LinkedHashMap<Location, Double> suspiciousness = flacoco.run(variantSourceDir, variantBinDir);
+        
+        Map<String, Node> classes = new HashMap<>(variant.getAst().childCount());
+        for (Node file : variant.getAst().childIterator()) {
+            String className = file.getMetadata(Metadata.FILENAME).toString().replaceAll("[/\\\\]", ".");
+            if (className.endsWith(".java")) {
+                className = className.substring(0, className.length() - ".java".length());
+            }
+            classes.put(className, file);
+        }
+        
+        AtomicInteger suspiciousStatementCount = new AtomicInteger();
+        for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
+            String className = entry.getKey().getClassName();
+            int dollarIndex = className.indexOf('$');
+            if (dollarIndex != -1) {
+                className = className.substring(0, dollarIndex);
+            }
+            
+            int line = entry.getKey().getLineNumber();
+            
+            Node ast = classes.get(className);
+            if (ast != null) {
+                List<Node> matchingStatements = ast.stream()
+                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+                        .filter(n -> n.hasLine(line))
+                        .toList();
+                
+                if (matchingStatements.isEmpty()) {
+                    String cn = className;
+                    LOG.info(() -> "Found no statements for suspicious " + entry.getValue() + " at "
+                            + cn + ":" + line);
+                } else if (matchingStatements.size() > 1) {
+                    String cn = className;
+                    LOG.warning(() -> "Found " + matchingStatements.size() + " statements for " + cn
+                            + ":" + line + "; adding suspiciousness to all of them");
+                }
+                    
+                String cn = className;
+                matchingStatements.stream()
+                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+                        .forEach(n -> {
+                            LOG.fine(() -> "Suspicious " + entry.getValue() + " at " + cn + ":" + line
+                                    + " '" + n.getText() + "'");
+                            suspiciousStatementCount.incrementAndGet();
+                            n.setMetadata(Metadata.SUSPICIOUSNESS, entry.getValue());
+                        });
+                
+            } else {
+                String cn = className;
+                LOG.warning(() -> "Can't find class name " + cn);
+            }
+        }
+        LOG.info(() -> suspiciousStatementCount.get() + " suspicious statements");
     }
     
     private void createUnmodifiedVariant() throws IOException {

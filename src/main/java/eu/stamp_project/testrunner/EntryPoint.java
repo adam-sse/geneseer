@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -54,8 +55,65 @@ public class EntryPoint {
     }
     
     public CoveredTestResultPerTestMethod run(String... methodNames) throws EvaluationException {
-        LOG.info(() -> "Running coverage on " + methodNames.length + " test methods");
-        
+        return runWithClassAggregation(methodNames);
+    }
+    
+//    private CoveredTestResultPerTestMethod runAllMethodsIndividually(String... methodNames) throws EvaluationException {
+//        LOG.info(() -> "Running coverage on " + methodNames.length + " test methods individually");
+//        
+//        CoveredTestResultPerTestMethodImpl coverage = new CoveredTestResultPerTestMethodImpl();
+//        
+//        TestExecution testExec = null;
+//        try (Probe probe = Measurement.INSTANCE.start("junit-coverage-matrix")) {
+//            testExec = new TestExecution(workingDirectoryInternal, classpath, true);
+//            testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
+//            
+//            for (String methodName : methodNames) {
+//                String className = methodName.split("#")[0];
+//                methodName = methodName.split("#")[1];
+//                
+//                try {
+//                    TestResultWithCoverage result = testExec.executeTestMethodWithCoverage(className, methodName);
+//                    TestResult testResult = result.getTestResult();
+//                    
+//                    if (testResult != null) {
+//                        if (testResult.isFailure()) {
+//                            coverage.addFailingTest(testResult);
+//                            LOG.fine(() -> "Failure: " + testResult + " " + testResult.failureMessage());
+//                        } else {
+//                            coverage.addPassingTest(testResult);
+//                            LOG.fine(() -> "Passed: " + testResult);
+//                        }
+//                        
+//                        CoverageInformation coverageInformation = transformJacocoObject(result.getCoverage());
+//                        
+//                        coverage.getCoverageResultsMap().put(className + "#" + methodName, new CoverageDetailed(coverageInformation));
+//                        
+//                    } else {
+//                        LOG.fine("Test " + className + "::" + methodName + " seems to be ignored");
+//                        coverage.addIgnored(className + "#" + methodName);
+//                    }
+//                } catch (TimeoutException e) {
+//                    coverage.addFailingTest(new TestResult(className, methodName, "Timeout", "Timeout"));
+//                    
+//                    testExec = new TestExecution(workingDirectoryInternal, classpath, true);
+//                    testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
+//                }
+//            }
+//            
+//        } catch (IOException e) {
+//            throw new EvaluationException("Failed to parse jacoco data", e);
+//            
+//        } finally {
+//            if (testExec != null) {
+//                testExec.close();
+//            }
+//        }
+//        
+//        return coverage;
+//    }
+    
+    private CoveredTestResultPerTestMethod runWithClassAggregation(String... methodNames) throws EvaluationException {
         CoveredTestResultPerTestMethodImpl coverage = new CoveredTestResultPerTestMethodImpl();
         
         TestExecution testExec = null;
@@ -63,37 +121,27 @@ public class EntryPoint {
             testExec = new TestExecution(workingDirectoryInternal, classpath, true);
             testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
             
+            Map<String, List<String>> methodsByClass = new HashMap<>();
+            
             for (String methodName : methodNames) {
                 String className = methodName.split("#")[0];
                 methodName = methodName.split("#")[1];
                 
-                try {
-                    TestResultWithCoverage result = testExec.executeTestMethodWithCoverage(className, methodName);
-                    TestResult testResult = result.getTestResult();
-                    
-                    if (testResult != null) {
-                        if (testResult.isFailure()) {
-                            coverage.addFailingTest(testResult);
-                            LOG.fine(() -> "Failure: " + testResult + " " + testResult.failureMessage());
-                        } else {
-                            coverage.addPassingTest(testResult);
-                            LOG.fine(() -> "Passed: " + testResult);
-                        }
-                        
-                        CoverageInformation coverageInformation = transformJacocoObject(result.getCoverage());
-                        
-                        coverage.getCoverageResultsMap().put(className + "#" + methodName, new CoverageDetailed(coverageInformation));
-                        
-                    } else {
-                        LOG.fine("Test " + className + "::" + methodName + " seems to be ignored");
-                        coverage.addIgnored(className + "#" + methodName);
-                    }
-                } catch (TimeoutException e) {
-                    coverage.addFailingTest(new TestResult(className, methodName, "Timeout", "Timeout"));
-                    
-                    testExec = new TestExecution(workingDirectoryInternal, classpath, true);
-                    testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
-                }
+                methodsByClass
+                        .computeIfAbsent(className, key -> new LinkedList<>())
+                        .add(methodName);
+            }
+            
+            LOG.info(() -> {
+                int methodCount = methodsByClass.values().stream()
+                            .mapToInt(List::size)
+                            .sum();
+                return "Running coverage on " + methodCount + " test methods (aggregated in "
+                        + methodsByClass.size() + " classes)";
+            });
+            
+            for (Map.Entry<String, List<String>> entry : methodsByClass.entrySet()) {
+                testExec = runOnClass(entry.getKey(), entry.getValue(), testExec, coverage);
             }
             
         } catch (IOException e) {
@@ -106,6 +154,100 @@ public class EntryPoint {
         }
         
         return coverage;
+    }
+    
+    private TestExecution runOnClass(String className, List<String> methodNames, TestExecution testExec,
+            CoveredTestResultPerTestMethodImpl coverage) throws EvaluationException, IOException {
+
+        boolean containsFailure = false;
+        List<TestResultWithCoverage> results = null;
+        try {
+            results = testExec.executeTestClassWithCoverage(className);
+            
+            for (TestResultWithCoverage testResult : results) {
+                if (testResult.getTestResult().isFailure()) {
+                    containsFailure = true;
+                }
+            }
+        } catch (TimeoutException e) {
+            testExec = new TestExecution(workingDirectoryInternal, classpath, true);
+            testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
+            containsFailure = true;
+        }
+            
+        if (!containsFailure) {
+            
+            CoverageInformation coverageInformation = transformJacocoObject(results.get(0).getCoverage());
+            CoverageDetailed coverageDetailed = new CoverageDetailed(coverageInformation);
+            
+            int numPassed = 0;
+            int numIgnored = 0;
+            for (String methodName : methodNames) {
+                boolean found = false;
+                for (TestResultWithCoverage testResult : results) {
+                    if (testResult.getTestResult().testMethod().equals(methodName)) {
+                        coverage.addPassingTest(testResult.getTestResult());
+                        coverage.getCoverageResultsMap().put(className + "#" + methodName, coverageDetailed);
+                        numPassed++;
+                        found = true;
+                    }
+                }
+                
+                if (!found) {
+                    LOG.fine("Test " + className + "::" + methodName + " seems to be ignored");
+                    coverage.addIgnored(className + "#" + methodName);
+                    numIgnored++;
+                }
+            }
+            
+            int p = numPassed;
+            int i = numIgnored;
+            LOG.fine(() -> "Ran test class " + className + " as a whole; " + p + " passed test methods and " + i + " ignored");
+            
+        } else {
+            LOG.fine(() -> "Test class " + className + " contains failing tests; running " + methodNames.size()
+                    + " test methods individually");
+            
+            testExec = runTestMethodsOneByOne(className, methodNames, testExec, coverage);
+        }
+        
+        return testExec;
+    }
+
+    private TestExecution runTestMethodsOneByOne(String className, List<String> methodNames, TestExecution testExec,
+            CoveredTestResultPerTestMethodImpl coverage) throws EvaluationException, IOException {
+        
+        for (String methodName : methodNames) {
+            try {
+                TestResultWithCoverage result = testExec.executeTestMethodWithCoverage(className, methodName);
+                TestResult testResult = result.getTestResult();
+                
+                if (testResult != null) {
+                    if (testResult.isFailure()) {
+                        coverage.addFailingTest(testResult);
+                        LOG.fine(() -> "Failure: " + testResult + " " + testResult.failureMessage());
+                    } else {
+                        coverage.addPassingTest(testResult);
+                        LOG.fine(() -> "Passed: " + testResult);
+                    }
+                    
+                    CoverageInformation coverageInformation = transformJacocoObject(result.getCoverage());
+                    
+                    coverage.getCoverageResultsMap().put(className + "#" + methodName, new CoverageDetailed(coverageInformation));
+                    
+                } else {
+                    LOG.fine("Test " + className + "::" + methodName + " seems to be ignored");
+                    coverage.addIgnored(className + "#" + methodName);
+                }
+            } catch (TimeoutException e) {
+                coverage.addFailingTest(new TestResult(className, methodName, "Timeout", "Timeout"));
+                
+                testExec = new TestExecution(workingDirectoryInternal, classpath, true);
+                testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
+            }
+        }
+        
+        return testExec;
     }
     
     private CoverageInformation transformJacocoObject(ExecutionDataStore executionData)

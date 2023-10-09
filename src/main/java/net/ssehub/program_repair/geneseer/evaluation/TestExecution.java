@@ -211,6 +211,42 @@ public class TestExecution implements AutoCloseable {
         }
     }
     
+    public List<TestResultWithCoverage> executeTestClassWithCoverage(String className)
+            throws EvaluationException, TimeoutException {
+        
+        try {
+            ExecDumpClient jacocoClient = new ExecDumpClient();
+            jacocoClient.setReset(true);
+            jacocoClient.setDump(false);
+            jacocoClient.dump("localhost", jacocoPort);
+            
+            out.writeObject("CLASS");
+            out.writeObject(className);
+            out.flush();
+            
+            List<TestResult> result = readResult();
+            
+            LOG.fine(() -> result.size() + " tests run in test class " + className + ", "
+                    + result.stream().filter(TestResult::isFailure).count() + " failures");
+            
+            jacocoClient.setDump(true);
+            ExecFileLoader loader = jacocoClient.dump("localhost", jacocoPort);
+            
+            ExecutionDataStore execData = loader.getExecutionDataStore();
+            
+            return result.stream()
+                    .map(testResult -> new TestResultWithCoverage(testResult, execData))
+                    .toList();
+            
+        } catch (IOException e) {
+            throw new EvaluationException("Communication with runner process failed", e);
+            
+        } catch (TimeoutException e) {
+            LOG.fine(() -> "Test class " + className + " timed out");
+            throw e;
+        }
+    }
+    
     public TestResultWithCoverage executeTestMethodWithCoverage(String className, String methodName)
             throws EvaluationException, TimeoutException {
         

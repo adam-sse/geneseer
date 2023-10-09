@@ -43,7 +43,7 @@ public class GeneticAlgorithm {
     private static final double WEIGHT_NEGATIVE_TESTS = 10; // W_negT = 10
     private static final double WEIGHT_POSITIVE_TESTS = 1; // W_posT = 1
     private static final int POPULATION_SIZE = 40; // pop_size = 10
-    private static final double MUTATION_PROBABILITY = 0.06; // W_mut = 0.06
+    private static final double MUTATION_PROBABILITY = 0.006; // W_mut = 0.06
     
     private static final int MAX_GENERATIONS = 10; // generations = 10
     

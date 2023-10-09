@@ -44,6 +44,7 @@ public class Geneseer {
         LOG.fine("Using encoding " + Configuration.INSTANCE.getEncoding());
         
         Result result = null;
+        boolean oom = false;
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
             ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute());
@@ -54,8 +55,15 @@ public class Geneseer {
             LOG.log(Level.SEVERE, "IO exception", e);
             result = Result.ioException(e);
             
+        } catch (OutOfMemoryError e) {
+            System.out.println("OUT_OF_MEMORY");
+            oom = true;
+            throw e;
+            
         } finally {
-            System.out.println(result != null ? result.toCsv() : "null");
+            if (!oom) {
+                System.out.println(result != null ? result.toCsv() : "null");
+            }
             LOG.info("Timing measurements:");
             StreamSupport.stream(Measurement.INSTANCE.finishedProbes().spliterator(), false)
                     .sorted((e1, e2) -> e1.getKey().compareTo(e2.getKey()))

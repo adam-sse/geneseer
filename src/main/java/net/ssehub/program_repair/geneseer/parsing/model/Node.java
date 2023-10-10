@@ -157,11 +157,7 @@ public abstract class Node implements Cloneable {
             return this;
         }
         
-        if (otherRoot.children().size() != children().size()) {
-            throw new IllegalArgumentException();
-        }
-        
-        for (int i = 0; i < children().size(); i++) {
+        for (int i = 0; i < Math.min(children().size(), otherRoot.children().size()); i++) {
             Node result = children().get(i).findEquivalentPath(otherRoot.children().get(i), toFind);
             if (result != null) {
                 return result;

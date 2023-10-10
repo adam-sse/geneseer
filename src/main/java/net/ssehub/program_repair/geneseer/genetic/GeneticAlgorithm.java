@@ -43,7 +43,7 @@ public class GeneticAlgorithm {
     private static final double WEIGHT_NEGATIVE_TESTS = 10; // W_negT = 10
     private static final double WEIGHT_POSITIVE_TESTS = 1; // W_posT = 1
     private static final int POPULATION_SIZE = 40; // pop_size = 10
-    private static final double MUTATION_PROBABILITY = 0.006; // W_mut = 0.06
+    private static final double MUTATION_PROBABILITY = 4; // W_mut = 0.06
     
     private static final int MAX_GENERATIONS = 10; // generations = 10
     
@@ -294,9 +294,12 @@ public class GeneticAlgorithm {
                 .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                 .toList();
         
+        double mutationProbability = MUTATION_PROBABILITY / suspiciousStatements.size();
+        List<Node> ss = suspiciousStatements;
+        LOG.fine(() -> ss.size() + " suspicious statements -> mutation probability " + mutationProbability);
         for (int i = 0; i < suspiciousStatements.size(); i++) {
             Node suspicious = suspiciousStatements.get(i);
-            if (random.nextDouble() < MUTATION_PROBABILITY && random.nextDouble() < (double) suspicious.getMetadata(Metadata.SUSPICIOUSNESS)) {
+            if (random.nextDouble() < mutationProbability && random.nextDouble() < (double) suspicious.getMetadata(Metadata.SUSPICIOUSNESS)) {
                 
                 mutated = true;
                 Node oldAstRoot = astRoot;

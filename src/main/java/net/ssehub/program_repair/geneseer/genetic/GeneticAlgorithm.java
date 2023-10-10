@@ -426,18 +426,19 @@ public class GeneticAlgorithm {
             
             if (random.nextBoolean()) {
                 
+                p1Node = c1.findEquivalentPath(p1.getAst(), p1Node);
+                p2Node = c2.findEquivalentPath(p2.getAst(), p2Node);
+                
                 if (p1Node != null && p2Node != null) {
                     Node p1n = p1Node;
                     Node p2n = p2Node;
                     LOG.fine(() -> "Swapping statements " + p1n.getText() + " and "+ p2n.getText());
                     
-                    p1Node = c1.findEquivalentPath(p1.getAst(), p1Node);
                     Node oldC1 = c1;
                     c1 = c1.cheapClone(p1Node);
                     p1Node = c1.findEquivalentPath(oldC1, p1Node);
                     Node c1Parent = c1.findParent(p1Node).get();
                     
-                    p2Node = c2.findEquivalentPath(p2.getAst(), p2Node);
                     Node oldC2 = c2;
                     c2 = c2.cheapClone(p2Node);
                     p2Node = c2.findEquivalentPath(oldC2, p2Node);
@@ -464,7 +465,6 @@ public class GeneticAlgorithm {
                     Node p1n = p1Node;
                     LOG.fine(() -> "Deleting statement " + p1n.getText() + " from child 1");
                     
-                    p1Node = c1.findEquivalentPath(p1.getAst(), p1Node);
                     Node oldC1 = c1;
                     c1 = c1.cheapClone(p1Node);
                     p1Node = c1.findEquivalentPath(oldC1, p1Node);
@@ -483,7 +483,6 @@ public class GeneticAlgorithm {
                     Node p2n = p2Node;
                     LOG.fine(() -> "Deleting statement " + p2n.getText() + " from child 2");
                     
-                    p2Node = c2.findEquivalentPath(p2.getAst(), p2Node);
                     Node oldC2 = c2;
                     c2 = c2.cheapClone(p2Node);
                     p2Node = c2.findEquivalentPath(oldC2, p2Node);

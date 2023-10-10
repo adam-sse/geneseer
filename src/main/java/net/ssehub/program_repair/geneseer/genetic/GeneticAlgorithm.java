@@ -298,7 +298,6 @@ public class GeneticAlgorithm {
             Node suspicious = suspiciousStatements.get(i);
             if (random.nextDouble() < MUTATION_PROBABILITY && random.nextDouble() < (double) suspicious.getMetadata(Metadata.SUSPICIOUSNESS)) {
                 
-                
                 mutated = true;
                 Node oldAstRoot = astRoot;
                 astRoot = astRoot.cheapClone(suspicious);
@@ -329,12 +328,12 @@ public class GeneticAlgorithm {
                     
                     if (rand == 1) {
                         Node s = suspicious;
-                        LOG.fine(() -> "New mutation: inserting " + otherStatement.toString() + " after "
+                        LOG.fine(() -> "New mutation: inserting " + otherStatement.toString() + " before "
                                 + s.toString());
                         
                         // insert
                         int index = parent.indexOf(suspicious);
-                        parent.add(index + 1, otherStatement);
+                        parent.add(index, otherStatement);
                         
                         
                     } else {

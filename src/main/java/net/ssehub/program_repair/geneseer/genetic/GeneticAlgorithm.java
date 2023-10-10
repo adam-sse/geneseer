@@ -372,6 +372,18 @@ public class GeneticAlgorithm {
         return n1 == null || n2 == null ? n1 == n2 : n1.getText().equals(n2.getText());
     }
     
+    private Node getMatchingNode(Node root1, Node findMatchFor, Node root2, Node parentOfOther) {
+        Node match = null;
+        for (Node child : parentOfOther.childIterator()) {
+            if (child.getText().equals(findMatchFor.getText())) {
+                match = child;
+                break;
+            }
+        }
+        
+        return match;
+    }
+    
     private List<Variant> crossover(Variant p1, Variant p2) {
         LOG.fine(() -> "Crossing over " + p1 + " and " + p2);
         
@@ -380,9 +392,10 @@ public class GeneticAlgorithm {
               .toList());
         List<Node> p2Suspicious = new LinkedList<>();
         for (Node p1Node : p1Suspicious) {
-            Node p2Node = p2.getAst().findEquivalentPath(p1.getAst(), p1Node);
-            if (p2Node != null && p2Node.getType() == Type.SINGLE_STATEMENT) {
-                p2Suspicious.add(p2Node);
+            Node p1Parent = p1.getAst().findParent(p1Node).get();
+            Node p2Parent = p2.getAst().findEquivalentPath(p1.getAst(), p1Parent);
+            if (p2Parent != null) {
+                p2Suspicious.add(getMatchingNode(p1.getAst(), p1Node, p2.getAst(), p2Parent));
             } else {
                 p2Suspicious.add(null);
             }
@@ -393,9 +406,10 @@ public class GeneticAlgorithm {
         for (Node p2Node : freshP2Suspicious) {
             if (!p2Suspicious.contains(p2Node)) {
                 p2Suspicious.add(p2Node);
-                Node p1Node = p1.getAst().findEquivalentPath(p2.getAst(), p2Node);
-                if (p1Node != null && p1Node.getType() == Type.SINGLE_STATEMENT) {
-                    p1Suspicious.add(p1Node);
+                Node p2Parent = p2.getAst().findParent(p2Node).get();
+                Node p1Parent = p1.getAst().findEquivalentPath(p2.getAst(), p2Parent);
+                if (p1Parent != null) {
+                    p1Suspicious.add(getMatchingNode(p2.getAst(), p2Node, p1.getAst(), p1Parent));
                 } else {
                     p1Suspicious.add(null);
                 }

@@ -369,15 +369,30 @@ public class GeneticAlgorithm {
               .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
               .toList());
         List<Node> p2Suspicious = new LinkedList<>();
-        for (int i = 0; i < p1Suspicious.size(); i++) {
-            Node p1Node = p1Suspicious.get(i);
+        for (Node p1Node : p1Suspicious) {
             Node p2Node = p2.getAst().findEquivalentPath(p1.getAst(), p1Node);
-            if (p2Node != null) {
+            if (p2Node != null && p2Node.getType() == Type.SINGLE_STATEMENT) {
                 p2Suspicious.add(p2Node);
             } else {
-                p1Suspicious.remove(i);
+                p2Suspicious.add(null);
             }
         }
+        List<Node> freshP2Suspicious = p2.getAst().stream()
+                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                .toList();
+        for (Node p2Node : freshP2Suspicious) {
+            if (!p2Suspicious.contains(p2Node)) {
+                p2Suspicious.add(p2Node);
+                Node p1Node = p1.getAst().findEquivalentPath(p2.getAst(), p2Node);
+                if (p1Node != null && p1Node.getType() == Type.SINGLE_STATEMENT) {
+                    p1Suspicious.add(p1Node);
+                } else {
+                    p1Suspicious.add(null);
+                }
+            }
+        }
+        
+        
         if (p1Suspicious.size() != p2Suspicious.size()) {
             LOG.warning(() -> "Different number of suspicious statements: " + p1Suspicious.size()
                     + " vs. " + p2Suspicious.size());

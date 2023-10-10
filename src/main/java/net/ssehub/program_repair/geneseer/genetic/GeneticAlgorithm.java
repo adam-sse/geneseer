@@ -506,7 +506,7 @@ public class GeneticAlgorithm {
                     if (!removed) {
                         LOG.warning(() -> "Failed to remove " + p2n.getText() + " from " + c2Parent.getText());
                     } else {
-                        c1Mutations.add("del " + p2n.getText());
+                        c2Mutations.add("del " + p2n.getText());
                     }
                     
                     c2.lock();

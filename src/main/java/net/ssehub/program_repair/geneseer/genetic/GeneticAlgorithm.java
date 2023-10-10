@@ -364,44 +364,21 @@ public class GeneticAlgorithm {
     private List<Variant> crossover(Variant p1, Variant p2) {
         
         List<Node> p1Suspicious = new LinkedList<>(p1.getAst().stream()
-                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                .toList());
-        
-        List<Node> p2Suspicious = new LinkedList<>(p2.getAst().stream()
-                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                .toList());
-        
+              .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+              .toList());
+        List<Node> p2Suspicious = new LinkedList<>();
+        for (int i = 0; i < p1Suspicious.size(); i++) {
+            Node p1Node = p1Suspicious.get(i);
+            Node p2Node = p2.getAst().findEquivalentPath(p1.getAst(), p1Node);
+            if (p2Node != null) {
+                p2Suspicious.add(p2Node);
+            } else {
+                p1Suspicious.remove(i);
+            }
+        }
         if (p1Suspicious.size() != p2Suspicious.size()) {
-            for (int i = 0; i < Math.min(p1Suspicious.size(), p2Suspicious.size()); i++) {
-                if (!equal(p1Suspicious.get(i), p2Suspicious.get(i))) {
-                    boolean found = false;
-                    for (int j = i + 1; j < p2Suspicious.size(); j++) {
-                        if (equal(p1Suspicious.get(i), p2Suspicious.get(j))) {
-                            found = true;
-                            for (int k = 0; k < j - i; k++) {
-                                p1Suspicious.add(i, null);
-                            }
-                            break;
-                        }
-                    }
-                    
-                    if (!found) {
-                        for (int j = i + 1; j < p1Suspicious.size(); j++) {
-                            if (equal(p2Suspicious.get(i), p1Suspicious.get(j))) {
-                                for (int k = 0; k < j - i; k++) {
-                                    p2Suspicious.add(i, null);
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (p1Suspicious.size() != p2Suspicious.size()) {
-                LOG.warning(() -> "Different number of suspicious statements: " + p1Suspicious.size()
-                        + " vs. " + p2Suspicious.size());
-            }
+            LOG.warning(() -> "Different number of suspicious statements: " + p1Suspicious.size()
+                    + " vs. " + p2Suspicious.size());
         }
         
         List<Integer> diffStatements = new LinkedList<>();

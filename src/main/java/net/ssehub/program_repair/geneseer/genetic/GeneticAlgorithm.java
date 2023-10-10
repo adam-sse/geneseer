@@ -132,6 +132,9 @@ public class GeneticAlgorithm {
                     .sorted(Comparator.comparingDouble(Variant::getFitness).reversed())
                     .toList();
             population.clear();
+            LOG.fine(() -> "Viable: " + viable.stream()
+                    .map(v -> v.getName() + "(" + v.getFitness() + ")")
+                    .toList());
             
             double sum = viable.stream().mapToDouble(Variant::getFitness).sum();
             List<Double> cummulativeProbabilityDistribution = new ArrayList<>(viable.size());
@@ -190,7 +193,9 @@ public class GeneticAlgorithm {
                     LOG.fine(() -> "Skipping fitness evaluation because variant was not mutated: " + variant);
                 }
             }
-            LOG.fine(() -> "Population fitness: " + population.stream().map(Variant::getFitness).toList());
+            LOG.fine(() -> "Population fitness: " + population.stream()
+                    .map(v -> v.getName() + "(" + v.getFitness() + ")")
+                    .toList());
         }
 
         int index = indexWithMaxFitness(population);

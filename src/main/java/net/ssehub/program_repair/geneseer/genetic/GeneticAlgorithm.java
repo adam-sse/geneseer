@@ -110,7 +110,7 @@ public class GeneticAlgorithm {
         LOG.fine(() -> "Positive tests (" + positiveTests.size() + "): " + positiveTests);
         
         unmodifiedVariant.setFitness(getFitness(r.evaluation));
-        LOG.info(() -> "Fitness of unmodified variant and max fitness: "
+        LOG.info(() -> "Fitness of unmodified variant (" + unmodifiedVariant.getName() + ") and max fitness: "
                 + unmodifiedVariant.getFitness() + " / " + getMaxFitness());
         bestFitness = unmodifiedVariant.getFitness();
         
@@ -120,11 +120,12 @@ public class GeneticAlgorithm {
         for (int i = 0; i < POPULATION_SIZE; i++) {
             population.add(newVariant());
         }
-        LOG.fine(() -> "Population fitness: " + population.stream().map(Variant::getFitness).toList());
+        LOG.fine(() -> "Population fitness: " + population.stream()
+                .map(v -> v.getName() + "(" + v.getFitness() + ")")
+                .toList());
         
         while (indexWithMaxFitness(population) < 0 && ++generation <= MAX_GENERATIONS) {
-            int g = generation;
-            LOG.info(() -> "Generation " + g);
+            LOG.info(() -> "Generation " + generation);
             
             List<Variant> viable = population.stream()
                     .filter(v -> v.getFitness() > 0.0)
@@ -158,8 +159,6 @@ public class GeneticAlgorithm {
                 if (i + 1 < viable.size()) {
                     Variant p2 = viable.get(i + 1);
                     
-                    int ii = i;
-                    LOG.fine(() -> "Crossing over " + ii + " and " + (ii + 1));
                     List<Variant> children = crossover(p1, p2);
                     
                     population.add(p1);
@@ -182,12 +181,13 @@ public class GeneticAlgorithm {
                     double fitness = getFitness(evaluateVariant(variant.getAst()));
                     LOG.fine(() -> "Fitness: " + fitness);
                     variant.setFitness(fitness);
+                    LOG.fine(() -> variant.toString());
                     if (fitness > bestFitness) {
                         bestFitness = fitness;
+                        LOG.info(() -> "New best variant: " + variant.getName());
                     }
                 } else {
-                    LOG.fine(() -> "Skipping fitness evaluation because variant was not mutated (fitness is "
-                            + variant.getFitness() + ")");
+                    LOG.fine(() -> "Skipping fitness evaluation because variant was not mutated: " + variant);
                 }
             }
             LOG.fine(() -> "Population fitness: " + population.stream().map(Variant::getFitness).toList());
@@ -195,7 +195,7 @@ public class GeneticAlgorithm {
 
         int index = indexWithMaxFitness(population);
         if (index >= 0) {
-            LOG.info(() -> "Variant " + index + " has max fitness");
+            LOG.info(() -> "Variant with max fitness: " + population.get(index));
             return Result.foundFix(unmodifiedVariant.getFitness(), getMaxFitness(), generation);
         } else {
             LOG.info(() -> "Stopping because limit of " + MAX_GENERATIONS + " generations reached");
@@ -271,15 +271,16 @@ public class GeneticAlgorithm {
     }
     
     private Variant newVariant() throws IOException {
-        LOG.fine("Creating new variant");
         Variant variant = new Variant(unmodifiedVariant.getAst());
+        LOG.fine("Creating new variant " + variant.getName());
         mutate(variant);
         
         double fitness = getFitness(evaluateVariant(variant.getAst()));
-        LOG.fine(() -> "Fitness: " + fitness);
         variant.setFitness(fitness);
+        LOG.fine(() -> variant.toString());
         if (fitness > bestFitness) {
             bestFitness = fitness;
+            LOG.info(() -> "New best variant: " + variant.getName());
         }
         
         return variant;
@@ -312,11 +313,13 @@ public class GeneticAlgorithm {
                 if (rand == 0) {
                     // delete
                     Node s = suspicious;
-                    LOG.fine(() -> "New mutation: deleting " + s.toString());
+                    LOG.fine(() -> "Mutating " + variant.getName() + ": deleting " + s.toString());
                     
                     boolean removed = parent.remove(suspicious);
                     if (!removed) {
                         LOG.warning(() -> "Failed to delete statement " + s.toString());
+                    } else {
+                        variant.addMutation("del " + s.toString());
                     }
                     
                 } else {
@@ -331,12 +334,13 @@ public class GeneticAlgorithm {
                     
                     if (rand == 1) {
                         Node s = suspicious;
-                        LOG.fine(() -> "New mutation: inserting " + otherStatement.toString() + " before "
-                                + s.toString());
+                        LOG.fine(() -> "Mutating " + variant.getName() + ": inserting " + otherStatement.toString()
+                                + " before " + s.toString());
                         
                         // insert
                         int index = parent.indexOf(suspicious);
                         parent.add(index, otherStatement);
+                        variant.addMutation("ins " + otherStatement.toString() + " before " + s.toString());
                         
                         
                     } else {
@@ -352,6 +356,10 @@ public class GeneticAlgorithm {
             }
         }
         
+        if (!mutated) {
+            LOG.fine(() -> "No new mutations added to " + variant.getName());
+        }
+        
         return mutated;
     }
     
@@ -359,11 +367,8 @@ public class GeneticAlgorithm {
         return n1 == null || n2 == null ? n1 == n2 : n1.getText().equals(n2.getText());
     }
     
-    private static String toText(Node n) {
-        return n != null ? n.getText() : "null";
-    }
-    
     private List<Variant> crossover(Variant p1, Variant p2) {
+        LOG.fine(() -> "Crossing over " + p1 + " and " + p2);
         
         List<Node> p1Suspicious = new LinkedList<>(p1.getAst().stream()
               .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
@@ -392,21 +397,15 @@ public class GeneticAlgorithm {
             }
         }
         
-        
-        if (p1Suspicious.size() != p2Suspicious.size()) {
-            LOG.warning(() -> "Different number of suspicious statements: " + p1Suspicious.size()
-                    + " vs. " + p2Suspicious.size());
-        }
-        
         List<Integer> diffStatements = new LinkedList<>();
-        for (int i = 0; i < Math.min(p1Suspicious.size(), p2Suspicious.size()); i++) {
+        for (int i = 0; i < p1Suspicious.size(); i++) {
             if (!equal(p1Suspicious.get(i), p2Suspicious.get(i))) {
                 diffStatements.add(i);
             }
         }
         
         if (diffStatements.isEmpty()) {
-            LOG.warning("No differences between parents");
+            LOG.fine("No differences between parents");
         } else {
             LOG.fine(() -> diffStatements.size() + " differing suspicious statements");
         }
@@ -414,15 +413,19 @@ public class GeneticAlgorithm {
         Node c1 = p1.getAst();
         Node c2 = p2.getAst();
         
+        List<String> c1Mutations = new LinkedList<>();
+        List<String> c2Mutations = new LinkedList<>();
         for (int i : diffStatements) {
             Node p1Node = p1Suspicious.get(i);
             Node p2Node = p2Suspicious.get(i);
             
             if (random.nextBoolean()) {
-                LOG.info(() -> "Swapping statements " + toText(p1Suspicious.get(i)) + " and "
-                        + toText(p2Suspicious.get(i)));
                 
                 if (p1Node != null && p2Node != null) {
+                    Node p1n = p1Node;
+                    Node p2n = p2Node;
+                    LOG.fine(() -> "Swapping statements " + p1n.getText() + " and "+ p2n.getText());
+                    
                     p1Node = c1.findEquivalentPath(p1.getAst(), p1Node);
                     Node oldC1 = c1;
                     c1 = c1.cheapClone(p1Node);
@@ -442,6 +445,9 @@ public class GeneticAlgorithm {
                         c1Parent.set(c1Index, p2Node);
                         c2Parent.set(c2Index, p1Node);
                         
+                        c1Mutations.add("swp " + p1Node.getText() + " with " + p2Node.getText());
+                        c2Mutations.add("swp " + p2Node.getText() + " with " + p1Node.getText());
+                        
                     } else {
                         LOG.warning("Failed to find statement in clone");
                     }
@@ -450,6 +456,9 @@ public class GeneticAlgorithm {
                     c2.lock();
                     
                 } else if (p1Node != null) {
+                    Node p1n = p1Node;
+                    LOG.fine(() -> "Deleting statement " + p1n.getText() + " from child 1");
+                    
                     p1Node = c1.findEquivalentPath(p1.getAst(), p1Node);
                     Node oldC1 = c1;
                     c1 = c1.cheapClone(p1Node);
@@ -458,13 +467,17 @@ public class GeneticAlgorithm {
                     
                     boolean removed = c1Parent.remove(p1Node);
                     if (!removed) {
-                        Node p = p1Node;
-                        LOG.warning(() -> "Failed to remove " + p.getText() + " from " + c1Parent.getText());
+                        LOG.warning(() -> "Failed to remove " + p1n.getText() + " from " + c1Parent.getText());
+                    } else {
+                        c1Mutations.add("del " + p1n.getText());
                     }
                     
                     c1.lock();
                     
                 } else if (p2Node != null) {
+                    Node p2n = p2Node;
+                    LOG.fine(() -> "Deleting statement " + p2n.getText() + " from child 2");
+                    
                     p2Node = c2.findEquivalentPath(p2.getAst(), p2Node);
                     Node oldC2 = c2;
                     c2 = c2.cheapClone(p2Node);
@@ -473,8 +486,9 @@ public class GeneticAlgorithm {
                     
                     boolean removed = c2Parent.remove(p2Node);
                     if (!removed) {
-                        Node p = p2Node;
-                        LOG.warning(() -> "Failed to remove " + p.getText() + " from " + c2Parent.getText());
+                        LOG.warning(() -> "Failed to remove " + p2n.getText() + " from " + c2Parent.getText());
+                    } else {
+                        c1Mutations.add("del " + p2n.getText());
                     }
                     
                     c2.lock();
@@ -482,7 +496,17 @@ public class GeneticAlgorithm {
             }
         }
         
-        return List.of(new Variant(c1), new Variant(c2));
+        Variant v1 = new Variant(c1);
+        v1.addMutation("ref " + p1.getName());
+        c1Mutations.forEach(v1::addMutation);
+        
+        Variant v2 = new Variant(c2);
+        v2.addMutation("ref " + p2.getName());
+        c2Mutations.forEach(v2::addMutation);
+        
+        LOG.fine(() -> "Created child of " + p1.getName() + " and " + p2.getName() + ": " + v1);
+        LOG.fine(() -> "Created child of " + p1.getName() + " and " + p2.getName() + ": " + v2);
+        return List.of(v1, v2);
     }
     
     private List<Integer> stochasticUniversalSampling(List<Double> cummulativeProbabilityDistribution, int sampleSize) {

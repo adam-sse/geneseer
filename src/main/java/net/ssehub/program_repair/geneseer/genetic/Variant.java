@@ -3,6 +3,7 @@ package net.ssehub.program_repair.geneseer.genetic;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 
@@ -19,7 +20,7 @@ public class Variant {
     private Double fitness;
     
     public Variant(Node ast) {
-        this.name = "V_" + idCounter++;
+        this.name = "V_" + String.format(Locale.ROOT, "%06d", idCounter++);
         this.ast = ast;
     }
 

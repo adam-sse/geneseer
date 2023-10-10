@@ -429,11 +429,13 @@ public class GeneticAlgorithm {
                         + toText(p2Suspicious.get(i)));
                 
                 if (p1Node != null && p2Node != null) {
+                    p1Node = c1.findEquivalentPath(p1.getAst(), p1Node);
                     Node oldC1 = c1;
                     c1 = c1.cheapClone(p1Node);
                     p1Node = c1.findEquivalentPath(oldC1, p1Node);
                     Node c1Parent = c1.findParent(p1Node).get();
                     
+                    p2Node = c2.findEquivalentPath(p2.getAst(), p2Node);
                     Node oldC2 = c2;
                     c2 = c2.cheapClone(p2Node);
                     p2Node = c2.findEquivalentPath(oldC2, p2Node);
@@ -454,6 +456,7 @@ public class GeneticAlgorithm {
                     c2.lock();
                     
                 } else if (p1Node != null) {
+                    p1Node = c1.findEquivalentPath(p1.getAst(), p1Node);
                     Node oldC1 = c1;
                     c1 = c1.cheapClone(p1Node);
                     p1Node = c1.findEquivalentPath(oldC1, p1Node);
@@ -468,6 +471,7 @@ public class GeneticAlgorithm {
                     c1.lock();
                     
                 } else if (p2Node != null) {
+                    p2Node = c2.findEquivalentPath(p2.getAst(), p2Node);
                     Node oldC2 = c2;
                     c2 = c2.cheapClone(p2Node);
                     p2Node = c2.findEquivalentPath(oldC2, p2Node);

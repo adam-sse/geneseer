@@ -423,7 +423,7 @@ public class GeneticAlgorithm {
                 continue;
             }
             
-            int cutoff = random.nextInt(Math.min(c1Parent.childCount(), c2Parent.childCount()));
+            int cutoff = random.nextInt(Math.min(c1Parent.childCount(), c2Parent.childCount()) + 1);
 
             Node newC1Parent = new InnerNode(c1Parent.getType());
             Node newC2Parent = new InnerNode(c2Parent.getType());

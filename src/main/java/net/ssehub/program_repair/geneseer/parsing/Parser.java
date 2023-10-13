@@ -4,9 +4,13 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.logging.Logger;
 
+import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -24,6 +28,8 @@ import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
 public class Parser {
+    
+    private static final Logger LOG = Logger.getLogger(Parser.class.getName());
 
     private Parser() {
     }
@@ -58,6 +64,14 @@ public class Parser {
         Java8Lexer lexer = new Java8Lexer(CharStreams.fromFileName(file.toString(), Configuration.INSTANCE.getEncoding()));
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         Java8Parser parser = new Java8Parser(tokens);
+        parser.removeErrorListeners(); // remove the default console listener
+        parser.addErrorListener(new BaseErrorListener() {
+            @Override
+            public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line,
+                    int charPositionInLine, String msg, RecognitionException e) {
+                LOG.warning(() -> file + ":" + line + ":" + charPositionInLine + " " + msg);
+            }
+        });
         ParseTree antlrTree = parser.compilationUnit();
         return convert(antlrTree);
     }

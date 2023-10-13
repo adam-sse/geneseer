@@ -28,6 +28,7 @@ import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.fault_localization.Flacoco;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.Writer;
+import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
@@ -368,159 +369,106 @@ public class GeneticAlgorithm {
         return mutated;
     }
     
-    private static boolean equal(Node n1, Node n2) {
-        return n1 == null || n2 == null ? n1 == n2 : n1.getText().equals(n2.getText());
-    }
-    
-    private Node getMatchingNode(Node root1, Node findMatchFor, Node root2, Node parentOfOther) {
-        Node match = null;
-        for (Node child : parentOfOther.childIterator()) {
-            if (child.getText().equals(findMatchFor.getText())) {
-                match = child;
-                break;
-            }
-        }
-        
-        return match;
-    }
-    
     private List<Variant> crossover(Variant p1, Variant p2) {
         LOG.fine(() -> "Crossing over " + p1 + " and " + p2);
         
-        List<Node> p1Suspicious = new LinkedList<>(p1.getAst().stream()
+        List<Node> p1Parents = new LinkedList<>();
+        List<Node> p2Parents = new LinkedList<>();
+        
+        p1.getAst().stream()
               .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-              .toList());
-        List<Node> p2Suspicious = new LinkedList<>();
-        for (Node p1Node : p1Suspicious) {
-            Node p1Parent = p1.getAst().findParent(p1Node).get();
-            Node p2Parent = p2.getAst().findEquivalentPath(p1.getAst(), p1Parent);
-            if (p2Parent != null) {
-                p2Suspicious.add(getMatchingNode(p1.getAst(), p1Node, p2.getAst(), p2Parent));
-            } else {
-                p2Suspicious.add(null);
-            }
-        }
-        List<Node> freshP2Suspicious = p2.getAst().stream()
+              .map(node -> p1.getAst().findParent(node).get())
+              .forEach(p1Parent -> {
+                  Node p2Parent = p2.getAst().findEquivalentPath(p1.getAst(), p1Parent);
+                  
+                  if (p2Parent != null) {
+                      if (!p1Parent.getText().equals(p2Parent.getText()) && !p1Parents.contains(p1Parent)) {
+                          p1Parents.add(p1Parent);
+                          p2Parents.add(p2Parent);
+                      }
+                  } else {
+                      LOG.warning(() -> "Can't find parent of statement");
+                  }
+                  
+              });
+        p2.getAst().stream()
                 .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                .toList();
-        for (Node p2Node : freshP2Suspicious) {
-            if (!p2Suspicious.contains(p2Node)) {
-                p2Suspicious.add(p2Node);
-                Node p2Parent = p2.getAst().findParent(p2Node).get();
-                Node p1Parent = p1.getAst().findEquivalentPath(p2.getAst(), p2Parent);
-                if (p1Parent != null) {
-                    p1Suspicious.add(getMatchingNode(p2.getAst(), p2Node, p1.getAst(), p1Parent));
-                } else {
-                    p1Suspicious.add(null);
-                }
-            }
-        }
+                .map(node -> p2.getAst().findParent(node).get())
+                .forEach(p2Parent -> {
+                    Node p1Parent = p1.getAst().findEquivalentPath(p2.getAst(), p2Parent);
+                    
+                    if (p1Parent != null) {
+                        if (!p1Parent.getText().equals(p2Parent.getText()) && !p1Parents.contains(p1Parent)) {
+                            p1Parents.add(p1Parent);
+                            p2Parents.add(p2Parent);
+                        }
+                    } else {
+                        LOG.warning(() -> "Can't find parent of statement");
+                    }
+                    
+                });
         
-        List<Integer> diffStatements = new LinkedList<>();
-        for (int i = 0; i < p1Suspicious.size(); i++) {
-            if (!equal(p1Suspicious.get(i), p2Suspicious.get(i))) {
-                diffStatements.add(i);
-            }
-        }
         
-        if (diffStatements.isEmpty()) {
-            LOG.fine("No differences between parents");
-        } else {
-            LOG.fine(() -> diffStatements.size() + " differing suspicious statements");
-        }
+        LOG.fine(() -> "Found " + p1Parents.size() + " blocks with different content");
         
         Node c1 = p1.getAst();
         Node c2 = p2.getAst();
         
-        List<String> c1Mutations = new LinkedList<>();
-        List<String> c2Mutations = new LinkedList<>();
-        for (int i : diffStatements) {
-            Node p1Node = p1Suspicious.get(i);
-            Node p2Node = p2Suspicious.get(i);
+        for (int i = 0; i < p1Parents.size(); i++) {
+            Node c1Parent = c1.findEquivalentPath(p1.getAst(), p1Parents.get(i));
+            Node c2Parent = c2.findEquivalentPath(p2.getAst(), p2Parents.get(i));
             
-            if (random.nextBoolean()) {
-                
-                p1Node = c1.findEquivalentPath(p1.getAst(), p1Node);
-                p2Node = c2.findEquivalentPath(p2.getAst(), p2Node);
-                
-                if (p1Node != null && p2Node != null) {
-                    Node p1n = p1Node;
-                    Node p2n = p2Node;
-                    LOG.fine(() -> "Swapping statements " + p1n.getText() + " and "+ p2n.getText());
-                    
-                    Node oldC1 = c1;
-                    c1 = c1.cheapClone(p1Node);
-                    p1Node = c1.findEquivalentPath(oldC1, p1Node);
-                    Node c1Parent = c1.findParent(p1Node).get();
-                    
-                    Node oldC2 = c2;
-                    c2 = c2.cheapClone(p2Node);
-                    p2Node = c2.findEquivalentPath(oldC2, p2Node);
-                    Node c2Parent = c2.findParent(p2Node).get();
-                    
-                    int c1Index = c1Parent.indexOf(p1Node);
-                    int c2Index = c2Parent.indexOf(p2Node);
-                    
-                    if (c1Index != -1 && c2Index != -1) {
-                        c1Parent.set(c1Index, p2Node);
-                        c2Parent.set(c2Index, p1Node);
-                        
-                        c1Mutations.add("swp " + p1Node.getText() + " with " + p2Node.getText());
-                        c2Mutations.add("swp " + p2Node.getText() + " with " + p1Node.getText());
-                        
-                    } else {
-                        LOG.warning("Failed to find statement in clone");
-                    }
-                    
-                    c1.lock();
-                    c2.lock();
-                    
-                } else if (p1Node != null) {
-                    Node p1n = p1Node;
-                    LOG.fine(() -> "Deleting statement " + p1n.getText() + " from child 1");
-                    
-                    Node oldC1 = c1;
-                    c1 = c1.cheapClone(p1Node);
-                    p1Node = c1.findEquivalentPath(oldC1, p1Node);
-                    Node c1Parent = c1.findParent(p1Node).get();
-                    
-                    boolean removed = c1Parent.remove(p1Node);
-                    if (!removed) {
-                        LOG.warning(() -> "Failed to remove " + p1n.getText() + " from " + c1Parent.getText());
-                    } else {
-                        c1Mutations.add("del " + p1n.getText());
-                    }
-                    
-                    c1.lock();
-                    
-                } else if (p2Node != null) {
-                    Node p2n = p2Node;
-                    LOG.fine(() -> "Deleting statement " + p2n.getText() + " from child 2");
-                    
-                    Node oldC2 = c2;
-                    c2 = c2.cheapClone(p2Node);
-                    p2Node = c2.findEquivalentPath(oldC2, p2Node);
-                    Node c2Parent = c2.findParent(p2Node).get();
-                    
-                    boolean removed = c2Parent.remove(p2Node);
-                    if (!removed) {
-                        LOG.warning(() -> "Failed to remove " + p2n.getText() + " from " + c2Parent.getText());
-                    } else {
-                        c2Mutations.add("del " + p2n.getText());
-                    }
-                    
-                    c2.lock();
+            if (c1Parent == null || c2Parent == null) {
+                LOG.warning(() -> "Couldn't find block in modified child");
+                continue;
+            }
+            
+            int cutoff = random.nextInt(Math.min(c1Parent.childCount(), c2Parent.childCount()));
+
+            Node newC1Parent = new InnerNode(c1Parent.getType());
+            Node newC2Parent = new InnerNode(c2Parent.getType());
+            
+            for (int j = 0; j < Math.min(c1Parent.childCount(), c2Parent.childCount()); j++) {
+                if (j < cutoff) {
+                    newC1Parent.add(c1Parent.get(j));
+                    newC2Parent.add(c2Parent.get(j));
+                } else {
+                    newC2Parent.add(c1Parent.get(j));
+                    newC1Parent.add(c2Parent.get(j));
                 }
             }
+            
+            if (c1Parent.childCount() > c2Parent.childCount()) {
+                for (int j = c2Parent.childCount(); j < c1Parent.childCount(); j++) {
+                    newC2Parent.add(c1Parent.get(j));
+                }
+            } else if (c2Parent.childCount() > c1Parent.childCount()) {
+                for (int j = c1Parent.childCount(); j < c2Parent.childCount(); j++) {
+                    newC1Parent.add(c2Parent.get(j));
+                }
+            }
+            
+            Node oldC1 = c1;
+            c1 = c1.cheapClone(c1Parent);
+            c1Parent = c1.findEquivalentPath(oldC1, c1Parent);
+            Node c1ParentParent = c1.findParent(c1Parent).get();
+            c1ParentParent.set(c1ParentParent.indexOf(c1Parent), newC1Parent);
+            
+            Node oldC2 = c2;
+            c2 = c2.cheapClone(c2Parent);
+            c2Parent = c2.findEquivalentPath(oldC2, c2Parent);
+            Node c2ParentParent = c2.findParent(c2Parent).get();
+            c2ParentParent.set(c2ParentParent.indexOf(c2Parent), newC2Parent);
+            
+            c1.lock();
+            c2.lock();
         }
         
         Variant v1 = new Variant(c1);
-        v1.addMutation("ref " + p1.getName());
-        c1Mutations.forEach(v1::addMutation);
+        v1.addMutation("child " + p1.getName() + " " + p2.getName());
         
         Variant v2 = new Variant(c2);
-        v2.addMutation("ref " + p2.getName());
-        c2Mutations.forEach(v2::addMutation);
+        v2.addMutation("child " + p2.getName() + " " + p1.getName());
         
         LOG.fine(() -> "Created child of " + p1.getName() + " and " + p2.getName() + ": " + v1);
         LOG.fine(() -> "Created child of " + p1.getName() + " and " + p2.getName() + ": " + v2);

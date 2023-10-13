@@ -12,6 +12,8 @@ import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
 import net.ssehub.program_repair.geneseer.util.FileUtils;
+import net.ssehub.program_repair.geneseer.util.Measurement;
+import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
 public class ParseAndWrite {
 
@@ -29,15 +31,18 @@ public class ParseAndWrite {
         }
         Files.createDirectory(out);
         
-        Node ast = Parser.parse(in);
-        System.out.println("Parsed ast with " + ast.childCount() + " files");
+        Node ast;
+        try (Probe probe = Measurement.INSTANCE.start("parsing")) {
+            ast = Parser.parse(in);
+        }
+        System.out.println("Parsed ast with " + ast.childCount() + " files in "
+                + Measurement.INSTANCE.getAccumulatedTimings("parsing") + " ms");
         
         Writer.write(ast, in, out);
         System.out.println("Wrote model to " + out.toAbsolutePath());
         
-//        System.out.println(model.getParseTree().children().get(0).dumpTree());
+//        System.out.println(ast.get(2).dumpTree());
 
-        
         System.out.println("### Single statements ###");
         List<Node> statements = new LinkedList<>();
         ast.stream()

@@ -16,8 +16,8 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import net.ssehub.program_repair.geneseer.Configuration;
-import net.ssehub.program_repair.geneseer.parsing.antlr.Java8Lexer;
-import net.ssehub.program_repair.geneseer.parsing.antlr.Java8Parser;
+import net.ssehub.program_repair.geneseer.parsing.antlr.JavaLexer;
+import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser;
 import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
@@ -61,9 +61,9 @@ public class Parser {
     }
     
     private static Node parseFile(Path file) throws IOException {
-        Java8Lexer lexer = new Java8Lexer(CharStreams.fromFileName(file.toString(), Configuration.INSTANCE.getEncoding()));
+        JavaLexer lexer = new JavaLexer(CharStreams.fromFileName(file.toString(), Configuration.INSTANCE.getEncoding()));
         CommonTokenStream tokens = new CommonTokenStream(lexer);
-        Java8Parser parser = new Java8Parser(tokens);
+        JavaParser parser = new JavaParser(tokens);
         parser.removeErrorListeners(); // remove the default console listener
         parser.addErrorListener(new BaseErrorListener() {
             @Override
@@ -82,24 +82,10 @@ public class Parser {
         case "CompilationUnitContext":
             return Type.COMPILATION_UNIT;
         
-        case "ReturnStatementContext":
-        case "ExpressionStatementContext":
-        case "LocalVariableDeclarationStatementContext":
-        case "BreakStatementContext":
-        case "ContinueStatementContext":
-        case "ThrowStatementContext":
-        case "AssertStatementContext":
-        case "EmptyStatement_Context":
+        case "BlockStatementContext":
             return Type.SINGLE_STATEMENT;
             
         case "BlockContext":
-        case "IfThenStatementContext":
-        case "IfThenElseStatementContext":
-        case "SwichStatementContext":
-        case "ForStatementContext":
-        case "TryStatementContext":
-        case "TryWithResourcesStatementContext":
-        case "SynchronizedStatementContext":
             return Type.COMPOSIT_STATEMENT;
         
         default:

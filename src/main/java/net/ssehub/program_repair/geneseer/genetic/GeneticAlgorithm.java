@@ -525,7 +525,7 @@ public class GeneticAlgorithm {
             }
             
         } else {
-            LOG.info("Failed to compile modified code");
+            LOG.info("Failed to compile variant");
         }
             
         try {

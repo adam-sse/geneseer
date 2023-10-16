@@ -272,6 +272,7 @@ public class GeneticAlgorithm {
     private void createUnmodifiedVariant() throws IOException {
         Node ast = Parser.parse(project.getSourceDirectoryAbsolute());
         ast.lock();
+        LOG.fine(() -> ast.stream().count() + " nodes in AST");
         
         this.unmodifiedVariant = new Variant(ast);
     }

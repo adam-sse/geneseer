@@ -291,7 +291,6 @@ public class TestExecution implements AutoCloseable {
         command.add("-Djava.io.tmpdir=" + tempDirManager.createTemporaryDirectory());
 
         StringBuilder cp = new StringBuilder(GENESEER_TEST_DRIVER.toAbsolutePath().toString());
-        cp.append(File.pathSeparatorChar);
         for (Path element : classpath) {
             cp.append(File.pathSeparatorChar);
             cp.append(element.toString());

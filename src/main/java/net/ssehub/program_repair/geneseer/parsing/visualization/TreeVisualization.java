@@ -15,6 +15,7 @@ import java.util.stream.IntStream;
 
 import javax.swing.JComponent;
 
+import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
 
@@ -41,6 +42,27 @@ public class TreeVisualization extends JComponent {
     private List<Map<Point, Node>> nodes;
     
     public TreeVisualization(Node root, Node compareWith) {
+        if (compareWith != null) {
+            InnerNode newRoot = new InnerNode(root.getType());
+            InnerNode newCompareWith = new InnerNode(compareWith.getType());
+            for (int i = 0; i < Math.min(root.childCount(), compareWith.childCount()); i++) {
+                if (root.get(i) != compareWith.get(i)) {
+                    newRoot.add(root.get(i));
+                    newCompareWith.add(compareWith.get(i));
+                }
+            }
+            
+            for (int i = root.childCount(); i < compareWith.childCount(); i++) {
+                newCompareWith.add(compareWith.get(i));
+            }
+            for (int i = compareWith.childCount(); i < root.childCount(); i++) {
+                newRoot.add(root.get(i));
+            }
+            
+            root = newRoot;
+            compareWith = newCompareWith;
+        }
+        
         this.root = root;
         this.compareWith = compareWith;
         this.maxDepth = getMaxDepth(root);

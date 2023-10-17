@@ -22,6 +22,8 @@ public class ProjectCompiler {
     
     private List<Path> classpath;
     
+    private boolean logOutput;
+    
     public ProjectCompiler(List<Path> classpath) {
         this.classpath = classpath;
     }
@@ -41,23 +43,25 @@ public class ProjectCompiler {
             try {
                 process = new ProcessRunner.Builder(command)
                         .workingDirectory(sourceDirectory)
-                        .captureOutput(false)
+                        .captureOutput(logOutput)
                         .run();
             } catch (IOException e) {
                 LOG.log(Level.SEVERE, "Failed to start compiler process", e);
                 return false;
             }
             
-//            String stdout = new String(process.getStdout());
-//            String stderr = new String(process.getStderr());
             
             LOG.info(() -> "Compilation " + (process.getExitCode() == 0 ? "" : "not ") + "successful");
-//            if (!stdout.isEmpty()) {
-//                LOG.fine(() -> "Compiler stdout:\n" + stdout);
-//            }
-//            if (!stderr.isEmpty()) {
-//                LOG.fine(() -> "Compiler stderr:\n" + stderr);
-//            }
+            if (logOutput) {
+                String stdout = new String(process.getStdout());
+                String stderr = new String(process.getStderr());
+                if (!stdout.isEmpty()) {
+                    LOG.fine(() -> "Compiler stdout:\n" + stdout);
+                }
+                if (!stderr.isEmpty()) {
+                    LOG.fine(() -> "Compiler stderr:\n" + stderr);
+                }
+            }
             
             try {
                 FileUtils.copyAllNonJavaSourceFiles(sourceDirectory, outputDirectory);
@@ -94,6 +98,10 @@ public class ProjectCompiler {
             .forEach(command::add);
         
         return command;
+    }
+    
+    public void setLogOutput(boolean logOutput) {
+        this.logOutput = logOutput;
     }
     
 }

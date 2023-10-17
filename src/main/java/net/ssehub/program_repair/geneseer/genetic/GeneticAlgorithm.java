@@ -92,7 +92,9 @@ public class GeneticAlgorithm {
         Path sourceDir = tempDirManager.createTemporaryDirectory();
         Writer.write(unmodifiedVariant.getAst(), project.getSourceDirectoryAbsolute(), sourceDir);
         
+        compiler.setLogOutput(true);
         EvaluationResultAndBinDirectory r = compileAndEvaluateVariant(unmodifiedVariant.getAst());
+        compiler.setLogOutput(false); // only log compiler output for unmodified original
         if (r.evaluation == null) {
             return Result.originalUnfit();
         }

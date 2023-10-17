@@ -377,46 +377,34 @@ public class GeneticAlgorithm {
         return mutated;
     }
     
+    private boolean containsSuspiciousChild(Node node) {
+        for (Node child : node.childIterator()) {
+            if (child.getMetadata(Metadata.SUSPICIOUSNESS) != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    private void findMatchingModifiedBlocks(Node node1, Node node2, List<Node> blocks1, List<Node> blocks2) {
+        if (containsSuspiciousChild(node1) || containsSuspiciousChild(node2)) {
+            if (!node1.getText().equals(node2.getText())) {
+                blocks1.add(node1);
+                blocks2.add(node2);
+            }
+        }
+        
+        for (int i = 0; i < Math.min(node1.childCount(), node2.childCount()); i++) {
+            findMatchingModifiedBlocks(node1.get(i), node2.get(i), blocks1, blocks2);
+        }
+    }
+    
     private List<Variant> crossover(Variant p1, Variant p2) {
         LOG.fine(() -> "Crossing over " + p1 + " and " + p2);
         
         List<Node> p1Parents = new LinkedList<>();
         List<Node> p2Parents = new LinkedList<>();
-        
-        p1.getAst().stream()
-              .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-              .map(node -> p1.getAst().findParent(node).get())
-              .forEach(p1Parent -> {
-                  Node p2Parent = p2.getAst().findEquivalentPath(p1.getAst(), p1Parent);
-                  
-                  if (p2Parent != null) {
-                      if (!p1Parent.getText().equals(p2Parent.getText()) && !p1Parents.contains(p1Parent)) {
-                          p1Parents.add(p1Parent);
-                          p2Parents.add(p2Parent);
-                      }
-                  } else {
-                      LOG.warning(() -> "Can't find parent of statement");
-                  }
-                  
-              });
-        p2.getAst().stream()
-                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                .map(node -> p2.getAst().findParent(node).get())
-                .forEach(p2Parent -> {
-                    Node p1Parent = p1.getAst().findEquivalentPath(p2.getAst(), p2Parent);
-                    
-                    if (p1Parent != null) {
-                        if (!p1Parent.getText().equals(p2Parent.getText()) && !p1Parents.contains(p1Parent)) {
-                            p1Parents.add(p1Parent);
-                            p2Parents.add(p2Parent);
-                        }
-                    } else {
-                        LOG.warning(() -> "Can't find parent of statement");
-                    }
-                    
-                });
-        
-        
+        findMatchingModifiedBlocks(p1.getAst(), p2.getAst(), p1Parents, p2Parents);
         LOG.fine(() -> "Found " + p1Parents.size() + " blocks with different content");
         
         Node c1 = p1.getAst();

@@ -70,10 +70,10 @@ public class Orchestrator {
     }
     
     public void runWithThreads(int numThreads) throws IOException {
+        LocalDateTime now = LocalDateTime.now();
         
         ConcurrentLinkedQueue<Bug> bugs = new ConcurrentLinkedQueue<>(defects4j.getBugs());
         
-        LocalDateTime now = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss", Locale.ROOT);
         Path outputPath = Path.of("output_" + formatter.format(now) + ".csv");
         LOG.info(() -> "Writing output to " + outputPath);

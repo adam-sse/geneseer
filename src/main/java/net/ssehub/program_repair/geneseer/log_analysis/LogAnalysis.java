@@ -37,6 +37,7 @@ public class LogAnalysis {
         analysisEntities = new LinkedList<>();
         
         analysisEntities.add(new AstNodeCount());
+        analysisEntities.add(new SuspiciousStatementCount());
         analysisEntities.add(new TotalElapsedTime());
         analysisEntities.add(new TimingCategories());
         

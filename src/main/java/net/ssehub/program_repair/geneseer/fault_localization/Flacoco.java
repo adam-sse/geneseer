@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -74,13 +75,14 @@ public class Flacoco {
         this.expectedFailures = new HashSet<>(expectedFailures);
     }
     
-    public LinkedHashMap<Location, Double> run(Path sourceDir, Path binDir) {
+    public LinkedHashMap<Location, Double> run(Path sourceDir, Path binDir, List<String> testMethodsWithHash) {
         try (Probe probe = Measurement.INSTANCE.start("flacoco")) {
             
             EntryPoint.INSTANCE.setup(rootDirectory, testExecutionClassPath, binDir);
             
             flacocoConfig.setBinJavaDir(List.of(binDir.toString()));
             flacocoConfig.setSrcJavaDir(List.of(sourceDir.toString()));
+            flacocoConfig.setjUnit4Tests(new LinkedHashSet<>(testMethodsWithHash));
             
             fr.spoonlabs.flacoco.api.Flacoco flacoco = new fr.spoonlabs.flacoco.api.Flacoco(flacocoConfig);
             FlacocoResult flacocoResult = flacoco.run();

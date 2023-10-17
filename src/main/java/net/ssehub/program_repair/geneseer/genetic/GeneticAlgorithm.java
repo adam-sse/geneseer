@@ -117,7 +117,7 @@ public class GeneticAlgorithm {
                 + unmodifiedVariant.getFitness() + " / " + getMaxFitness());
         bestFitness = unmodifiedVariant.getFitness();
         
-        annotateSuspiciousness(unmodifiedVariant, sourceDir, r.binDirectory);
+        annotateSuspiciousness(unmodifiedVariant, sourceDir, r.binDirectory, r.evaluation.getExecutedTests());
         
         List<Variant> population = new ArrayList<>(POPULATION_SIZE);
         for (int i = 0; i < POPULATION_SIZE; i++) {
@@ -211,11 +211,16 @@ public class GeneticAlgorithm {
         }
     }
 
-    private void annotateSuspiciousness(Variant variant, Path variantSourceDir, Path variantBinDir) {
+    private void annotateSuspiciousness(Variant variant, Path variantSourceDir, Path variantBinDir,
+            List<TestResult> tests) {
+        
         LOG.info("Measuring suspiciousness");
+        List<String> testMethodNamesWithHash = tests.stream()
+                .map(test -> test.testClass() + "#" + test.testMethod())
+                .toList();
         Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute());
         flacoco.setExpectedFailures(negativeTests);
-        LinkedHashMap<Location, Double> suspiciousness = flacoco.run(variantSourceDir, variantBinDir);
+        LinkedHashMap<Location, Double> suspiciousness = flacoco.run(variantSourceDir, variantBinDir, testMethodNamesWithHash);
         
         Map<String, Node> classes = new HashMap<>(variant.getAst().childCount());
         for (Node file : variant.getAst().childIterator()) {

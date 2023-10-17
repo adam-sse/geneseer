@@ -33,4 +33,8 @@ public class Configuration {
         return 0;
     }
     
+    public boolean getCoverageMatrixSimplified() {
+        return true;
+    }
+    
 }

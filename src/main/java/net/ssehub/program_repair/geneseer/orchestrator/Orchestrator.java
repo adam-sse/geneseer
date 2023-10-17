@@ -7,9 +7,11 @@ import java.lang.ProcessBuilder.Redirect;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -71,8 +73,9 @@ public class Orchestrator {
         
         ConcurrentLinkedQueue<Bug> bugs = new ConcurrentLinkedQueue<>(defects4j.getBugs());
         
-        LocalDate now = LocalDate.now();
-        Path outputPath = Path.of("output_" + now.toString() + ".csv");
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss", Locale.ROOT);
+        Path outputPath = Path.of("output_" + formatter.format(now) + ".csv");
         LOG.info(() -> "Writing output to " + outputPath);
         
         try (Writer writer = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {

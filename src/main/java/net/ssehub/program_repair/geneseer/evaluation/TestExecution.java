@@ -109,7 +109,7 @@ public class TestExecution implements AutoCloseable {
         return port;
     }
     
-    private void startProcess()throws EvaluationException {
+    private void startProcess() throws EvaluationException {
         try {
             if (withCoverage) {
                 jacocoPort = generateRandomPort();
@@ -129,6 +129,25 @@ public class TestExecution implements AutoCloseable {
         } catch (IOException e) {
             throw new EvaluationException("Failed to start runner process", e);
         }
+        
+        checkHeartbeat();
+    }
+    
+    private void checkHeartbeat() throws EvaluationException {
+        try  {
+            out.writeObject("HEARTBEAT");
+            out.flush();
+        } catch (IOException e) {
+            throw new EvaluationException("Communication with runner process failed", e);
+        }
+        
+        String answer = readResult();
+        
+        if (!answer.equals("alive")) {
+            throw new EvaluationException("Runner process does not reply with alive");
+        }
+        
+        LOG.fine("Heartbeat of runner is alive");
     }
     
     private void stopProcess() {

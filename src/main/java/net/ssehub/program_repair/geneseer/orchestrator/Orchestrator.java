@@ -12,7 +12,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -20,6 +19,7 @@ import java.util.stream.Collectors;
 import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
+import net.ssehub.program_repair.geneseer.util.TimeUtils;
 
 public class Orchestrator {
 
@@ -30,6 +30,40 @@ public class Orchestrator {
     private static final Logger LOG = Logger.getLogger(Orchestrator.class.getName());
     
     private Defects4jWrapper defects4j = new Defects4jWrapper();
+    
+    private List<Bug> bugs;
+    
+    private int bugsFinished;
+    
+    private long totalBugRuntimeInSeconds;
+    
+    private void init() throws IOException {
+        bugs = defects4j.getBugs();
+        LOG.info(() -> bugs.size() + " bugs in queue");
+        
+        bugsFinished = 0;
+        totalBugRuntimeInSeconds = 0;
+    }
+    
+    private synchronized Bug nextBug() {
+        Bug nextBug;
+        if (!bugs.isEmpty()) {
+            nextBug = bugs.remove(0);
+            LOG.info(() -> "Pulled " + nextBug + " from queue");
+
+            if (bugsFinished > 0) {
+                long secondsPerBug = totalBugRuntimeInSeconds / bugsFinished;
+                int remaining = bugs.size() + 1;
+                long secondsRemaining = secondsPerBug * remaining;
+                
+                LOG.info(() -> TimeUtils.formatSeconds(secondsPerBug) + " per bug times " + remaining
+                        + " remaining = " + TimeUtils.formatSeconds(secondsRemaining));
+            }
+        } else {
+            nextBug = null;
+        }
+        return nextBug;
+    }
     
     private String runOnSingleBug(Bug bug) throws IOException, IllegalArgumentException {
         LOG.info(() -> "[" + bug + "] Preparing project...");
@@ -49,7 +83,7 @@ public class Orchestrator {
         command.add(config.getCompilationClasspath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
         command.add(config.getTestExecutionClassPath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
         command.addAll(config.getTestClassNames());
-
+    
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectError(bug.getDirectory().resolve("geneseer.log").toFile());
         pb.redirectOutput(Redirect.PIPE);
@@ -61,18 +95,22 @@ public class Orchestrator {
         }
         
         if (ProcessRunner.untilNoInterruptedException(() -> process.waitFor()) != 0) {
-            throw new IOException("Failed to run geneseer on " + bug);
+            if (stdout.isEmpty()) {
+                throw new IOException("Failed to run geneseer on " + bug);
+            } else {
+                LOG.warning(() -> "Exit code of geneseer: " + process.exitValue());
+            }
+        } else {
+            LOG.info(() ->  "[" + bug + "] Completed");
         }
-        
-        LOG.info(() ->  "[" + bug + "] Completed");
         
         return bug.project() + ";" + bug.bug() + ";" + stdout;
     }
-    
+
     public void runWithThreads(int numThreads) throws IOException {
         LocalDateTime now = LocalDateTime.now();
         
-        ConcurrentLinkedQueue<Bug> bugs = new ConcurrentLinkedQueue<>(defects4j.getBugs());
+        init();
         
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss", Locale.ROOT);
         Path outputPath = Path.of("output_" + formatter.format(now) + ".csv");
@@ -84,7 +122,8 @@ public class Orchestrator {
             for (int i = 0; i < numThreads; i++) {
                 Thread th = new Thread(() -> {
                     Bug bug;
-                    while ((bug = bugs.poll()) != null) {
+                    while ((bug = nextBug()) != null) {
+                        long t0 = System.currentTimeMillis();
                         try {
                             String output = runOnSingleBug(bug);
                             synchronized (writer) {
@@ -93,6 +132,14 @@ public class Orchestrator {
                             }
                         } catch (IOException | IllegalArgumentException e) {
                             LOG.log(Level.SEVERE, "[" + bug + "] Failed to run", e);
+                        } finally {
+                            long t1 = System.currentTimeMillis();
+                            
+                            long runtimeSeconds = (t1 - t0) / 1000;
+                            synchronized (this) {
+                                bugsFinished++;
+                                totalBugRuntimeInSeconds += runtimeSeconds;
+                            }
                         }
                     }
                 });

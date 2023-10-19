@@ -64,6 +64,12 @@ public class TestExecution implements AutoCloseable {
     
     private TemporaryDirectoryManager tempDirManager;
     
+    private Path workingDirectory;
+    
+    private List<Path> classpath;
+    
+    private boolean withCoverage;
+    
     private Process process;
     
     private ObjectInputStream in;
@@ -78,13 +84,11 @@ public class TestExecution implements AutoCloseable {
     
     public TestExecution(Path workingDirectory, List<Path> classpath, boolean withCoverage) throws EvaluationException {
         tempDirManager = new TemporaryDirectoryManager();
+        this.workingDirectory = workingDirectory;
+        this.classpath = classpath;
+        this.withCoverage = withCoverage;
         
-        if (withCoverage) {
-            jacocoPort = generateRandomPort();
-        }
-        
-        
-        startProcess(workingDirectory, classpath, withCoverage);
+        startProcess();
     }
     
     public void setTimeout(long timeoutMs) {
@@ -105,9 +109,12 @@ public class TestExecution implements AutoCloseable {
         return port;
     }
     
-    private void startProcess(Path workingDirectory, List<Path> classpath, boolean withCoverage)
-            throws EvaluationException {
+    private void startProcess()throws EvaluationException {
         try {
+            if (withCoverage) {
+                jacocoPort = generateRandomPort();
+            }
+            
             List<String> command = createCommand(classpath, withCoverage);
             LOG.fine(() -> "Starting test runner proces: " + command);
             ProcessBuilder builder = new ProcessBuilder(command);
@@ -124,8 +131,7 @@ public class TestExecution implements AutoCloseable {
         }
     }
     
-    @Override
-    public void close() throws EvaluationException {
+    private void stopProcess() {
         LOG.fine("Stopping test execution process"); 
         
         process.destroy();
@@ -134,6 +140,11 @@ public class TestExecution implements AutoCloseable {
         if (!terminated) {
             process.destroyForcibly();
         }
+    }
+    
+    @Override
+    public void close() throws EvaluationException {
+        stopProcess();
         
         try {
             tempDirManager.close();
@@ -159,6 +170,8 @@ public class TestExecution implements AutoCloseable {
                 }
                 
                 if (rawIn.available() == 0) {
+                    stopProcess();
+                    startProcess();
                     throw new TimeoutException("Test execution did not finish in " + timeoutMs + " ms");
                 }
             }

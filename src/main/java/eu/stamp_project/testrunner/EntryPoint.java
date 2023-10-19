@@ -55,116 +55,94 @@ public class EntryPoint {
     }
     
     public CoveredTestResultPerTestMethod run(String... methodNames) throws EvaluationException {
-        CoveredTestResultPerTestMethod result;
-        if (Configuration.INSTANCE.getCoverageMatrixSimplified()) {
-            result = runWithClassAggregation(methodNames);
-        } else {
-            result = runAllMethodsIndividually(methodNames);
+        try (Probe probe = Measurement.INSTANCE.start("junit-coverage-matrix");
+                TestExecution testExec = new TestExecution(workingDirectoryInternal, classpath, true)) {
+            testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
+            
+            CoveredTestResultPerTestMethod result;
+            if (Configuration.INSTANCE.getCoverageMatrixSimplified()) {
+                result = runWithClassAggregation(testExec, methodNames);
+            } else {
+                result = runAllMethodsIndividually(testExec, methodNames);
+            }
+            
+            return result;
         }
-        return result;
     }
     
-    private CoveredTestResultPerTestMethod runAllMethodsIndividually(String... methodNames) throws EvaluationException {
+    private CoveredTestResultPerTestMethod runAllMethodsIndividually(TestExecution testExec, String... methodNames)
+            throws EvaluationException {
         LOG.info(() -> "Running coverage on " + methodNames.length + " test methods individually");
         
         CoveredTestResultPerTestMethodImpl coverage = new CoveredTestResultPerTestMethodImpl();
         
-        TestExecution testExec = null;
-        try (Probe probe = Measurement.INSTANCE.start("junit-coverage-matrix")) {
-            testExec = new TestExecution(workingDirectoryInternal, classpath, true);
-            testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
+        for (String methodName : methodNames) {
+            String className = methodName.split("#")[0];
+            methodName = methodName.split("#")[1];
             
-            for (String methodName : methodNames) {
-                String className = methodName.split("#")[0];
-                methodName = methodName.split("#")[1];
+            try {
+                TestResultWithCoverage result = testExec.executeTestMethodWithCoverage(className, methodName);
+                TestResult testResult = result.getTestResult();
                 
-                try {
-                    TestResultWithCoverage result = testExec.executeTestMethodWithCoverage(className, methodName);
-                    TestResult testResult = result.getTestResult();
-                    
-                    if (testResult != null) {
-                        if (testResult.isFailure()) {
-                            coverage.addFailingTest(testResult);
-                            LOG.fine(() -> "Failure: " + testResult + " " + testResult.failureMessage());
-                        } else {
-                            coverage.addPassingTest(testResult);
-                            LOG.fine(() -> "Passed: " + testResult);
-                        }
-                        
-                        CoverageInformation coverageInformation = transformJacocoObject(result.getCoverage());
-                        
-                        coverage.getCoverageResultsMap().put(className + "#" + methodName,
-                                new CoverageDetailed(coverageInformation));
-                        
+                if (testResult != null) {
+                    if (testResult.isFailure()) {
+                        coverage.addFailingTest(testResult);
+                        LOG.fine(() -> "Failure: " + testResult + " " + testResult.failureMessage());
                     } else {
-                        LOG.fine("Test " + className + "::" + methodName + " seems to be ignored");
-                        coverage.addIgnored(className + "#" + methodName);
+                        coverage.addPassingTest(testResult);
+                        LOG.fine(() -> "Passed: " + testResult);
                     }
-                } catch (TimeoutException e) {
-                    coverage.addFailingTest(new TestResult(className, methodName, "Timeout", "Timeout"));
                     
-                    testExec = new TestExecution(workingDirectoryInternal, classpath, true);
-                    testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
+                    CoverageInformation coverageInformation = transformJacocoObject(result.getCoverage());
+                    
+                    coverage.getCoverageResultsMap().put(className + "#" + methodName,
+                            new CoverageDetailed(coverageInformation));
+                    
+                } else {
+                    LOG.fine("Test " + className + "::" + methodName + " seems to be ignored");
+                    coverage.addIgnored(className + "#" + methodName);
                 }
-            }
-            
-        } catch (IOException e) {
-            throw new EvaluationException("Failed to parse jacoco data", e);
-            
-        } finally {
-            if (testExec != null) {
-                testExec.close();
+                
+            } catch (TimeoutException e) {
+                coverage.addFailingTest(new TestResult(className, methodName, "Timeout", "Timeout"));
             }
         }
         
         return coverage;
     }
     
-    private CoveredTestResultPerTestMethod runWithClassAggregation(String... methodNames) throws EvaluationException {
+    private CoveredTestResultPerTestMethod runWithClassAggregation(TestExecution testExec, String... methodNames)
+            throws EvaluationException {
         CoveredTestResultPerTestMethodImpl coverage = new CoveredTestResultPerTestMethodImpl();
         
-        TestExecution testExec = null;
-        try (Probe probe = Measurement.INSTANCE.start("junit-coverage-matrix")) {
-            testExec = new TestExecution(workingDirectoryInternal, classpath, true);
-            testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
+        Map<String, List<String>> methodsByClass = new HashMap<>();
+        
+        for (String methodName : methodNames) {
+            String className = methodName.split("#")[0];
+            methodName = methodName.split("#")[1];
             
-            Map<String, List<String>> methodsByClass = new HashMap<>();
-            
-            for (String methodName : methodNames) {
-                String className = methodName.split("#")[0];
-                methodName = methodName.split("#")[1];
-                
-                methodsByClass
-                        .computeIfAbsent(className, key -> new LinkedList<>())
-                        .add(methodName);
-            }
-            
-            LOG.info(() -> {
-                int methodCount = methodsByClass.values().stream()
-                            .mapToInt(List::size)
-                            .sum();
-                return "Running coverage on " + methodCount + " test methods (aggregated in "
-                        + methodsByClass.size() + " classes)";
-            });
-            
-            for (Map.Entry<String, List<String>> entry : methodsByClass.entrySet()) {
-                testExec = runOnClass(entry.getKey(), entry.getValue(), testExec, coverage);
-            }
-            
-        } catch (IOException e) {
-            throw new EvaluationException("Failed to parse jacoco data", e);
-            
-        } finally {
-            if (testExec != null) {
-                testExec.close();
-            }
+            methodsByClass
+                    .computeIfAbsent(className, key -> new LinkedList<>())
+                    .add(methodName);
         }
         
+        LOG.info(() -> {
+            int methodCount = methodsByClass.values().stream()
+                        .mapToInt(List::size)
+                        .sum();
+            return "Running coverage on " + methodCount + " test methods (aggregated in "
+                    + methodsByClass.size() + " classes)";
+        });
+        
+        for (Map.Entry<String, List<String>> entry : methodsByClass.entrySet()) {
+            runOnClass(entry.getKey(), entry.getValue(), testExec, coverage);
+        }
+            
         return coverage;
     }
     
-    private TestExecution runOnClass(String className, List<String> methodNames, TestExecution testExec,
-            CoveredTestResultPerTestMethodImpl coverage) throws EvaluationException, IOException {
+    private void runOnClass(String className, List<String> methodNames, TestExecution testExec,
+            CoveredTestResultPerTestMethodImpl coverage) throws EvaluationException {
 
         boolean containsFailure = false;
         List<TestResultWithCoverage> results = null;
@@ -177,8 +155,6 @@ public class EntryPoint {
                 }
             }
         } catch (TimeoutException e) {
-            testExec = new TestExecution(workingDirectoryInternal, classpath, true);
-            testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
             containsFailure = true;
         }
             
@@ -219,14 +195,12 @@ public class EntryPoint {
             LOG.fine(() -> "Test class " + className + " contains failing tests; running " + methodNames.size()
                     + " test methods individually");
             
-            testExec = runTestMethodsOneByOne(className, methodNames, testExec, coverage);
+            runTestMethodsOneByOne(className, methodNames, testExec, coverage);
         }
-        
-        return testExec;
     }
 
-    private TestExecution runTestMethodsOneByOne(String className, List<String> methodNames, TestExecution testExec,
-            CoveredTestResultPerTestMethodImpl coverage) throws EvaluationException, IOException {
+    private void runTestMethodsOneByOne(String className, List<String> methodNames, TestExecution testExec,
+            CoveredTestResultPerTestMethodImpl coverage) throws EvaluationException {
         
         for (String methodName : methodNames) {
             try {
@@ -253,23 +227,23 @@ public class EntryPoint {
                 }
             } catch (TimeoutException e) {
                 coverage.addFailingTest(new TestResult(className, methodName, "Timeout", "Timeout"));
-                
-                testExec = new TestExecution(workingDirectoryInternal, classpath, true);
-                testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
             }
         }
-        
-        return testExec;
     }
     
     private CoverageInformation transformJacocoObject(ExecutionDataStore executionData)
-            throws IOException {
+            throws EvaluationException {
 
         CoverageInformation covered = new CoverageInformation();
         
         final CoverageBuilder coverageBuilder = new CoverageBuilder();
         final Analyzer analyzer = new Analyzer(executionData, coverageBuilder);
-        analyzer.analyzeAll(classesDirectory.toFile());
+        
+        try {
+            analyzer.analyzeAll(classesDirectory.toFile());
+        } catch (IOException e) {
+            throw new EvaluationException("Failed to parse jacoco data", e);
+        }
 
         for (IClassCoverage classCoverage : coverageBuilder.getClasses()) {
 

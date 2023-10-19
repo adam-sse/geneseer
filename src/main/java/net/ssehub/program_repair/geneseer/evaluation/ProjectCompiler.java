@@ -29,26 +29,16 @@ public class ProjectCompiler {
     }
 
     public boolean compile(Path sourceDirectory, Path outputDirectory) {
+        boolean success;
+        
         try (Probe probe = Measurement.INSTANCE.start("compilation")) {
-            List<String> command;
-            try {
-                command = buildCommand(sourceDirectory, outputDirectory, classpath);
-            } catch (IOException e) {
-                LOG.log(Level.SEVERE, "Failed to find java source files", e);
-                return false;
-            }
+            List<String> command = buildCommand(sourceDirectory, outputDirectory, classpath);
             
             LOG.fine(() -> "Running " + command);
-            ProcessRunner process;
-            try {
-                process = new ProcessRunner.Builder(command)
+            ProcessRunner process = new ProcessRunner.Builder(command)
                         .workingDirectory(sourceDirectory)
                         .captureOutput(logOutput)
                         .run();
-            } catch (IOException e) {
-                LOG.log(Level.SEVERE, "Failed to start compiler process", e);
-                return false;
-            }
             
             
             LOG.info(() -> "Compilation " + (process.getExitCode() == 0 ? "" : "not ") + "successful");
@@ -69,8 +59,14 @@ public class ProjectCompiler {
                 LOG.log(Level.WARNING, "Failed to copy non-Java source files", e);
             }
             
-            return process.getExitCode() == 0;
+            success = process.getExitCode() == 0;
+            
+        } catch (IOException e) {
+            LOG.log(Level.SEVERE, "Failed to run compiler process", e);
+            success = false;
         }
+        
+        return success;
     }
     
     private List<String> buildCommand(Path sourceDirectory, Path outputDirectory, List<Path> classpath)
@@ -92,11 +88,11 @@ public class ProjectCompiler {
         }
         
         Files.walk(sourceDirectory)
-            .filter(Files::isRegularFile)
-            .map(p -> sourceDirectory.relativize(p))
-            .map(Path::toString)
-            .filter(file -> file.endsWith(".java"))
-            .forEach(command::add);
+                .filter(Files::isRegularFile)
+                .map(p -> sourceDirectory.relativize(p))
+                .map(Path::toString)
+                .filter(file -> file.endsWith(".java"))
+                .forEach(command::add);
         
         return command;
     }

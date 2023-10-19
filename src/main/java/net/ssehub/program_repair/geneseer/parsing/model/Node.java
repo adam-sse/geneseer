@@ -113,25 +113,30 @@ public abstract class Node implements Cloneable {
     }
     
     public Node cheapClone(Node modifiableAt) {
-        if (modifiableAt == this) {
-            return clone();
-        }
+        Node clone;
         
-        boolean anyChildDifferent = false;
-        List<Node> clonedChildren = children().size() > 0 ? new LinkedList<>() : null;
-        for (Node child : children()) {
-            Node cloned = child.cheapClone(modifiableAt);
-            clonedChildren.add(cloned);
-            if (cloned != child) {
-                anyChildDifferent = true;
+        if (modifiableAt == this) {
+            clone = clone();
+            
+        } else {
+            boolean anyChildDifferent = false;
+            List<Node> clonedChildren = children().size() > 0 ? new LinkedList<>() : null;
+            for (Node child : children()) {
+                Node cloned = child.cheapClone(modifiableAt);
+                clonedChildren.add(cloned);
+                if (cloned != child) {
+                    anyChildDifferent = true;
+                }
+            }
+            
+            if (!anyChildDifferent) {
+                clone = this;
+            } else {
+                clone = cloneWithGivenChildren(clonedChildren);
             }
         }
         
-        if (!anyChildDifferent) {
-            return this;
-        } else {
-            return cloneWithGivenChildren(clonedChildren);
-        }
+        return clone;
     }
     
     @Override
@@ -140,34 +145,43 @@ public abstract class Node implements Cloneable {
     protected abstract Node cloneWithGivenChildren(List<Node> clonedChildren);
     
     public Optional<Node> findParent(Node child) {
-        if (children().contains(child)) {
-            return Optional.of(this);
-        }
+        Optional<Node> result;
         
-        for (Node c : children()) {
-            Optional<Node> found = c.findParent(child);
-            if (found.isPresent()) {
-                return found;
+        if (children().contains(child)) {
+            result = Optional.of(this);
+            
+        } else {
+            result = Optional.empty();
+            for (Node c : children()) {
+                result = c.findParent(child);
+                if (result.isPresent()) {
+                    break;
+                }
             }
         }
-        return Optional.empty();
+        
+        return result;
     }
     
     public abstract boolean hasLine(int lineNumber);
     
     public Node findEquivalentPath(Node otherRoot, Node toFind) throws IllegalArgumentException {
-        if (otherRoot == toFind) {
-            return this;
-        }
+        Node result;
         
-        for (int i = 0; i < Math.min(children().size(), otherRoot.children().size()); i++) {
-            Node result = children().get(i).findEquivalentPath(otherRoot.children().get(i), toFind);
-            if (result != null) {
-                return result;
+        if (otherRoot == toFind) {
+            result = this;
+            
+        } else {
+            result = null;
+            for (int i = 0; i < Math.min(children().size(), otherRoot.children().size()); i++) {
+                result = children().get(i).findEquivalentPath(otherRoot.children().get(i), toFind);
+                if (result != null) {
+                    break;
+                }
             }
         }
         
-        return null;
+        return result;
     }
 
     public Iterable<Node> childIterator() {

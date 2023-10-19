@@ -43,14 +43,10 @@ public class Parser {
                 Files.walk(sourceDirectory)
                         .filter(f -> f.getFileName().toString().endsWith(".java"))
                         .forEach(f -> {
-                            try {
-                                Node file = parseFile(f);
-                                fix(file);
-                                file.setMetadata(Metadata.FILENAME, sourceDirectory.relativize(f));
-                                parseTree.add(file);
-                            } catch (IOException e) {
-                                throw new UncheckedIOException(e);
-                            }
+                            Node file = parseFile(f);
+                            fix(file);
+                            file.setMetadata(Metadata.FILENAME, sourceDirectory.relativize(f));
+                            parseTree.add(file);
                         });
             } catch (UncheckedIOException e) {
                 throw e.getCause();
@@ -60,21 +56,26 @@ public class Parser {
         }
     }
     
-    private static Node parseFile(Path file) throws IOException {
-        JavaLexer lexer = new JavaLexer(CharStreams.fromFileName(file.toString(),
-                Configuration.INSTANCE.getEncoding()));
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        JavaParser parser = new JavaParser(tokens);
-        parser.removeErrorListeners(); // remove the default console listener
-        parser.addErrorListener(new BaseErrorListener() {
-            @Override
-            public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line,
-                    int charPositionInLine, String msg, RecognitionException exc) {
-                LOG.warning(() -> file + ":" + line + ":" + charPositionInLine + " " + msg);
-            }
-        });
-        ParseTree antlrTree = parser.compilationUnit();
-        return convert(antlrTree);
+    private static Node parseFile(Path file) throws UncheckedIOException {
+        try {
+            JavaLexer lexer = new JavaLexer(CharStreams.fromFileName(file.toString(),
+                    Configuration.INSTANCE.getEncoding()));
+            CommonTokenStream tokens = new CommonTokenStream(lexer);
+            JavaParser parser = new JavaParser(tokens);
+            parser.removeErrorListeners(); // remove the default console listener
+            parser.addErrorListener(new BaseErrorListener() {
+                @Override
+                public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line,
+                        int charPositionInLine, String msg, RecognitionException exc) {
+                    LOG.warning(() -> file + ":" + line + ":" + charPositionInLine + " " + msg);
+                }
+            });
+            ParseTree antlrTree = parser.compilationUnit();
+            return convert(antlrTree);
+            
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
     
     private static Type getType(String typeName) {

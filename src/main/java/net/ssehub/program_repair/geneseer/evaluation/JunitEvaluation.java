@@ -27,16 +27,7 @@ public class JunitEvaluation {
                 testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
                 
                 for (String className : testClasses) {
-                    try {
-                        executedTests.addAll(testExec.executeTestClass(className));
-                        
-                    } catch (TimeoutException e) {
-                        executedTests.add(new TestResult(className, "<none>", "Timeout", "Timeout"));
-                        
-                        testExec.close();
-                        testExec = new TestExecution(workingDirectory, fullClasspath, false);
-                        testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
-                    }
+                    testExec = runTestOrTimeout(workingDirectory, fullClasspath, executedTests, testExec, className);
                 }
             } finally {
                 if (testExec != null) {
@@ -51,4 +42,19 @@ public class JunitEvaluation {
         }
     }
 
+    private TestExecution runTestOrTimeout(Path workingDirectory, List<Path> fullClasspath,
+            List<TestResult> executedTests, TestExecution testExec, String className) throws EvaluationException {
+        try {
+            executedTests.addAll(testExec.executeTestClass(className));
+            
+        } catch (TimeoutException e) {
+            executedTests.add(new TestResult(className, "<none>", "Timeout", "Timeout"));
+            
+            testExec.close();
+            testExec = new TestExecution(workingDirectory, fullClasspath, false);
+            testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
+        }
+        return testExec;
+    }
+    
 }

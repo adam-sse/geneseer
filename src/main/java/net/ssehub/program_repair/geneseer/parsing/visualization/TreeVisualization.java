@@ -41,6 +41,8 @@ public class TreeVisualization extends JComponent {
     
     private List<Map<Point, Node>> nodes;
     
+    private Graphics currentGraphics;
+    
     public TreeVisualization(Node root, Node compareWith) {
         if (compareWith != null) {
             InnerNode newRoot = new InnerNode(root.getType());
@@ -94,12 +96,14 @@ public class TreeVisualization extends JComponent {
                 closestNode = node.getValue();
             }
         }
-        
+
         return String.valueOf(closestNode != null ? closestNode.getText() : "");
     }
     
     @Override
     public void paint(Graphics graphics) {
+        currentGraphics = graphics;
+        
         nodes.forEach(Map::clear);
         
         int height = getHeight() - (2 * PADDING) - NODE_SIZE;
@@ -109,91 +113,95 @@ public class TreeVisualization extends JComponent {
         graphics.setColor(Color.WHITE);
         graphics.fillRect(PADDING, PADDING, getWidth() - PADDING * 2, getHeight() - PADDING * 2);
         
-        draw(graphics, root, compareWith, 0, PADDING, getWidth() - PADDING);
+        draw(root, compareWith, 0, PADDING, getWidth() - PADDING);
     }
     
-    private int draw(Graphics g, Node node, Node compareWith, int level, int minX, int maxX) {
+    private int draw(Node node, Node compareWith, int level, int minX, int maxX) {
         int xSize = maxX - minX;
         int middle = minX + (xSize / 2);
         
         int y = PADDING + level * (verticalGap + NODE_SIZE);
         
         if (node.getType() == Type.SINGLE_STATEMENT) {
-            g.setColor(Color.MAGENTA);
-            g.fillOval(middle - NODE_SIZE / 2, y, NODE_SIZE, NODE_SIZE);
+            currentGraphics.setColor(Color.MAGENTA);
+            currentGraphics.fillOval(middle - NODE_SIZE / 2, y, NODE_SIZE, NODE_SIZE);
         }
-        g.setColor(Color.BLACK);
-        g.drawOval(middle - NODE_SIZE / 2, y, NODE_SIZE, NODE_SIZE);
+        currentGraphics.setColor(Color.BLACK);
+        currentGraphics.drawOval(middle - NODE_SIZE / 2, y, NODE_SIZE, NODE_SIZE);
         
         nodes.get(level).put(new Point(middle, y + NODE_SIZE / 2), node);
         
         if (node.childCount() > 0) {
-            int xStart = minX;
-            
-            List<Integer> matchingIndices = null;
-            if (compareWith != null) {
-                matchingIndices = new ArrayList<>(node.childCount());
-                List<Integer> unmatchedIndices = IntStream.range(0, compareWith.childCount())
-                        .mapToObj(Integer::valueOf)
-                        .collect(Collectors.toList());
-                for (Node child : node.childIterator()) {
-                    int match = compareWith.indexOf(child);
-                    matchingIndices.add(match);
-                    if (match != -1) {
-                        unmatchedIndices.remove((Integer) match);
-                    }
-                }
-                
-                for (int unmatchedIndex : unmatchedIndices) {
-                    Set<Node> nodesOfUnmatched = compareWith.get(unmatchedIndex).stream().collect(Collectors.toSet());
-                    int maxNodesMatched = 0;
-                    int bestMatch = -1;
-                    for (int i = 0; i < matchingIndices.size(); i++) {
-                        if (matchingIndices.get(i) == -1) {
-                            Set<Node> ourNodes = node.get(i).stream().collect(Collectors.toSet());
-                            ourNodes.retainAll(nodesOfUnmatched);
-                            if (maxNodesMatched < ourNodes.size()) {
-                                maxNodesMatched = ourNodes.size();
-                                bestMatch = i;
-                            }
-                        }
-                    }
-                    
-                    if (bestMatch != -1) {
-                        matchingIndices.set(bestMatch, unmatchedIndex);
-                    }
-                }
-            }
-            
-            for (int i = 0; i < node.childCount(); i++) {
-                Node child = node.get(i);
-                
-                Color edgeColor = Color.GRAY;
-                Node compareWithChild = null;
-                
-                if (this.compareWith != null) {
-                    if (compareWith != null) {
-                        if (matchingIndices.get(i) != -1) {
-                            compareWithChild = compareWith.get(matchingIndices.get(i));
-                        }
-                    }
-                    if (child != compareWithChild) {
-                        edgeColor = Color.RED;
-                    }
-                }
-                
-                int childWidth = getWidth(child);
-                int childMiddle = draw(g, child, compareWithChild, level + 1, xStart, xStart + childWidth);
-                
-                xStart += childWidth + HORIZONTAL_GAP;
-                
-                int childY = y + NODE_SIZE + verticalGap;
-                g.setColor(edgeColor);
-                g.drawLine(middle, y + NODE_SIZE, childMiddle, childY);
-            }
+            drawChildren(node, compareWith, level, minX, middle);
         }
         
         return middle;
+    }
+
+    private void drawChildren(Node node, Node compareWith, int level, int minX, int middle) {
+        int y = PADDING + level * (verticalGap + NODE_SIZE) + NODE_SIZE;
+        int xStart = minX;
+        
+        List<Integer> matchingIndices = null;
+        if (compareWith != null) {
+            matchingIndices = new ArrayList<>(node.childCount());
+            List<Integer> unmatchedIndices = IntStream.range(0, compareWith.childCount())
+                    .mapToObj(Integer::valueOf)
+                    .collect(Collectors.toList());
+            for (Node child : node.childIterator()) {
+                int match = compareWith.indexOf(child);
+                matchingIndices.add(match);
+                if (match != -1) {
+                    unmatchedIndices.remove((Integer) match);
+                }
+            }
+            
+            for (int unmatchedIndex : unmatchedIndices) {
+                Set<Node> nodesOfUnmatched = compareWith.get(unmatchedIndex).stream().collect(Collectors.toSet());
+                int maxNodesMatched = 0;
+                int bestMatch = -1;
+                for (int i = 0; i < matchingIndices.size(); i++) {
+                    if (matchingIndices.get(i) == -1) {
+                        Set<Node> ourNodes = node.get(i).stream().collect(Collectors.toSet());
+                        ourNodes.retainAll(nodesOfUnmatched);
+                        if (maxNodesMatched < ourNodes.size()) {
+                            maxNodesMatched = ourNodes.size();
+                            bestMatch = i;
+                        }
+                    }
+                }
+                
+                if (bestMatch != -1) {
+                    matchingIndices.set(bestMatch, unmatchedIndex);
+                }
+            }
+        }
+        
+        for (int i = 0; i < node.childCount(); i++) {
+            Node child = node.get(i);
+            
+            Color edgeColor = Color.GRAY;
+            Node compareWithChild = null;
+            
+            if (this.compareWith != null) {
+                if (compareWith != null) {
+                    if (matchingIndices.get(i) != -1) {
+                        compareWithChild = compareWith.get(matchingIndices.get(i));
+                    }
+                }
+                if (child != compareWithChild) {
+                    edgeColor = Color.RED;
+                }
+            }
+            
+            int childWidth = getWidth(child);
+            int childMiddle = draw(child, compareWithChild, level + 1, xStart, xStart + childWidth);
+            
+            xStart += childWidth + HORIZONTAL_GAP;
+            
+            currentGraphics.setColor(edgeColor);
+            currentGraphics.drawLine(middle, y, childMiddle, y + verticalGap);
+        }
     }
     
     private static int getMaxDepth(Node node) {

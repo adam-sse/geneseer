@@ -133,7 +133,7 @@ public class Orchestrator {
             String r = result;
             LOG.info(() ->  "[" + bug + "] Completed: " + r);
         }
-        return result;
+        return bug.project() + ";" + bug.bug() + ";" + result;
     }
     
     private String runOnSingleBug(Bug bug) throws IOException, IllegalArgumentException {

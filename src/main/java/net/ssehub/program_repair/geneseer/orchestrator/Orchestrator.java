@@ -97,6 +97,10 @@ public class Orchestrator {
         if (stdout.endsWith("\n")) {
             stdout = stdout.substring(0, stdout.length() - 1);
         }
+        String result = null;
+        if (stdout.indexOf(';') != -1) {
+            result = stdout.substring(0, stdout.indexOf(';'));
+        }
         
         if (ProcessRunner.untilNoInterruptedException(() -> process.waitFor()) != 0) {
             if (stdout.isEmpty()) {
@@ -105,7 +109,8 @@ public class Orchestrator {
                 LOG.warning(() -> "Exit code of geneseer: " + process.exitValue());
             }
         } else {
-            LOG.info(() ->  "[" + bug + "] Completed");
+            String r = result;
+            LOG.info(() ->  "[" + bug + "] Completed" + (r != null ? (": " + r) : ""));
         }
         
         return bug.project() + ";" + bug.bug() + ";" + stdout;

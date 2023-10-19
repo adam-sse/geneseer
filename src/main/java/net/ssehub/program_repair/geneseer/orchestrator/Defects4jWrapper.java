@@ -63,10 +63,12 @@ public class Defects4jWrapper {
         Path absoluteBinDirectory = checkoutDirectory.resolve(binDirectory);
         
         compilationClasspath = getMultiplePathsProperty(checkoutDirectory, "cp.compile");
-        compilationClasspath = normalizeAndRemoveBinDirectory(compilationClasspath, absoluteBinDirectory, checkoutDirectory);
+        compilationClasspath = normalizeAndRemoveBinDirectory(compilationClasspath, absoluteBinDirectory,
+                checkoutDirectory);
         
         testExecutionClassPath = getMultiplePathsProperty(checkoutDirectory, "cp.test");
-        testExecutionClassPath = normalizeAndRemoveBinDirectory(testExecutionClassPath, absoluteBinDirectory, checkoutDirectory);
+        testExecutionClassPath = normalizeAndRemoveBinDirectory(testExecutionClassPath, absoluteBinDirectory,
+                checkoutDirectory);
         
         testClassNames = List.of(exportProperty(checkoutDirectory,
                 Configuration.INSTANCE.getTestsToRun() == TestsToRun.ALL_TESTS ? "tests.all" : "tests.relevant"));
@@ -105,13 +107,7 @@ public class Defects4jWrapper {
         return classpath.stream()
                 .map(p -> checkoutDirectory.resolve(p))
                 .filter(p -> !p.equals(absoluteBinDirectory))
-                .map(p -> {
-                    if (p.startsWith(checkoutDirectory)) {
-                        return checkoutDirectory.relativize(p);
-                    } else {
-                        return p;
-                    }
-                })
+                .map(p -> p.startsWith(checkoutDirectory) ? checkoutDirectory.relativize(p) : p)
                 .collect(Collectors.toList());
     }
     

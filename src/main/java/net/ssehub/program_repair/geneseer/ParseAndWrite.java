@@ -49,7 +49,9 @@ public class ParseAndWrite {
             .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
             .peek(statements::add)
             .forEach(n -> {
-                List<LeafNode> leafNodes = n.stream().filter(l -> l.getType() == Type.LEAF).map(l -> (LeafNode) l).toList();
+                List<LeafNode> leafNodes = n.stream()
+                        .filter(l -> l.getType() == Type.LEAF).map(l -> (LeafNode) l)
+                        .toList();
                 int minLine = -1;
                 int maxLine = -1;
                 for (LeafNode leaf : leafNodes) {

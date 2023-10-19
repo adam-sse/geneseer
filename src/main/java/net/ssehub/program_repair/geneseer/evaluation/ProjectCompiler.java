@@ -73,7 +73,8 @@ public class ProjectCompiler {
         }
     }
     
-    private List<String> buildCommand(Path sourceDirectory, Path outputDirectory, List<Path> classpath) throws IOException {
+    private List<String> buildCommand(Path sourceDirectory, Path outputDirectory, List<Path> classpath)
+            throws IOException {
         List<String> command = new LinkedList<>();
         command.add(Configuration.INSTANCE.getJavaCompilerBinaryPath());
         

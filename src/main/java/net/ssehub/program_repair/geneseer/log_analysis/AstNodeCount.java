@@ -31,11 +31,13 @@ class AstNodeCount implements AnalysisEntity {
 
     @Override
     public List<String> getCsvContent() {
+        List<String> result;
         if (astNodeCount >= 0) {
-            return List.of(Long.toString(astNodeCount));
+            result = List.of(Long.toString(astNodeCount));
         } else {
-            return List.of("");
+            result = List.of("");
         }
+        return result;
     }
 
 }

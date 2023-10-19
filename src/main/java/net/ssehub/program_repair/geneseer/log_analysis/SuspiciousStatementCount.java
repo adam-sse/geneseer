@@ -12,7 +12,8 @@ class SuspiciousStatementCount implements AnalysisEntity {
         if (index != -1) {
             LogLine line = logLines.get(index);
             
-            String countString = line.content().substring(0, line.content().length() - " suspicious statements".length()); 
+            String countString = line.content()
+                    .substring(0, line.content().length() - " suspicious statements".length()); 
             
             try {
                 suspiciousStatementCount = Integer.parseInt(countString);
@@ -31,11 +32,13 @@ class SuspiciousStatementCount implements AnalysisEntity {
 
     @Override
     public List<String> getCsvContent() {
+        List<String> result;
         if (suspiciousStatementCount >= 0) {
-            return List.of(Integer.toString(suspiciousStatementCount));
+            result = List.of(Integer.toString(suspiciousStatementCount));
         } else {
-            return List.of("");
+            result = List.of("");
         }
+        return result;
     }
 
 }

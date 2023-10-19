@@ -10,13 +10,14 @@ import java.util.regex.Pattern;
 class TimingCategories implements AnalysisEntity {
 
     private static final String[] TIMING_CATEGORIES = {
-            "genetic-algorithm",
-            "parsing",
-            "code-writing",
-            "compilation",
-            "junit-evaluation",
-            "flacoco",
-            "junit-coverage-matrix"};
+        "genetic-algorithm",
+        "parsing",
+        "code-writing",
+        "compilation",
+        "junit-evaluation",
+        "flacoco",
+        "junit-coverage-matrix"
+    };
     
     private static final Pattern TIMING_MEASUREMENT = Pattern.compile("^    (?<name>.+): (?<milliseconds>[0-9]+) ms$");
     

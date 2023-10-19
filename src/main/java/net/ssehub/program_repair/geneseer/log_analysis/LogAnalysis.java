@@ -21,11 +21,13 @@ public class LogAnalysis {
     }
     
     private List<String> readFile(Path file) throws IOException {
+        List<String> result;
         try {
-            return Files.readAllLines(file);
+            result = Files.readAllLines(file);
         } catch (MalformedInputException e) {
-            return Files.readAllLines(file, StandardCharsets.ISO_8859_1);
+            result = Files.readAllLines(file, StandardCharsets.ISO_8859_1);
         }
+        return result;
     }
 
     private void analyze(List<String> lines) throws IOException, IllegalArgumentException {

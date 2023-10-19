@@ -207,7 +207,8 @@ public class GeneticAlgorithm {
             return Result.foundFix(unmodifiedVariant.getFitness(), getMaxFitness(), generation);
         } else {
             LOG.info(() -> "Stopping because limit of " + MAX_GENERATIONS + " generations reached");
-            return Result.generationLimitReached(MAX_GENERATIONS, unmodifiedVariant.getFitness(), getMaxFitness(), bestFitness);
+            return Result.generationLimitReached(MAX_GENERATIONS, unmodifiedVariant.getFitness(), getMaxFitness(),
+                    bestFitness);
         }
     }
 
@@ -220,7 +221,8 @@ public class GeneticAlgorithm {
                 .toList();
         Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute());
         flacoco.setExpectedFailures(negativeTests);
-        LinkedHashMap<Location, Double> suspiciousness = flacoco.run(variantSourceDir, variantBinDir, testMethodNamesWithHash);
+        LinkedHashMap<Location, Double> suspiciousness = flacoco.run(variantSourceDir, variantBinDir,
+                testMethodNamesWithHash);
         
         Map<String, Node> classes = new HashMap<>(variant.getAst().childCount());
         for (Node file : variant.getAst().childIterator()) {
@@ -314,7 +316,8 @@ public class GeneticAlgorithm {
         LOG.fine(() -> ss.size() + " suspicious statements -> mutation probability " + mutationProbability);
         for (int i = 0; i < suspiciousStatements.size(); i++) {
             Node suspicious = suspiciousStatements.get(i);
-            if (random.nextDouble() < mutationProbability && random.nextDouble() < (double) suspicious.getMetadata(Metadata.SUSPICIOUSNESS)) {
+            if (random.nextDouble() < mutationProbability 
+                    && random.nextDouble() < (double) suspicious.getMetadata(Metadata.SUSPICIOUSNESS)) {
                 
                 mutated = true;
                 Node oldAstRoot = astRoot;
@@ -344,7 +347,8 @@ public class GeneticAlgorithm {
                     otherStatement.stream()
                             .filter(n -> n.getType() == Type.LEAF)
                             .forEach(n -> ((LeafNode) n).clearOriginalPosition());
-                    otherStatement.setMetadata(Metadata.SUSPICIOUSNESS, suspicious.getMetadata(Metadata.SUSPICIOUSNESS));
+                    otherStatement.setMetadata(Metadata.SUSPICIOUSNESS,
+                            suspicious.getMetadata(Metadata.SUSPICIOUSNESS));
                     
                     if (rand == 1) {
                         Node s = suspicious;
@@ -378,12 +382,14 @@ public class GeneticAlgorithm {
     }
     
     private boolean containsSuspiciousChild(Node node) {
+        boolean result = false;
         for (Node child : node.childIterator()) {
             if (child.getMetadata(Metadata.SUSPICIOUSNESS) != null) {
-                return true;
+                result = true;
+                break;
             }
         }
-        return false;
+        return result;
     }
     
     private void findMatchingModifiedBlocks(Node node1, Node node2, List<Node> blocks1, List<Node> blocks2) {
@@ -462,10 +468,8 @@ public class GeneticAlgorithm {
         
         Variant v1 = new Variant(c1);
         v1.addMutation("child " + p1.getName() + " " + p2.getName());
-        
         Variant v2 = new Variant(c2);
         v2.addMutation("child " + p2.getName() + " " + p1.getName());
-        
         LOG.fine(() -> "Created child of " + p1.getName() + " and " + p2.getName() + ": " + v1);
         LOG.fine(() -> "Created child of " + p1.getName() + " and " + p2.getName() + ": " + v2);
         return List.of(v1, v2);
@@ -498,7 +502,8 @@ public class GeneticAlgorithm {
         }
     }
     
-    private static class EvaluationResultAndBinDirectory {EvaluationResult evaluation; Path binDirectory; }
+    private static record EvaluationResultAndBinDirectory(EvaluationResult evaluation, Path binDirectory) {
+    }
     
     private EvaluationResultAndBinDirectory compileAndEvaluateVariant(Node variant) throws IOException {
         EvaluationResult evalResult = null;
@@ -512,8 +517,8 @@ public class GeneticAlgorithm {
             JunitEvaluation evaluation = new JunitEvaluation();
             
             try {
-                evalResult = evaluation.runTests(
-                        project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute(), binDirectory, project.getTestClassNames());
+                evalResult = evaluation.runTests(project.getProjectDirectory(),
+                        project.getTestExecutionClassPathAbsolute(), binDirectory, project.getTestClassNames());
                 
                 
             } catch (EvaluationException e) {
@@ -530,10 +535,7 @@ public class GeneticAlgorithm {
             // ignore, will be cleaned up later when tempDirManager is closed
         }
         
-        EvaluationResultAndBinDirectory result = new EvaluationResultAndBinDirectory();
-        result.evaluation = evalResult;
-        result.binDirectory = binDirectory;
-        return result;
+        return new EvaluationResultAndBinDirectory(evalResult, binDirectory);
     }
     
     private double getFitness(EvaluationResult evaluation) {
@@ -566,12 +568,14 @@ public class GeneticAlgorithm {
     }
     
     private int indexWithMaxFitness(List<Variant> population) {
+        int result = -1;
         for (int i = 0; i < population.size(); i++) {
             if (population.get(i).getFitness() >= getMaxFitness()) {
-                return i;
+                result = i;
+                break;
             }
         }
-        return -1;
+        return result;
     }
     
 }

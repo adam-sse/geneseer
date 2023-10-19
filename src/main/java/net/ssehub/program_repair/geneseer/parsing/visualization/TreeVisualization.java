@@ -99,17 +99,17 @@ public class TreeVisualization extends JComponent {
     }
     
     @Override
-    public void paint(Graphics g) {
+    public void paint(Graphics graphics) {
         nodes.forEach(Map::clear);
         
         int height = getHeight() - (2 * PADDING) - NODE_SIZE;
         int heightPerLevel = height / (maxDepth - 1);
         verticalGap = heightPerLevel - NODE_SIZE;
         
-        g.setColor(Color.WHITE);
-        g.fillRect(PADDING, PADDING, getWidth() - PADDING * 2, getHeight() - PADDING * 2);
+        graphics.setColor(Color.WHITE);
+        graphics.fillRect(PADDING, PADDING, getWidth() - PADDING * 2, getHeight() - PADDING * 2);
         
-        draw(g, root, compareWith, 0, PADDING, getWidth() - PADDING);
+        draw(graphics, root, compareWith, 0, PADDING, getWidth() - PADDING);
     }
     
     private int draw(Graphics g, Node node, Node compareWith, int level, int minX, int maxX) {

@@ -53,7 +53,8 @@ public class TestExecution implements AutoCloseable {
                     .readAllBytes());
             
             Files.write(JACOCO_AGENT, JunitEvaluation.class.getClassLoader()
-                    .getResourceAsStream("net/ssehub/program_repair/geneseer/evaluation/org.jacoco.agent.jar").readAllBytes());
+                    .getResourceAsStream("net/ssehub/program_repair/geneseer/evaluation/org.jacoco.agent.jar")
+                    .readAllBytes());
 
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "Failed to create temporary directory with evaluation jars", e);
@@ -158,7 +159,7 @@ public class TestExecution implements AutoCloseable {
                 }
                 
                 if (rawIn.available() == 0) {
-                    throw new TimeoutException("Test execution did not finish in " + timeoutMs +" ms");
+                    throw new TimeoutException("Test execution did not finish in " + timeoutMs + " ms");
                 }
             }
             

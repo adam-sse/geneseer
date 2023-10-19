@@ -80,8 +80,12 @@ public class Orchestrator {
         command.add("net.ssehub.program_repair.geneseer.Geneseer");
         command.add(bug.getDirectory().toString());
         command.add(config.getSourceDirectory().toString());
-        command.add(config.getCompilationClasspath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
-        command.add(config.getTestExecutionClassPath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+        command.add(config.getCompilationClasspath().stream()
+                .map(Path::toString)
+                .collect(Collectors.joining(File.pathSeparator)));
+        command.add(config.getTestExecutionClassPath().stream()
+                .map(Path::toString)
+                .collect(Collectors.joining(File.pathSeparator)));
         command.addAll(config.getTestClassNames());
     
         ProcessBuilder pb = new ProcessBuilder(command);
@@ -147,7 +151,10 @@ public class Orchestrator {
                 threads.add(th);
             }
             
-            threads.forEach(t -> ProcessRunner.untilNoInterruptedException(() -> {t.join(); return 0;}));
+            threads.forEach(t -> ProcessRunner.untilNoInterruptedException(() -> {
+                t.join();
+                return 0;
+            }));
             LOG.info("All threads done");
         }
     }

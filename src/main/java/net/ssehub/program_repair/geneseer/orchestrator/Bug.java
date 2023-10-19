@@ -11,11 +11,13 @@ public record Bug(String project, int bug) {
     }
     
     public Charset getEncoding() {
+        Charset result;
         if (project.equals("Lang")) {
-            return StandardCharsets.ISO_8859_1;
+            result = StandardCharsets.ISO_8859_1;
         } else {
-            return StandardCharsets.UTF_8;
+            result = StandardCharsets.UTF_8;
         }
+        return result;
     }
     
     @Override

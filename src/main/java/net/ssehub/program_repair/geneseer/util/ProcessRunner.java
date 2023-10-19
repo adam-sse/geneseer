@@ -118,7 +118,6 @@ public class ProcessRunner {
         } else {
             this.exitCode = untilNoInterruptedException(() -> process.waitFor());
         }
-        
         if (captureOutput) {
             untilNoInterruptedException(() -> {
                 stdoutCapture.join();

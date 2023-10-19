@@ -11,8 +11,8 @@ import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
 public class JunitEvaluation {
 
-    public EvaluationResult runTests(Path workingDirectory, List<Path> classpath, Path classes, List<String> testClasses)
-            throws EvaluationException {
+    public EvaluationResult runTests(Path workingDirectory, List<Path> classpath, Path classes,
+            List<String> testClasses) throws EvaluationException {
         
         try (Probe probe = Measurement.INSTANCE.start("junit-evaluation")) {
             

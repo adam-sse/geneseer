@@ -31,7 +31,8 @@ public class Geneseer {
             project = readProjectFromCommandLine(args);
         } catch (IllegalArgumentException e) {
             LOG.severe("Command line arguments invalid: " + e.getMessage());
-            LOG.severe("Usage: <projectDirectory> <sourceDirectory> <compilationClasspath> <testExecutionClassPath> <testClassName>...");
+            LOG.severe("Usage: <projectDirectory> <sourceDirectory> <compilationClasspath> <testExecutionClassPath> "
+                    + "<testClassName>...");
             System.exit(1);
         }
         

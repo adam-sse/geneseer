@@ -61,14 +61,15 @@ public class Parser {
     }
     
     private static Node parseFile(Path file) throws IOException {
-        JavaLexer lexer = new JavaLexer(CharStreams.fromFileName(file.toString(), Configuration.INSTANCE.getEncoding()));
+        JavaLexer lexer = new JavaLexer(CharStreams.fromFileName(file.toString(),
+                Configuration.INSTANCE.getEncoding()));
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         JavaParser parser = new JavaParser(tokens);
         parser.removeErrorListeners(); // remove the default console listener
         parser.addErrorListener(new BaseErrorListener() {
             @Override
             public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line,
-                    int charPositionInLine, String msg, RecognitionException e) {
+                    int charPositionInLine, String msg, RecognitionException exc) {
                 LOG.warning(() -> file + ":" + line + ":" + charPositionInLine + " " + msg);
             }
         });
@@ -77,20 +78,28 @@ public class Parser {
     }
     
     private static Type getType(String typeName) {
+        Type result;
+        
         switch (typeName) {
         
         case "CompilationUnitContext":
-            return Type.COMPILATION_UNIT;
+            result = Type.COMPILATION_UNIT;
+            break;
         
         case "BlockStatementContext":
-            return Type.SINGLE_STATEMENT;
+            result = Type.SINGLE_STATEMENT;
+            break;
             
         case "BlockContext":
-            return Type.COMPOSIT_STATEMENT;
+            result = Type.COMPOSIT_STATEMENT;
+            break;
         
         default:
-            return Type.OTHER;
+            result = Type.OTHER;
+            break;
         }
+        
+        return result;
     }
     
     private static Node convert(ParseTree antlrTree) {

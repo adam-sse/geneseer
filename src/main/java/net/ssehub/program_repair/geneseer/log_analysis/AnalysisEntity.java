@@ -12,12 +12,14 @@ interface AnalysisEntity {
     public List<String> getCsvContent();
     
     static int findIndexByContent(List<LogLine> logLines, Predicate<String> contentPredicate) {
+        int result = -1;
         for (int i = 0; i < logLines.size(); i++) {
             if (contentPredicate.test(logLines.get(i).content())) {
-                return i;
+                result = i;
+                break;
             }
         }
-        return -1;
+        return result;
     }
     
 }

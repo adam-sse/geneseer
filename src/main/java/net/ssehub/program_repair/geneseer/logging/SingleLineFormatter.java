@@ -9,7 +9,7 @@ import java.util.logging.LogRecord;
 class SingleLineFormatter extends Formatter {
 
     private static final DateTimeFormatter TIME_FORMATTER
-    = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT).withZone(ZoneId.systemDefault());
+            = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT).withZone(ZoneId.systemDefault());
 
     @Override
     public String format(LogRecord record) {

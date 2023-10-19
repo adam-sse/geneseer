@@ -55,11 +55,13 @@ public class EntryPoint {
     }
     
     public CoveredTestResultPerTestMethod run(String... methodNames) throws EvaluationException {
+        CoveredTestResultPerTestMethod result;
         if (Configuration.INSTANCE.getCoverageMatrixSimplified()) {
-            return runWithClassAggregation(methodNames);
+            result = runWithClassAggregation(methodNames);
         } else {
-            return runAllMethodsIndividually(methodNames);
+            result = runAllMethodsIndividually(methodNames);
         }
+        return result;
     }
     
     private CoveredTestResultPerTestMethod runAllMethodsIndividually(String... methodNames) throws EvaluationException {
@@ -91,7 +93,8 @@ public class EntryPoint {
                         
                         CoverageInformation coverageInformation = transformJacocoObject(result.getCoverage());
                         
-                        coverage.getCoverageResultsMap().put(className + "#" + methodName, new CoverageDetailed(coverageInformation));
+                        coverage.getCoverageResultsMap().put(className + "#" + methodName,
+                                new CoverageDetailed(coverageInformation));
                         
                     } else {
                         LOG.fine("Test " + className + "::" + methodName + " seems to be ignored");
@@ -209,7 +212,8 @@ public class EntryPoint {
             
             int p = numPassed;
             int i = numIgnored;
-            LOG.fine(() -> "Ran test class " + className + " as a whole; " + p + " passed test methods and " + i + " ignored");
+            LOG.fine(() -> "Ran test class " + className + " as a whole; " + p + " passed test methods and "
+                    + i + " ignored");
             
         } else {
             LOG.fine(() -> "Test class " + className + " contains failing tests; running " + methodNames.size()
@@ -240,7 +244,8 @@ public class EntryPoint {
                     
                     CoverageInformation coverageInformation = transformJacocoObject(result.getCoverage());
                     
-                    coverage.getCoverageResultsMap().put(className + "#" + methodName, new CoverageDetailed(coverageInformation));
+                    coverage.getCoverageResultsMap().put(className + "#" + methodName,
+                            new CoverageDetailed(coverageInformation));
                     
                 } else {
                     LOG.fine("Test " + className + "::" + methodName + " seems to be ignored");
@@ -294,6 +299,11 @@ public class EntryPoint {
      * Compatibility with original test-runner class as used by flacoco 
      */
     
+    
+    // checkstyle: stop declaration order check
+    // checkstyle: stop visibility modifier check
+    // checkstyle: stop member name check
+    
     public static boolean useOptionsFile;
     
     public static File workingDirectory;
@@ -309,6 +319,10 @@ public class EntryPoint {
     public static String jacocoAgentIncludes;
     
     public static ParserOptions.CoverageTransformerDetail coverageDetail;
+    
+    // checkstyle: resume declaration order check
+    // checkstyle: resume visibility modifier check
+    // checkstyle: resume member name check
     
     public static CoveredTestResultPerTestMethod runOnlineCoveredTestResultPerTestMethods(
             String classpath, List<String> targetSourceClasses, List<String> targetTestClasses,

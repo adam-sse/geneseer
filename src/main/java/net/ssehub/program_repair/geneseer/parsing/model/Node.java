@@ -22,11 +22,11 @@ public abstract class Node implements Cloneable {
         SUSPICIOUSNESS,
     }
     
+    protected boolean locked;
+    
     private Type type;
     
     private Map<Metadata, Object> metadata;
-    
-    protected boolean locked;
     
     private String textCache;
     
@@ -79,13 +79,16 @@ public abstract class Node implements Cloneable {
     }
     
     public final String getText() {
+        String result;
         if (locked) {
             if (textCache == null) {
                 textCache = getTextImpl();
             }
-            return textCache;
+            result = textCache;
+        } else {
+            result = getTextImpl();
         }
-        return getTextImpl();
+        return result;
     }
     
     protected abstract String getTextImpl();

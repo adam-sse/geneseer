@@ -89,127 +89,80 @@ public class GeneticAlgorithm {
         createUnmodifiedVariant();
         
         LOG.info("Evaluating unmodified variant");
+        boolean originalIsFit = evaluateUnmodifiedOriginal();
+        
+        Result result;
+        if (originalIsFit) {
+            
+            LOG.info("Creating initial population");
+            List<Variant> population = createInitialPopulation();
+            
+            while (indexWithMaxFitness(population) < 0 && ++generation <= MAX_GENERATIONS) {
+                singleGeneration(population);
+            }
+            
+            int index = indexWithMaxFitness(population);
+            if (index >= 0) {
+                LOG.info(() -> "Variant with max fitness: " + population.get(index));
+                result = Result.foundFix(unmodifiedVariant.getFitness(), getMaxFitness(), generation);
+            } else {
+                LOG.info(() -> "Stopping because limit of " + MAX_GENERATIONS + " generations reached");
+                result = Result.generationLimitReached(MAX_GENERATIONS, unmodifiedVariant.getFitness(), getMaxFitness(),
+                        bestFitness);
+            }
+            
+        } else {
+            result = Result.originalUnfit();
+        }
+        
+        return result;
+    }
+
+    private void createUnmodifiedVariant() throws IOException {
+        Node ast = Parser.parse(project.getSourceDirectoryAbsolute());
+        ast.lock();
+        LOG.fine(() -> ast.stream().count() + " nodes in AST");
+        
+        this.unmodifiedVariant = new Variant(ast);
+    }
+
+    private boolean evaluateUnmodifiedOriginal() throws IOException {
         Path sourceDir = tempDirManager.createTemporaryDirectory();
         Writer.write(unmodifiedVariant.getAst(), project.getSourceDirectoryAbsolute(), sourceDir);
         
         compiler.setLogOutput(true);
         EvaluationResultAndBinDirectory r = compileAndEvaluateVariant(unmodifiedVariant.getAst());
         compiler.setLogOutput(false); // only log compiler output for unmodified original
-        if (r.evaluation == null) {
-            return Result.originalUnfit();
-        }
         
-        negativeTests = new HashSet<>();
-        positiveTests = new HashSet<>();
-        for (TestResult test : r.evaluation.getExecutedTests()) {
-            if (test.isFailure()) {
-                negativeTests.add(test.toString());
-            } else {
-                positiveTests.add(test.toString());
-            }
-        }
-        
-        LOG.fine(() -> "Negative tests (" + negativeTests.size() + "): " + negativeTests);
-        LOG.fine(() -> "Positive tests (" + positiveTests.size() + "): " + positiveTests);
-        
-        unmodifiedVariant.setFitness(getFitness(r.evaluation));
-        LOG.info(() -> "Fitness of unmodified variant (" + unmodifiedVariant.getName() + ") and max fitness: "
-                + unmodifiedVariant.getFitness() + " / " + getMaxFitness());
-        bestFitness = unmodifiedVariant.getFitness();
-        
-        annotateSuspiciousness(unmodifiedVariant, sourceDir, r.binDirectory, r.evaluation.getExecutedTests());
-        
-        List<Variant> population = new ArrayList<>(POPULATION_SIZE);
-        for (int i = 0; i < POPULATION_SIZE; i++) {
-            population.add(newVariant());
-        }
-        LOG.fine(() -> "Population fitness: " + population.stream()
-                .map(v -> v.getName() + "(" + v.getFitness() + ")")
-                .toList());
-        
-        while (indexWithMaxFitness(population) < 0 && ++generation <= MAX_GENERATIONS) {
-            LOG.info(() -> "Generation " + generation);
+        boolean originalIsFit;
+        if (r.evaluation != null) {
+            originalIsFit = true;
             
-            List<Variant> viable = population.stream()
-                    .filter(v -> v.getFitness() > 0.0)
-                    .sorted(Comparator.comparingDouble(Variant::getFitness).reversed())
-                    .toList();
-            population.clear();
-            LOG.fine(() -> "Viable: " + viable.stream()
-                    .map(v -> v.getName() + "(" + v.getFitness() + ")")
-                    .toList());
-            
-            double sum = viable.stream().mapToDouble(Variant::getFitness).sum();
-            List<Double> cummulativeProbabilityDistribution = new ArrayList<>(viable.size());
-            viable.stream()
-                    .map(Variant::getFitness)
-                    .map(f -> f / sum)
-                    .forEach(cummulativeProbabilityDistribution::add);
-            double s = 0.0;
-            for (int i = 0; i < cummulativeProbabilityDistribution.size(); i++) {
-                double value = cummulativeProbabilityDistribution.get(i);
-                cummulativeProbabilityDistribution.set(i, value + s);
-                s += value;
-            }
-            
-            List<Integer> selected;
-            if (viable.size() > POPULATION_SIZE / 2) {
-                selected = stochasticUniversalSampling(cummulativeProbabilityDistribution, POPULATION_SIZE / 2);
-            } else {
-                selected = IntStream.range(0, viable.size()).mapToObj(Integer::valueOf).toList();
-            }
-            
-            for (int i = 0; i < selected.size(); i += 2) {
-                Variant p1 = viable.get(i);
-                
-                if (i + 1 < viable.size()) {
-                    Variant p2 = viable.get(i + 1);
-                    
-                    List<Variant> children = crossover(p1, p2);
-                    
-                    population.add(p1);
-                    population.add(p2);
-                    population.addAll(children);
-                    
+            negativeTests = new HashSet<>();
+            positiveTests = new HashSet<>();
+            for (TestResult test : r.evaluation.getExecutedTests()) {
+                if (test.isFailure()) {
+                    negativeTests.add(test.toString());
                 } else {
-                    population.add(p1);
+                    positiveTests.add(test.toString());
                 }
             }
             
-            while (population.size() < POPULATION_SIZE) {
-                population.add(newVariant());
-            }
+            LOG.fine(() -> "Negative tests (" + negativeTests.size() + "): " + negativeTests);
+            LOG.fine(() -> "Positive tests (" + positiveTests.size() + "): " + positiveTests);
             
-            for (Variant variant : population) {
-                boolean mutated = mutate(variant);
-                
-                if (mutated || !variant.hasFitness()) {
-                    double fitness = getFitness(evaluateVariant(variant.getAst()));
-                    LOG.fine(() -> "Fitness: " + fitness);
-                    variant.setFitness(fitness);
-                    LOG.fine(() -> variant.toString());
-                    if (fitness > bestFitness) {
-                        bestFitness = fitness;
-                        LOG.info(() -> "New best variant: " + variant.getName());
-                    }
-                } else {
-                    LOG.fine(() -> "Skipping fitness evaluation because variant was not mutated: " + variant);
-                }
-            }
-            LOG.fine(() -> "Population fitness: " + population.stream()
-                    .map(v -> v.getName() + "(" + v.getFitness() + ")")
-                    .toList());
-        }
-
-        int index = indexWithMaxFitness(population);
-        if (index >= 0) {
-            LOG.info(() -> "Variant with max fitness: " + population.get(index));
-            return Result.foundFix(unmodifiedVariant.getFitness(), getMaxFitness(), generation);
+            unmodifiedVariant.setFitness(getFitness(r.evaluation));
+            LOG.info(() -> "Fitness of unmodified variant (" + unmodifiedVariant.getName() + ") and max fitness: "
+                    + unmodifiedVariant.getFitness() + " / " + getMaxFitness());
+            bestFitness = unmodifiedVariant.getFitness();
+            
+            annotateSuspiciousness(unmodifiedVariant, sourceDir, r.binDirectory, r.evaluation.getExecutedTests());
+            
         } else {
-            LOG.info(() -> "Stopping because limit of " + MAX_GENERATIONS + " generations reached");
-            return Result.generationLimitReached(MAX_GENERATIONS, unmodifiedVariant.getFitness(), getMaxFitness(),
-                    bestFitness);
+            originalIsFit = false;
         }
+        
+        return originalIsFit;
     }
 
     private void annotateSuspiciousness(Variant variant, Path variantSourceDir, Path variantBinDir,
@@ -277,15 +230,81 @@ public class GeneticAlgorithm {
         }
         LOG.info(() -> suspiciousStatementCount.get() + " suspicious statements");
     }
-    
-    private void createUnmodifiedVariant() throws IOException {
-        Node ast = Parser.parse(project.getSourceDirectoryAbsolute());
-        ast.lock();
-        LOG.fine(() -> ast.stream().count() + " nodes in AST");
-        
-        this.unmodifiedVariant = new Variant(ast);
+
+    private List<Variant> createInitialPopulation() throws IOException {
+        List<Variant> population = new ArrayList<>(POPULATION_SIZE);
+        for (int i = 0; i < POPULATION_SIZE; i++) {
+            population.add(newVariant());
+        }
+        LOG.fine(() -> "Population fitness: " + population.stream()
+                .map(v -> v.getName() + "(" + v.getFitness() + ")")
+                .toList());
+        return population;
     }
-    
+
+    private void singleGeneration(List<Variant> population) throws IOException {
+        LOG.info(() -> "Generation " + generation);
+        
+        List<Variant> viable = population.stream()
+                .filter(v -> v.getFitness() > 0.0)
+                .sorted(Comparator.comparingDouble(Variant::getFitness).reversed())
+                .toList();
+        population.clear();
+        LOG.fine(() -> "Viable: " + viable.stream()
+                .map(v -> v.getName() + "(" + v.getFitness() + ")")
+                .toList());
+        
+        List<Double> cummulativeProbabilityDistribution = calculateCummulativeProbabilityDistribution(viable);
+        
+        List<Integer> selected;
+        if (viable.size() > POPULATION_SIZE / 2) {
+            selected = stochasticUniversalSampling(cummulativeProbabilityDistribution, POPULATION_SIZE / 2);
+        } else {
+            selected = IntStream.range(0, viable.size()).mapToObj(Integer::valueOf).toList();
+        }
+        
+        for (int i = 0; i < selected.size(); i += 2) {
+            Variant p1 = viable.get(i);
+            
+            if (i + 1 < viable.size()) {
+                Variant p2 = viable.get(i + 1);
+                
+                List<Variant> children = crossover(p1, p2);
+                
+                population.add(p1);
+                population.add(p2);
+                population.addAll(children);
+                
+            } else {
+                population.add(p1);
+            }
+        }
+        
+        while (population.size() < POPULATION_SIZE) {
+            population.add(newVariant());
+        }
+        
+        for (Variant variant : population) {
+            boolean mutated = mutate(variant);
+            
+            if (mutated || !variant.hasFitness()) {
+                double fitness = getFitness(evaluateVariant(variant.getAst()));
+                LOG.fine(() -> "Fitness: " + fitness);
+                variant.setFitness(fitness);
+                LOG.fine(() -> variant.toString());
+                if (fitness > bestFitness) {
+                    bestFitness = fitness;
+                    LOG.info(() -> "New best variant: " + variant.getName());
+                }
+            } else {
+                LOG.fine(() -> "Skipping fitness evaluation because variant was not mutated: " + variant);
+            }
+        }
+        LOG.fine(() -> "Population fitness: " + population.stream()
+                .map(v -> v.getName() + "(" + v.getFitness() + ")")
+                .toList());
+    }
+
     private Variant newVariant() throws IOException {
         Variant variant = new Variant(unmodifiedVariant.getAst());
         LOG.fine("Creating new variant " + variant.getName());
@@ -320,54 +339,9 @@ public class GeneticAlgorithm {
                     && random.nextDouble() < (double) suspicious.getMetadata(Metadata.SUSPICIOUSNESS)) {
                 
                 mutated = true;
-                Node oldAstRoot = astRoot;
-                astRoot = astRoot.cheapClone(suspicious);
-                variant.setAst(astRoot);
-                suspicious = astRoot.findEquivalentPath(oldAstRoot, suspicious);
-                Node parent = astRoot.findParent(suspicious).get();
                 
-                int rand = random.nextInt(2); // TODO: no swap yet
-                if (rand == 0) {
-                    // delete
-                    Node s = suspicious;
-                    LOG.fine(() -> "Mutating " + variant.getName() + ": deleting " + s.toString());
-                    
-                    boolean removed = parent.remove(suspicious);
-                    if (!removed) {
-                        LOG.warning(() -> "Failed to delete statement " + s.toString());
-                    } else {
-                        variant.addMutation("del " + s.toString());
-                    }
-                    
-                } else {
-                    List<Node> allStatements = astRoot.stream()
-                            .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
-                            .toList();
-                    Node otherStatement = allStatements.get(random.nextInt(allStatements.size())).clone();
-                    otherStatement.stream()
-                            .filter(n -> n.getType() == Type.LEAF)
-                            .forEach(n -> ((LeafNode) n).clearOriginalPosition());
-                    otherStatement.setMetadata(Metadata.SUSPICIOUSNESS,
-                            suspicious.getMetadata(Metadata.SUSPICIOUSNESS));
-                    
-                    if (rand == 1) {
-                        Node s = suspicious;
-                        LOG.fine(() -> "Mutating " + variant.getName() + ": inserting " + otherStatement.toString()
-                                + " before " + s.toString());
-                        
-                        // insert
-                        int index = parent.indexOf(suspicious);
-                        parent.add(index, otherStatement);
-                        variant.addMutation("ins " + otherStatement.toString() + " before " + s.toString());
-                        
-                        
-                    } else {
-                        // swap
-                        // TODO
-                    }
-                }
+                astRoot = singleMutation(variant, astRoot, suspicious);
                 
-                astRoot.lock();
                 suspiciousStatements = astRoot.stream()
                         .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                         .toList();
@@ -380,29 +354,57 @@ public class GeneticAlgorithm {
         
         return mutated;
     }
-    
-    private boolean containsSuspiciousChild(Node node) {
-        boolean result = false;
-        for (Node child : node.childIterator()) {
-            if (child.getMetadata(Metadata.SUSPICIOUSNESS) != null) {
-                result = true;
-                break;
+
+    private Node singleMutation(Variant variant, Node astRoot, Node suspicious) {
+        Node oldAstRoot = astRoot;
+        astRoot = astRoot.cheapClone(suspicious);
+        variant.setAst(astRoot);
+        suspicious = astRoot.findEquivalentPath(oldAstRoot, suspicious);
+        Node parent = astRoot.findParent(suspicious).get();
+        
+        int rand = random.nextInt(2); // TODO: no swap yet
+        if (rand == 0) {
+            // delete
+            Node s = suspicious;
+            LOG.fine(() -> "Mutating " + variant.getName() + ": deleting " + s.toString());
+            
+            boolean removed = parent.remove(suspicious);
+            if (!removed) {
+                LOG.warning(() -> "Failed to delete statement " + s.toString());
+            } else {
+                variant.addMutation("del " + s.toString());
             }
-        }
-        return result;
-    }
-    
-    private void findMatchingModifiedBlocks(Node node1, Node node2, List<Node> blocks1, List<Node> blocks2) {
-        if (containsSuspiciousChild(node1) || containsSuspiciousChild(node2)) {
-            if (!node1.getText().equals(node2.getText())) {
-                blocks1.add(node1);
-                blocks2.add(node2);
+            
+        } else {
+            List<Node> allStatements = astRoot.stream()
+                    .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+                    .toList();
+            Node otherStatement = allStatements.get(random.nextInt(allStatements.size())).clone();
+            otherStatement.stream()
+                    .filter(n -> n.getType() == Type.LEAF)
+                    .forEach(n -> ((LeafNode) n).clearOriginalPosition());
+            otherStatement.setMetadata(Metadata.SUSPICIOUSNESS,
+                    suspicious.getMetadata(Metadata.SUSPICIOUSNESS));
+            
+            if (rand == 1) {
+                Node s = suspicious;
+                LOG.fine(() -> "Mutating " + variant.getName() + ": inserting " + otherStatement.toString()
+                        + " before " + s.toString());
+                
+                // insert
+                int index = parent.indexOf(suspicious);
+                parent.add(index, otherStatement);
+                variant.addMutation("ins " + otherStatement.toString() + " before " + s.toString());
+                
+                
+            } else {
+                // swap
+                // TODO
             }
         }
         
-        for (int i = 0; i < Math.min(node1.childCount(), node2.childCount()); i++) {
-            findMatchingModifiedBlocks(node1.get(i), node2.get(i), blocks1, blocks2);
-        }
+        astRoot.lock();
+        return astRoot;
     }
     
     private List<Variant> crossover(Variant p1, Variant p2) {
@@ -426,7 +428,7 @@ public class GeneticAlgorithm {
             }
             
             int cutoff = random.nextInt(Math.min(c1Parent.childCount(), c2Parent.childCount()) + 1);
-
+    
             Node newC1Parent = new InnerNode(c1Parent.getType());
             Node newC2Parent = new InnerNode(c2Parent.getType());
             
@@ -473,6 +475,49 @@ public class GeneticAlgorithm {
         LOG.fine(() -> "Created child of " + p1.getName() + " and " + p2.getName() + ": " + v1);
         LOG.fine(() -> "Created child of " + p1.getName() + " and " + p2.getName() + ": " + v2);
         return List.of(v1, v2);
+    }
+
+    private void findMatchingModifiedBlocks(Node node1, Node node2, List<Node> blocks1, List<Node> blocks2) {
+        if (containsSuspiciousChild(node1) || containsSuspiciousChild(node2)) {
+            if (!node1.getText().equals(node2.getText())) {
+                blocks1.add(node1);
+                blocks2.add(node2);
+            }
+        }
+        
+        for (int i = 0; i < Math.min(node1.childCount(), node2.childCount()); i++) {
+            findMatchingModifiedBlocks(node1.get(i), node2.get(i), blocks1, blocks2);
+        }
+    }
+
+    private boolean containsSuspiciousChild(Node node) {
+        boolean result = false;
+        for (Node child : node.childIterator()) {
+            if (child.getMetadata(Metadata.SUSPICIOUSNESS) != null) {
+                result = true;
+                break;
+            }
+        }
+        return result;
+    }
+    
+    private List<Double> calculateCummulativeProbabilityDistribution(List<Variant> variants) {
+        double sum = variants.stream().mapToDouble(Variant::getFitness).sum();
+        
+        List<Double> cummulativeProbabilityDistribution = new ArrayList<>(variants.size());
+        variants.stream()
+                .map(Variant::getFitness)
+                .map(f -> f / sum)
+                .forEach(cummulativeProbabilityDistribution::add);
+        
+        double s = 0.0;
+        for (int i = 0; i < cummulativeProbabilityDistribution.size(); i++) {
+            double value = cummulativeProbabilityDistribution.get(i);
+            cummulativeProbabilityDistribution.set(i, value + s);
+            s += value;
+        }
+        
+        return cummulativeProbabilityDistribution;
     }
     
     private List<Integer> stochasticUniversalSampling(List<Double> cummulativeProbabilityDistribution, int sampleSize) {

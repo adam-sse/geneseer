@@ -72,7 +72,7 @@ public class Geneseer {
         }
     }
     
-    private static Project readProjectFromCommandLine(String[] args) throws IllegalArgumentException {
+    static Project readProjectFromCommandLine(String[] args) throws IllegalArgumentException {
         if (args.length < 5) {
             throw new IllegalArgumentException("Too few arguments supplied");
         }

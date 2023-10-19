@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -90,6 +91,10 @@ public class Defects4jWrapper {
         
         return new Project(checkoutDirectory, sourceDirectory, compilationClasspath,
                 testExecutionClassPath, testClassNames);
+    }
+    
+    public Set<String> getFailingTests(Bug bug) throws IOException {
+        return Arrays.stream(exportProperty(bug.getDirectory(), "tests.trigger")).collect(Collectors.toSet());
     }
     
     private void checkout(Bug bug) throws IOException {

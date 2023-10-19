@@ -7,14 +7,19 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Configuration.TestsToRun;
 import net.ssehub.program_repair.geneseer.Project;
+import net.ssehub.program_repair.geneseer.util.FileUtils;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
 
 public class Defects4jWrapper {
+    
+    private static final Logger LOG = Logger.getLogger(Defects4jWrapper.class.getName());
     
     public List<Bug> getBugs() throws IOException, IllegalArgumentException {
         ProcessRunner process = new ProcessRunner.Builder("defects4j", "pids")
@@ -79,6 +84,10 @@ public class Defects4jWrapper {
             testExecutionClassPath.add(Path.of("build/classes"));
         }
         
+        if (bug.project().equals("Time")) {
+            copyTimeTzData(checkoutDirectory);
+        }
+        
         return new Project(checkoutDirectory, sourceDirectory, compilationClasspath,
                 testExecutionClassPath, testClassNames);
     }
@@ -90,6 +99,13 @@ public class Defects4jWrapper {
                     .run();
             if (process.getExitCode() != 0) {
                 throw new IOException("Failed to checkout " + bug);
+            }
+            
+            process = new ProcessRunner.Builder("defects4j", "compile")
+                    .workingDirectory(bug.getDirectory())
+                    .run();
+            if (process.getExitCode() != 0) {
+                throw new IOException("Failed to compile " + bug);
             }
         }
     }
@@ -124,6 +140,25 @@ public class Defects4jWrapper {
         }
         
         return new String(process.getStdout()).split("\n");
+    }
+    
+    private void copyTimeTzData(Path checkoutDirectory) {
+        Path from = checkoutDirectory.resolve("target/classes/org/joda/time/tz/data");
+        if (Files.isDirectory(from)) {
+            Path to = checkoutDirectory.resolve("src/main/java/org/joda/time/tz/data");
+            
+            if (!Files.isDirectory(to)) {
+                try {
+                    Files.createDirectories(to);
+                    FileUtils.copyAllNonJavaSourceFiles(from, to);
+                } catch (IOException e) {
+                    LOG.log(Level.WARNING, "Failed to copy timezone data in Time project", e);
+                }
+            }
+            
+        } else {
+            LOG.warning("Directory target/classes/org/joda/time/tz/data does not exist in Time project");
+        }
     }
     
 }

@@ -116,7 +116,7 @@ public class TestExecution implements AutoCloseable {
             }
             
             List<String> command = createCommand(classpath, withCoverage);
-            LOG.fine(() -> "Starting test runner proces: " + command);
+            LOG.fine(() -> "Starting test runner process: " + command + " in " + workingDirectory);
             ProcessBuilder builder = new ProcessBuilder(command);
             builder.directory(workingDirectory.toFile());
             builder.redirectError(Redirect.INHERIT); // TODO: for now, we just hope there is no error output

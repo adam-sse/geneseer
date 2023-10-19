@@ -1,6 +1,7 @@
 package net.ssehub.program_repair.geneseer.util;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.ProcessBuilder.Redirect;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -58,6 +59,35 @@ public class ProcessRunner {
         
     }
     
+    public static class CaptureThread extends Thread {
+        
+        private InputStream input;
+        
+        private String name;
+        
+        private byte[] output;
+        
+        public CaptureThread(InputStream input, String streamName) {
+            setName(streamName + " capture");
+            this.input = input;
+            this.name = streamName;
+        }
+        
+        public byte[] getOutput() {
+            return output;
+        }
+        
+        @Override
+        public void run() {
+            try {
+                output = input.readAllBytes();
+            } catch (IOException e) {
+                LOG.log(Level.WARNING, "Failed to read " + name, e);
+            }
+        }
+        
+    }
+    
     private ProcessRunner(List<String> command, Path workingDirectory, long timeoutMs, boolean captureOutput)
             throws IOException {
         
@@ -73,23 +103,11 @@ public class ProcessRunner {
         
         Process process = builder.start();
         
-        Thread stdoutCapture;
-        Thread stderrCapture;
+        CaptureThread stdoutCapture;
+        CaptureThread stderrCapture;
         if (captureOutput) {
-            stdoutCapture = new Thread(() -> {
-                try {
-                    this.stdout = process.getInputStream().readAllBytes();
-                } catch (IOException e) {
-                    LOG.log(Level.WARNING, "Failed to read process stdout", e);
-                }
-            }, "stdout-capture");
-            stderrCapture = new Thread(() -> {
-                try {
-                    this.stderr = process.getErrorStream().readAllBytes();
-                } catch (IOException e) {
-                    LOG.log(Level.WARNING, "Failed to read process stderr", e);
-                }
-            }, "stderr-capture");
+            stdoutCapture = new CaptureThread(process.getInputStream(), "process stdout");
+            stderrCapture = new CaptureThread(process.getErrorStream(), "process stderr");
             
             stdoutCapture.setDaemon(true);
             stderrCapture.setDaemon(true);
@@ -121,10 +139,12 @@ public class ProcessRunner {
         if (captureOutput) {
             untilNoInterruptedException(() -> {
                 stdoutCapture.join();
+                this.stdout = stdoutCapture.getOutput();
                 return null;
             });
             untilNoInterruptedException(() -> {
                 stderrCapture.join();
+                this.stderr = stderrCapture.getOutput();
                 return null;
             });
         }

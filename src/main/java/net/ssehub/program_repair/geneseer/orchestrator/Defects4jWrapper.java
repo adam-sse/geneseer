@@ -140,7 +140,7 @@ public class Defects4jWrapper {
                 .run();
         
         if (process.getExitCode() != 0) {
-            throw new IOException("Failed to get property " + propertyName + "in " + checkoutDirectory + ": " 
+            throw new IOException("Failed to get property " + propertyName + " in " + checkoutDirectory + ": " 
                     + new String(process.getStderr()));
         }
         

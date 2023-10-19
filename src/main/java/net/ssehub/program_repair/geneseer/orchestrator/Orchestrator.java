@@ -37,14 +37,6 @@ public class Orchestrator {
     
     private long totalBugRuntimeInSeconds;
     
-    private void init() throws IOException {
-        bugs = defects4j.getBugs();
-        LOG.info(() -> bugs.size() + " bugs in queue");
-        
-        bugsFinished = 0;
-        totalBugRuntimeInSeconds = 0;
-    }
-    
     private synchronized Bug nextBug() {
         Bug nextBug;
         if (!bugs.isEmpty()) {
@@ -115,11 +107,21 @@ public class Orchestrator {
         
         return bug.project() + ";" + bug.bug() + ";" + stdout;
     }
+    
+    public void runOnAllBugs() throws IOException {
+        bugs = defects4j.getBugs();
+        LOG.info(() -> "Running on all " + bugs.size() + " bugs");
+    }
+    
+    public void setBugs(List<Bug> bugs) {
+        this.bugs = bugs;
+        LOG.info(() -> "Running on selected " + bugs.size() + " bugs");
+    }
 
     public void runWithThreads(int numThreads) throws IOException {
         LocalDateTime now = LocalDateTime.now();
-        
-        init();
+        bugsFinished = 0;
+        totalBugRuntimeInSeconds = 0;
         
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss", Locale.ROOT);
         Path outputPath = Path.of("output_" + formatter.format(now) + ".csv");
@@ -164,8 +166,22 @@ public class Orchestrator {
         }
     }
     
-    public static void main(String[] args) throws IllegalArgumentException, IOException {
-        new Orchestrator().runWithThreads(Integer.parseInt(args[0]));
+    public static void main(String[] args) throws IOException {
+        int numThreads = Integer.parseInt(args[0]);
+        
+        Orchestrator orchestrator = new Orchestrator();
+        if (args.length == 1) {
+            orchestrator.runOnAllBugs();
+        } else {
+            List<Bug> bugs = new LinkedList<>();
+            for (int i = 1; i < args.length; i++) {
+                String[] parts = args[i].split("/");
+                bugs.add(new Bug(parts[0], Integer.parseInt(parts[1])));
+            }
+            orchestrator.setBugs(bugs);
+        }
+        
+        orchestrator.runWithThreads(numThreads);
     }
     
 }

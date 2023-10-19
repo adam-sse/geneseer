@@ -9,6 +9,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import net.ssehub.program_repair.geneseer.Configuration;
+import net.ssehub.program_repair.geneseer.Configuration.TestsToRun;
 import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
 
@@ -66,7 +68,8 @@ public class Defects4jWrapper {
         testExecutionClassPath = getMultiplePathsProperty(checkoutDirectory, "cp.test");
         testExecutionClassPath = normalizeAndRemoveBinDirectory(testExecutionClassPath, absoluteBinDirectory, checkoutDirectory);
         
-        testClassNames = List.of(exportProperty(checkoutDirectory, "tests.all"));
+        testClassNames = List.of(exportProperty(checkoutDirectory,
+                Configuration.INSTANCE.getTestsToRun() == TestsToRun.ALL_TESTS ? "tests.all" : "tests.relevant"));
         
         if (bug.project().equals("Closure")) {
             compilationClasspath.add(Path.of("lib/junit.jar"));

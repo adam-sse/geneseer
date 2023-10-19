@@ -34,7 +34,14 @@ public class Configuration {
     }
     
     public boolean getCoverageMatrixSimplified() {
-        return true;
+        return false;
+    }
+    
+    public enum TestsToRun {
+        ALL_TESTS, RELEVANT_TESTS
+    }
+    public TestsToRun getTestsToRun() {
+        return TestsToRun.RELEVANT_TESTS;
     }
     
 }

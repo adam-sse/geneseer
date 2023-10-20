@@ -2,6 +2,7 @@ package net.ssehub.program_repair.geneseer;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
@@ -62,22 +63,26 @@ public class SetupTest {
                 try {
                     EvaluationResult evaluationResult = evaluation.runTests(project.getProjectDirectory(),
                             project.getTestExecutionClassPathAbsolute(), binDirectory, project.getTestClassNames());
+
+                    LOG.info(() -> "Failing tests: " + evaluationResult.getFailures());
                     
                     System.out.println("failing tests:");
-                    
                     for (TestResult failure : evaluationResult.getFailures()) {
                         System.out.println(failure.toString());
                     }
                     
                 } catch (EvaluationException e) {
+                    LOG.log(Level.SEVERE, "Failed evaluation", e);
                     System.out.println("failed evaluation");
                 }
                 
             } else {
+                LOG.severe("Failed compilation");
                 System.out.println("failed compilation");
             }
             
         } catch (IOException e) {
+            LOG.log(Level.SEVERE, "IOException", e);
             System.out.println("IOException: " + e.getMessage());
         }
     }

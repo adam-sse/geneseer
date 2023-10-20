@@ -97,6 +97,10 @@ public class Defects4jWrapper {
             testExecutionClassPath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
             testExecutionClassPath.add(Path.of("build/classes/main"));
             
+        } else if (bug.project().equals("Math") && bug.bug() >= 100) {
+            compilationClasspath.add(Path.of(
+                    "/home/krafczyk/defects4j/framework/projects/Math/lib/commons-discovery-0.5.jar"));
+            
         } else if (bug.project().equals("Time")) {
             copyTimeTzData(bug, checkoutDirectory);
         }

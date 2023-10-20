@@ -41,6 +41,8 @@ public class Orchestrator {
     
     private List<Bug> bugs;
     
+    private int numThreads;
+    
     private int bugsFinished;
     
     private long totalBugRuntimeInSeconds;
@@ -54,10 +56,10 @@ public class Orchestrator {
             if (bugsFinished > 0) {
                 long secondsPerBug = totalBugRuntimeInSeconds / bugsFinished;
                 int remaining = bugs.size() + 1;
-                long secondsRemaining = secondsPerBug * remaining;
+                long secondsRemaining = (secondsPerBug * remaining) / numThreads;
                 
                 LOG.info(() -> TimeUtils.formatSeconds(secondsPerBug) + " per bug times " + remaining
-                        + " remaining = " + TimeUtils.formatSeconds(secondsRemaining));
+                        + " remaining in " + numThreads +  " threads = " + TimeUtils.formatSeconds(secondsRemaining));
             }
         } else {
             nextBug = null;
@@ -221,6 +223,7 @@ public class Orchestrator {
         LocalDateTime now = LocalDateTime.now();
         bugsFinished = 0;
         totalBugRuntimeInSeconds = 0;
+        this.numThreads = numThreads;
         
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss", Locale.ROOT);
         Path outputPath = Path.of("output_" + formatter.format(now) + ".csv");

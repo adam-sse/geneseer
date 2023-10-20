@@ -111,14 +111,7 @@ public class Orchestrator {
             LOG.info(() -> "[" + bug + "] Failing tests detected by geneseer:   "
                     + failingTests.stream().sorted().toList());
             
-            Set<String> defects4jFailingTests = defects4j.getFailingTests(bug);
-            LOG.info(() -> "[" + bug + "] Failing tests according to defects4j: "
-                    + defects4jFailingTests.stream().sorted().toList());
-            if (failingTests.equals(defects4jFailingTests)) {
-                result = "matching failing tests";
-            } else {
-                result = "mismatching failing tests";
-            }
+            result = checkFailingTests(bug, failingTests);
         } else {
             result = stdout.replace('\n', ' ').replace('\r', ' ');
         }
@@ -134,6 +127,29 @@ public class Orchestrator {
             LOG.info(() ->  "[" + bug + "] Completed: " + r);
         }
         return bug.project() + ";" + bug.bug() + ";" + result;
+    }
+
+    private String checkFailingTests(Bug bug, Set<String> failingTests) throws IOException {
+        String result;
+        Set<String> defects4jFailingTests = defects4j.getFailingTests(bug);
+        LOG.info(() -> "[" + bug + "] Failing tests according to defects4j: "
+                + defects4jFailingTests.stream().sorted().toList());
+        if (failingTests.equals(defects4jFailingTests)) {
+            result = "matching failing tests";
+        } else {
+            result = "mismatching failing tests";
+            for (String test : failingTests) {
+                if (!defects4jFailingTests.contains(test)) {
+                    result += ";+" + test;
+                }
+            }
+            for (String test : defects4jFailingTests) {
+                if (!failingTests.contains(test)) {
+                    result += ";-" + test;
+                }
+            }
+        }
+        return result;
     }
     
     private String runOnSingleBug(Bug bug) throws IOException, IllegalArgumentException {

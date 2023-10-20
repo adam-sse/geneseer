@@ -333,6 +333,9 @@ public class TestExecution implements AutoCloseable {
         command.add(cp.toString());
 
         command.add("net.ssehub.program_repair.geneseer.evaluation.Runner");
+        if (Configuration.INSTANCE.getDebugTestDriver()) {
+            command.add("DEBUG");
+        }
         return command;
     }
     

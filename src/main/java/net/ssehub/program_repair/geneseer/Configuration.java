@@ -44,4 +44,8 @@ public class Configuration {
         return TestsToRun.RELEVANT_TESTS;
     }
     
+    public boolean getDebugTestDriver() {
+        return false;
+    }
+    
 }

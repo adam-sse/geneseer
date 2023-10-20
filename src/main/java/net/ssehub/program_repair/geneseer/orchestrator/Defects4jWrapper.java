@@ -22,7 +22,7 @@ public class Defects4jWrapper {
     
     private static final Logger LOG = Logger.getLogger(Defects4jWrapper.class.getName());
     
-    public List<Bug> getBugs() throws IOException, IllegalArgumentException {
+    public List<Bug> getAllBugs() throws IOException, IllegalArgumentException {
         ProcessRunner process = new ProcessRunner.Builder("defects4j", "pids")
                 .captureOutput(true)
                 .run();
@@ -35,19 +35,26 @@ public class Defects4jWrapper {
         
         List<Bug> bugs = new LinkedList<>();
         for (String project : projects) {
-            process = new ProcessRunner.Builder("defects4j", "bids", "-p", project)
-                    .captureOutput(true)
-                    .run();
-            
-            if (process.getExitCode() != 0) {
-                throw new IOException("Failed to get bugs in project " + project + ": "
-                        + new String(process.getStderr()));
-            }
-            
-            String[] bugStrings = new String(process.getStdout()).split("\n");
-            for (String bugString : bugStrings) {
-                bugs.add(new Bug(project, Integer.parseInt(bugString)));
-            }
+            bugs.addAll(getBugsOfProject(project));
+        }
+        
+        return bugs;
+    }
+    
+    public List<Bug> getBugsOfProject(String project) throws IOException, IllegalArgumentException {
+        ProcessRunner process = new ProcessRunner.Builder("defects4j", "bids", "-p", project)
+                .captureOutput(true)
+                .run();
+        
+        if (process.getExitCode() != 0) {
+            throw new IOException("Failed to get bugs in project " + project + ": "
+                    + new String(process.getStderr()));
+        }
+        
+        List<Bug> bugs = new LinkedList<>();
+        String[] bugStrings = new String(process.getStdout()).split("\n");
+        for (String bugString : bugStrings) {
+            bugs.add(new Bug(project, Integer.parseInt(bugString)));
         }
         
         return bugs;
@@ -76,16 +83,15 @@ public class Defects4jWrapper {
         testExecutionClassPath = normalizeAndRemoveBinDirectory(testExecutionClassPath, absoluteBinDirectory,
                 checkoutDirectory);
         
-        testClassNames = List.of(exportProperty(checkoutDirectory,
-                Configuration.INSTANCE.getTestsToRun() == TestsToRun.ALL_TESTS ? "tests.all" : "tests.relevant"));
+        testClassNames = new LinkedList<>(List.of(exportProperty(checkoutDirectory,
+                Configuration.INSTANCE.getTestsToRun() == TestsToRun.ALL_TESTS ? "tests.all" : "tests.relevant")));
         
         if (bug.project().equals("Closure")) {
             compilationClasspath.add(Path.of("lib/junit.jar"));
             compilationClasspath.add(Path.of("build/classes"));
             testExecutionClassPath.add(Path.of("build/classes"));
-        }
-        
-        if (bug.project().equals("Time")) {
+            
+        } else if (bug.project().equals("Time")) {
             copyTimeTzData(checkoutDirectory);
         }
         

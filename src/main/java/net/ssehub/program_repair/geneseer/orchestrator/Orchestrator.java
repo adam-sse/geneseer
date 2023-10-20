@@ -188,8 +188,12 @@ public class Orchestrator {
     }
     
     public void runOnAllBugs() throws IOException {
-        bugs = defects4j.getBugs();
+        bugs = defects4j.getAllBugs();
         LOG.info(() -> "Running on all " + bugs.size() + " bugs");
+    }
+    
+    public List<Bug> getBugsOfProject(String project) throws IllegalArgumentException, IOException {
+        return defects4j.getBugsOfProject(project);
     }
     
     public void setBugs(List<Bug> bugs) {
@@ -260,7 +264,11 @@ public class Orchestrator {
             List<Bug> bugs = new LinkedList<>();
             for (int i = 1; i < args.length; i++) {
                 String[] parts = args[i].split("/");
-                bugs.add(new Bug(parts[0], Integer.parseInt(parts[1])));
+                if (parts[1].equals("*")) {
+                    bugs.addAll(orchestrator.getBugsOfProject(parts[0]));
+                } else {
+                    bugs.add(new Bug(parts[0], Integer.parseInt(parts[1])));
+                }
             }
             orchestrator.setBugs(bugs);
         }

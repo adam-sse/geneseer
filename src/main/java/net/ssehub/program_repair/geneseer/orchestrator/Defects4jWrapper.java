@@ -91,6 +91,12 @@ public class Defects4jWrapper {
             compilationClasspath.add(Path.of("build/classes"));
             testExecutionClassPath.add(Path.of("build/classes"));
             
+        } else if (bug.project().equals("Mockito")) {
+            compilationClasspath.add(Path.of("/home/krafczyk/defects4j/framework/projects/lib/junit-4.11.jar"));
+            compilationClasspath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
+            testExecutionClassPath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
+            testExecutionClassPath.add(Path.of("build/classes/main"));
+            
         } else if (bug.project().equals("Time")) {
             copyTimeTzData(checkoutDirectory);
         }

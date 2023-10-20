@@ -98,7 +98,7 @@ public class Defects4jWrapper {
             testExecutionClassPath.add(Path.of("build/classes/main"));
             
         } else if (bug.project().equals("Time")) {
-            copyTimeTzData(checkoutDirectory);
+            copyTimeTzData(bug, checkoutDirectory);
         }
         
         return new Project(checkoutDirectory, sourceDirectory, compilationClasspath,
@@ -159,8 +159,13 @@ public class Defects4jWrapper {
         return new String(process.getStdout()).split("\n");
     }
     
-    private void copyTimeTzData(Path checkoutDirectory) {
-        Path from = checkoutDirectory.resolve("target/classes/org/joda/time/tz/data");
+    private void copyTimeTzData(Bug bug, Path checkoutDirectory) {
+        Path from;
+        if (bug.bug() <= 11) {
+            from = checkoutDirectory.resolve("target/classes/org/joda/time/tz/data");
+        } else {
+            from = checkoutDirectory.resolve("build/classes/org/joda/time/tz/data");
+        }
         if (Files.isDirectory(from)) {
             Path to = checkoutDirectory.resolve("src/main/java/org/joda/time/tz/data");
             

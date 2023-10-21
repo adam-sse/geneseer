@@ -88,6 +88,7 @@ public class Defects4jWrapper {
         
         if (bug.project().equals("Closure")) {
             compilationClasspath.add(Path.of("lib/junit.jar"));
+            compilationClasspath.add(Path.of("lib/json.jar"));
             compilationClasspath.add(Path.of("build/classes"));
             testExecutionClassPath.add(Path.of("build/classes"));
             

@@ -41,7 +41,7 @@ public class Orchestrator {
     
     private Target target = Target.GENESEER;
     
-    private Defects4jWrapper defects4j = new Defects4jWrapper();
+    private Defects4jWrapper defects4j;
     
     private List<Bug> bugs;
     
@@ -209,6 +209,10 @@ public class Orchestrator {
         return bug.project() + ";" + bug.bug() + ";" + stdout;
     }
     
+    public void setDefects4jPath(Path defects4jHome) {
+        this.defects4j = new Defects4jWrapper(defects4jHome);
+    }
+    
     public void setTarget(Target target) {
         this.target = target;
     }
@@ -235,6 +239,11 @@ public class Orchestrator {
         LocalDateTime now = LocalDateTime.now();
         bugsFinished = 0;
         totalBugRuntimeInSeconds = 0;
+        
+        if (defects4j == null) {
+            LOG.severe("No defects4j specified (via --defects4j <path to base directory>)");
+            throw new IllegalStateException("No defects4j specified");
+        }
         
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss", Locale.ROOT);
         Path outputPath = Path.of("output_" + formatter.format(now) + ".csv");
@@ -290,6 +299,11 @@ public class Orchestrator {
         int argsIndex = 0;
         while (argsIndex < args.length && args[argsIndex].startsWith("--")) {
             switch (args[argsIndex]) {
+            case "--defects4j":
+                orchestrator.setDefects4jPath(Path.of(args[argsIndex + 1]));
+                argsIndex += 2;
+                break;
+            
             case "--target":
                 orchestrator.setTarget(Target.valueOf(args[argsIndex + 1].toUpperCase()));
                 argsIndex += 2;

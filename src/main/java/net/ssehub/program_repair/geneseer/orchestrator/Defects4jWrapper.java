@@ -22,8 +22,17 @@ public class Defects4jWrapper {
     
     private static final Logger LOG = Logger.getLogger(Defects4jWrapper.class.getName());
     
+    private Path defects4jHome;
+    
+    public Defects4jWrapper(Path defects4jHome) throws IllegalArgumentException {
+        this.defects4jHome = defects4jHome;
+        if (!Files.isRegularFile(Path.of(getDefects4jBinary()))) {
+            throw new IllegalArgumentException(getDefects4jBinary() + " does not exist");
+        }
+    }
+    
     public List<Bug> getAllBugs() throws IOException, IllegalArgumentException {
-        ProcessRunner process = new ProcessRunner.Builder("defects4j", "pids")
+        ProcessRunner process = new ProcessRunner.Builder(getDefects4jBinary(), "pids")
                 .captureOutput(true)
                 .run();
         
@@ -42,7 +51,7 @@ public class Defects4jWrapper {
     }
     
     public List<Bug> getBugsOfProject(String project) throws IOException, IllegalArgumentException {
-        ProcessRunner process = new ProcessRunner.Builder("defects4j", "bids", "-p", project)
+        ProcessRunner process = new ProcessRunner.Builder(getDefects4jBinary(), "bids", "-p", project)
                 .captureOutput(true)
                 .run();
         
@@ -93,14 +102,13 @@ public class Defects4jWrapper {
             testExecutionClassPath.add(Path.of("build/classes"));
             
         } else if (bug.project().equals("Mockito")) {
-            compilationClasspath.add(Path.of("/home/krafczyk/defects4j/framework/projects/lib/junit-4.11.jar"));
+            compilationClasspath.add(defects4jHome.resolve("framework/projects/lib/junit-4.11.jar"));
             compilationClasspath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
             testExecutionClassPath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
             testExecutionClassPath.add(Path.of("build/classes/main"));
             
         } else if (bug.project().equals("Math") && bug.bug() >= 100) {
-            compilationClasspath.add(Path.of(
-                    "/home/krafczyk/defects4j/framework/projects/Math/lib/commons-discovery-0.5.jar"));
+            compilationClasspath.add(defects4jHome.resolve("framework/projects/Math/lib/commons-discovery-0.5.jar"));
             
         } else if (bug.project().equals("Time")) {
             copyTimeTzData(bug, checkoutDirectory);
@@ -116,14 +124,14 @@ public class Defects4jWrapper {
     
     private void checkout(Bug bug) throws IOException {
         if (!Files.exists(bug.getDirectory())) {
-            ProcessRunner process = new ProcessRunner.Builder("defects4j", "checkout", "-p", bug.project(),
+            ProcessRunner process = new ProcessRunner.Builder(getDefects4jBinary(), "checkout", "-p", bug.project(),
                     "-v", bug.bug() + "b", "-w", bug.getDirectory().toString())
                     .run();
             if (process.getExitCode() != 0) {
                 throw new IOException("Failed to checkout " + bug);
             }
             
-            process = new ProcessRunner.Builder("defects4j", "compile")
+            process = new ProcessRunner.Builder(getDefects4jBinary(), "compile")
                     .workingDirectory(bug.getDirectory())
                     .run();
             if (process.getExitCode() != 0) {
@@ -151,7 +159,7 @@ public class Defects4jWrapper {
     
     private String[] exportProperty(Path checkoutDirectory, String propertyName) throws IOException {
         
-        ProcessRunner process = new ProcessRunner.Builder("defects4j", "export", "-p", propertyName)
+        ProcessRunner process = new ProcessRunner.Builder(getDefects4jBinary(), "export", "-p", propertyName)
                 .workingDirectory(checkoutDirectory)
                 .captureOutput(true)
                 .run();
@@ -186,6 +194,10 @@ public class Defects4jWrapper {
         } else {
             LOG.warning("Directory target/classes/org/joda/time/tz/data does not exist in Time project");
         }
+    }
+    
+    private String getDefects4jBinary() {
+        return defects4jHome.resolve("framework/bin/defects4j").toAbsolutePath().toString();
     }
     
 }

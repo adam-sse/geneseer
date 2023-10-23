@@ -40,6 +40,10 @@ public class Orchestrator {
         GENESEER, SETUP_TEST
     }
     
+    private String jvmExecutable;
+    
+    private String geneseerJar;
+    
     private Target target = Target.GENESEER;
     
     private Defects4jWrapper defects4j;
@@ -78,12 +82,12 @@ public class Orchestrator {
         
         LOG.info(() -> "[" + bug + "] Running geneseer setup test...");
         List<String> command = new LinkedList<>();
-        command.add("/usr/lib/jvm/java-1.17.0-openjdk-amd64/bin/java");
+        command.add(jvmExecutable);
         command.add("-Djava.util.logging.config.class=" + LoggingConfiguration.class.getName());
         command.add("-Djava.util.logging.config.file=logging.properties");
         command.add("-Dfile.encoding=" + bug.getEncoding().name());
         command.add("-cp");
-        command.add("geneseer.jar");
+        command.add(geneseerJar);
         command.add(SetupTest.class.getName());
         command.add("--project-directory");
         command.add(bug.getDirectory().toString());
@@ -172,12 +176,12 @@ public class Orchestrator {
         
         LOG.info(() -> "[" + bug + "] Running geneseer...");
         List<String> command = new LinkedList<>();
-        command.add("/usr/lib/jvm/java-1.17.0-openjdk-amd64/bin/java");
+        command.add(jvmExecutable);
         command.add("-Djava.util.logging.config.class=" + LoggingConfiguration.class.getName());
         command.add("-Djava.util.logging.config.file=logging.properties");
         command.add("-Dfile.encoding=" + bug.getEncoding().name());
         command.add("-cp");
-        command.add("geneseer.jar");
+        command.add(geneseerJar);
         command.add(Geneseer.class.getName());
         command.add(bug.getDirectory().toString());
         command.add(config.getSourceDirectory().toString());
@@ -215,6 +219,14 @@ public class Orchestrator {
         }
         
         return bug.project() + ";" + bug.bug() + ";" + stdout;
+    }
+    
+    public void setJvmExecutable(String jvmExecutable) {
+        this.jvmExecutable = jvmExecutable;
+    }
+    
+    public void setGeneseerJar(String geneseerJar) {
+        this.geneseerJar = geneseerJar;
     }
     
     public void setDefects4jPath(Path defects4jHome) {
@@ -297,9 +309,12 @@ public class Orchestrator {
     }
     
     public static void main(String[] args) throws IOException {
-        CliArguments cli = new CliArguments(args, Set.of("--defects4j", "--target", "--threads"));
+        CliArguments cli = new CliArguments(args, Set.of(
+                "--jvm", "--geneseer-jar", "--defects4j", "--target", "--threads"));
         
         Orchestrator orchestrator = new Orchestrator();
+        orchestrator.setJvmExecutable(cli.getOptionOrThrow("--jvm"));
+        orchestrator.setGeneseerJar(cli.getOptionOrThrow("--geneseer-jar"));
         orchestrator.setDefects4jPath(Path.of(cli.getOptionOrThrow("--defects4j")));
         orchestrator.setTarget(Target.valueOf(cli.getOption("--target", Target.GENESEER.name())));
         orchestrator.setNumThreads(Integer.parseInt(cli.getOption("--threads", "1")));

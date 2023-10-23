@@ -57,7 +57,40 @@ specify the full path to the JRE 17 `java` executable when launching genesser (e
 
 ## Output
 
-The output of geneseer is currently undergoing rapid development and thus changes a lot.
+Geneseer outputs a single line to stdout, with semicolon-separated values. The first value specifies the type of result:
+
+* `FOUND_FIX`: Found a full fix (i.e., all test cases succeed with the found patch).
+* `GENERATION_LIMIT_REACHED`: The generation limit was reached, without a full fix being found (a variant with improved
+fitness may have been found, but some test cases are still failing).
+* `ORIGINAL_UNFIT`: The original source code could not be parsed or compiled.
+* `IO_EXCEPTION`: An IOException occurred during the execution.
+* `OUT_OF_MEMORY`: The JVM threw an OutOfMemoryError. No further values are present.
+* `null`: An unexpected exception occurred during the execution. No further values are present.
+
+Except for the last two types, the following values are (in this order):
+
+2. The generation where geneseer stopped. `0` for `ORIGINAL_UNFIT`. May be blank for `IO_EXCEPTION`. For
+`GENERATION_LIMIT_REACHED` this is always the generation limit.
+3. The fitness of the original, unmodified variant (only for `FOUND_FIX` and `GENERATION_LIMIT_REACHED`).
+4. The maximum fitness that can be achieved (only for `FOUND_FIX` and `GENERATION_LIMIT_REACHED`). A variant with this
+fitness represents a full fix.
+5. The best fitness seen in any variant (only for `FOUND_FIX` and `GENERATION_LIMIT_REACHED`). For `FOUND_FIX` this is
+thus equal to the previous value (maximum fitness).
+6. Only for `IO_EXCEPTION`: The exception message.
+
+For example, the output may look like this:
+```
+GENERATION_LIMIT_REACHED;10;484.0;504.0;501.0;
+```
+Here, geneseer ran for 10 generations (2nd value), but could not find a full fix (1st value). The original code had a
+fitness of 484 (3rd value). A full fix would have a fitness of 504 (4th value). The best variant that was found during
+the 10 generations had a fitness of 501 (5th value); this is an improvement over the initial fitness, but not yet a full
+fix that passes all test cases. 
+
+Geneseer outputs logging information to stderr. This contains much more detailed information on the execution. For
+example, it contains the best found variant and it's modifications compared to the original code. It may also hint at
+problems in the setup (e.g. when classpath elements are specified that do not exist) and contains detailed timing
+measurements of different areas in the execution.
 
 ## Compiling
 

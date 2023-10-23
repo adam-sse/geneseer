@@ -563,11 +563,14 @@ public class GeneticAlgorithm {
         Writer.write(bestVariant.getAst(), project.getSourceDirectoryAbsolute(), best,
                 project.getEncoding());
         
-        ProcessRunner diffProcess = new ProcessRunner.Builder("git", "diff", unmodified.toString(), best.toString())
+        ProcessRunner diffProcess = new ProcessRunner.Builder("git", "diff", "--no-index",
+                unmodified.toString(), best.toString())
                 .captureOutput(true)
                 .run();
         
-        String diff = new String(diffProcess.getStdout());
+        String diff = new String(diffProcess.getStdout())
+                .replace("a/" + unmodified.toString().replace("\\", "\\\\"), "a")
+                .replace("b/" + best.toString().replace("\\", "\\\\"), "b");
         LOG.info(() -> "Best variant " + bestVariant + ":\n" + diff);
     }
     

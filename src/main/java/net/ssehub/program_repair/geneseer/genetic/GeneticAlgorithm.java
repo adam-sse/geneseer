@@ -35,6 +35,7 @@ import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
+import net.ssehub.program_repair.geneseer.util.ProcessRunner;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
 public class GeneticAlgorithm {
@@ -62,6 +63,7 @@ public class GeneticAlgorithm {
     private int generation;
     private Variant unmodifiedVariant;
     private double bestFitness;
+    private Variant bestVariant;
     
     public GeneticAlgorithm(ProjectCompiler compiler, Project project, TemporaryDirectoryManager tempDirManager) {
         this.compiler = compiler;
@@ -110,6 +112,11 @@ public class GeneticAlgorithm {
                         bestFitness);
             }
             
+            try {
+                logDiffOfBestVariant();
+            } catch (IOException e) {
+                LOG.log(Level.WARNING, "Failed to compute diff of best variant", e);
+            }
         } else {
             result = Result.originalUnfit();
         }
@@ -155,6 +162,7 @@ public class GeneticAlgorithm {
             LOG.info(() -> "Fitness of unmodified variant (" + unmodifiedVariant.getName() + ") and max fitness: "
                     + unmodifiedVariant.getFitness() + " / " + getMaxFitness());
             bestFitness = unmodifiedVariant.getFitness();
+            bestVariant = unmodifiedVariant;
             
             annotateSuspiciousness(unmodifiedVariant, sourceDir, r.binDirectory, r.evaluation.getExecutedTests());
             
@@ -303,6 +311,7 @@ public class GeneticAlgorithm {
                 LOG.fine(() -> variant.toString());
                 if (fitness > bestFitness) {
                     bestFitness = fitness;
+                    bestVariant = variant;
                     LOG.info(() -> "New best variant: " + variant.getName());
                 }
             } else {
@@ -324,6 +333,7 @@ public class GeneticAlgorithm {
         LOG.fine(() -> variant.toString());
         if (fitness > bestFitness) {
             bestFitness = fitness;
+            bestVariant = variant;
             LOG.info(() -> "New best variant: " + variant.getName());
         }
         
@@ -541,6 +551,24 @@ public class GeneticAlgorithm {
             i++;
         }
         return result;
+    }
+    
+    private void logDiffOfBestVariant() throws IOException {
+        Path unmodified = tempDirManager.createTemporaryDirectory();
+        Path best = tempDirManager.createTemporaryDirectory();
+        
+        Writer.write(unmodifiedVariant.getAst(), project.getSourceDirectoryAbsolute(), unmodified,
+                project.getEncoding());
+        
+        Writer.write(bestVariant.getAst(), project.getSourceDirectoryAbsolute(), best,
+                project.getEncoding());
+        
+        ProcessRunner diffProcess = new ProcessRunner.Builder("git", "diff", unmodified.toString(), best.toString())
+                .captureOutput(true)
+                .run();
+        
+        String diff = new String(diffProcess.getStdout());
+        LOG.info(() -> "Best variant " + bestVariant + ":\n" + diff);
     }
     
     private EvaluationResult evaluateVariant(Node variant) throws IOException {

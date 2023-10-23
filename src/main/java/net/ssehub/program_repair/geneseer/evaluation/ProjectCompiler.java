@@ -2,6 +2,7 @@ package net.ssehub.program_repair.geneseer.evaluation;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedList;
@@ -22,10 +23,13 @@ public class ProjectCompiler {
     
     private List<Path> classpath;
     
+    private Charset encoding;
+    
     private boolean logOutput;
     
-    public ProjectCompiler(List<Path> classpath) {
+    public ProjectCompiler(List<Path> classpath, Charset encoding) {
         this.classpath = classpath;
+        this.encoding = encoding;
     }
 
     public boolean compile(Path sourceDirectory, Path outputDirectory) {
@@ -77,7 +81,7 @@ public class ProjectCompiler {
         command.add("-nowarn");
         
         command.add("-encoding");
-        command.add(Configuration.INSTANCE.getEncoding().toString());
+        command.add(encoding.toString());
         
         command.add("-d");
         command.add(outputDirectory.toString());

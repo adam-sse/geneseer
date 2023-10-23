@@ -24,6 +24,7 @@ import net.ssehub.program_repair.geneseer.Geneseer;
 import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.SetupTest;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
+import net.ssehub.program_repair.geneseer.util.CliArguments;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
 import net.ssehub.program_repair.geneseer.util.TimeUtils;
 
@@ -84,15 +85,23 @@ public class Orchestrator {
         command.add("-cp");
         command.add("geneseer.jar");
         command.add(SetupTest.class.getName());
+        command.add("--project-directory");
         command.add(bug.getDirectory().toString());
+        command.add("--source-directory");
         command.add(config.getSourceDirectory().toString());
-        command.add(config.getCompilationClasspath().stream()
-                .map(Path::toString)
-                .collect(Collectors.joining(File.pathSeparator)));
+        if (!config.getCompilationClasspath().isEmpty()) {
+            command.add("--compile-classpath");
+            command.add(config.getCompilationClasspath().stream()
+                    .map(Path::toString)
+                    .collect(Collectors.joining(File.pathSeparator)));
+        }
+        command.add("--test-classpath");
         command.add(config.getTestExecutionClassPath().stream()
                 .map(Path::toString)
                 .collect(Collectors.joining(File.pathSeparator)));
-        command.addAll(config.getTestClassNames());
+        command.add("--test-classes");
+        command.add(config.getTestClassNames().stream()
+                .collect(Collectors.joining(":")));
     
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectError(bug.getDirectory().resolve("geneseer-setup-test.log").toFile());
@@ -105,7 +114,6 @@ public class Orchestrator {
         }
         
         String result;
-        
         if (stdout.startsWith("failing tests:")) {
             BufferedReader reader = new BufferedReader(new StringReader(stdout));
             reader.readLine();
@@ -240,11 +248,6 @@ public class Orchestrator {
         bugsFinished = 0;
         totalBugRuntimeInSeconds = 0;
         
-        if (defects4j == null) {
-            LOG.severe("No defects4j specified (via --defects4j <path to base directory>)");
-            throw new IllegalStateException("No defects4j specified");
-        }
-        
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss", Locale.ROOT);
         Path outputPath = Path.of("output_" + formatter.format(now) + ".csv");
         LOG.info(() -> "Writing output to " + outputPath);
@@ -294,41 +297,20 @@ public class Orchestrator {
     }
     
     public static void main(String[] args) throws IOException {
+        CliArguments cli = new CliArguments(args, Set.of("--defects4j", "--target", "--threads"));
+        
         Orchestrator orchestrator = new Orchestrator();
-        
-        int argsIndex = 0;
-        while (argsIndex < args.length && args[argsIndex].startsWith("--")) {
-            switch (args[argsIndex]) {
-            case "--defects4j":
-                orchestrator.setDefects4jPath(Path.of(args[argsIndex + 1]));
-                argsIndex += 2;
-                break;
-            
-            case "--target":
-                orchestrator.setTarget(Target.valueOf(args[argsIndex + 1].toUpperCase()));
-                argsIndex += 2;
-                break;
-            
-            case "--threads":
-                orchestrator.setNumThreads(Integer.parseInt(args[argsIndex + 1]));
-                argsIndex += 2;
-                break;
-            
-            default:
-                String option = args[argsIndex];
-                LOG.severe(() -> "Unknown command line option: " + option);
-                System.exit(1);
-                break;
-            }
-        }
-        
-        if (argsIndex == args.length) {
+        orchestrator.setDefects4jPath(Path.of(cli.getOptionOrThrow("--defects4j")));
+        orchestrator.setTarget(Target.valueOf(cli.getOption("--target", Target.GENESEER.name())));
+        orchestrator.setNumThreads(Integer.parseInt(cli.getOption("--threads", "1")));
+
+        if (cli.getRemaining().isEmpty()) {
             orchestrator.selectAllBugs();
             
         } else {
             List<Bug> bugs = new LinkedList<>();
-            for (; argsIndex < args.length; argsIndex++) {
-                String[] parts = args[argsIndex].split("/");
+            for (String arg : cli.getRemaining()) {
+                String[] parts = arg.split("/");
                 if (parts[1].equals("*")) {
                     bugs.addAll(orchestrator.getBugsOfProject(parts[0]));
                 } else {

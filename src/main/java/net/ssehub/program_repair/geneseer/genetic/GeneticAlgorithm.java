@@ -64,7 +64,6 @@ public class GeneticAlgorithm {
     private double bestFitness;
     
     public GeneticAlgorithm(ProjectCompiler compiler, Project project, TemporaryDirectoryManager tempDirManager) {
-        
         this.compiler = compiler;
         this.project = project;
         this.tempDirManager = tempDirManager;
@@ -119,7 +118,7 @@ public class GeneticAlgorithm {
     }
 
     private void createUnmodifiedVariant() throws IOException {
-        Node ast = Parser.parse(project.getSourceDirectoryAbsolute());
+        Node ast = Parser.parse(project.getSourceDirectoryAbsolute(), project.getEncoding());
         ast.lock();
         LOG.fine(() -> ast.stream().count() + " nodes in AST");
         
@@ -128,7 +127,8 @@ public class GeneticAlgorithm {
 
     private boolean evaluateUnmodifiedOriginal() throws IOException {
         Path sourceDir = tempDirManager.createTemporaryDirectory();
-        Writer.write(unmodifiedVariant.getAst(), project.getSourceDirectoryAbsolute(), sourceDir);
+        Writer.write(unmodifiedVariant.getAst(), project.getSourceDirectoryAbsolute(), sourceDir,
+                project.getEncoding());
         
         compiler.setLogOutput(true);
         EvaluationResultAndBinDirectory r = compileAndEvaluateVariant(unmodifiedVariant.getAst());
@@ -172,7 +172,8 @@ public class GeneticAlgorithm {
         List<String> testMethodNamesWithHash = tests.stream()
                 .map(test -> test.testClass() + "#" + test.testMethod())
                 .toList();
-        Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute());
+        Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute(),
+                project.getEncoding());
         flacoco.setExpectedFailures(negativeTests);
         LinkedHashMap<Location, Double> suspiciousness = flacoco.run(variantSourceDir, variantBinDir,
                 testMethodNamesWithHash);
@@ -556,14 +557,15 @@ public class GeneticAlgorithm {
         Path sourceDirectory = tempDirManager.createTemporaryDirectory();
         Path binDirectory = tempDirManager.createTemporaryDirectory();
             
-        Writer.write(variant, project.getSourceDirectoryAbsolute(), sourceDirectory);
+        Writer.write(variant, project.getSourceDirectoryAbsolute(), sourceDirectory, project.getEncoding());
         boolean compiled = compiler.compile(sourceDirectory, binDirectory);
         if (compiled) {
             JunitEvaluation evaluation = new JunitEvaluation();
             
             try {
                 evalResult = evaluation.runTests(project.getProjectDirectory(),
-                        project.getTestExecutionClassPathAbsolute(), binDirectory, project.getTestClassNames());
+                        project.getTestExecutionClassPathAbsolute(), binDirectory, project.getTestClassNames(),
+                        project.getEncoding());
                 
                 
             } catch (EvaluationException e) {

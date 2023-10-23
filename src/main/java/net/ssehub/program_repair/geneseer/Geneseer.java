@@ -1,11 +1,6 @@
 package net.ssehub.program_repair.geneseer;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.StreamSupport;
@@ -28,11 +23,10 @@ public class Geneseer {
     public static void main(String[] args) throws IOException {
         Project project = null;
         try {
-            project = readProjectFromCommandLine(args);
+            project = Project.readFromCommandLine(args);
         } catch (IllegalArgumentException e) {
             LOG.severe("Command line arguments invalid: " + e.getMessage());
-            LOG.severe("Usage: <projectDirectory> <sourceDirectory> <compilationClasspath> <testExecutionClassPath> "
-                    + "<testClassName>...");
+            LOG.severe(Project.getCliUsage());
             System.exit(1);
         }
         
@@ -42,13 +36,14 @@ public class Geneseer {
         LOG.info("    compilation classpath: " + project.getCompilationClasspath());
         LOG.info("    test execution classpath: " + project.getTestExecutionClassPath());
         LOG.info("    test classes (" + project.getTestClassNames().size() + "): " + project.getTestClassNames());
-        LOG.fine("Using encoding " + Configuration.INSTANCE.getEncoding());
+        LOG.info("    encoding: " + project.getEncoding());
         
         Result result = null;
         boolean oom = false;
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
-            ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute());
+            ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute(),
+                    project.getEncoding());
             
             result = new GeneticAlgorithm(compiler, project, tempDirManager).run();
             
@@ -70,41 +65,6 @@ public class Geneseer {
                     .sorted((e1, e2) -> e1.getKey().compareTo(e2.getKey()))
                     .forEach(e -> LOG.info(() -> "    " + e.getKey() + ": " + e.getValue() + " ms"));
         }
-    }
-    
-    static Project readProjectFromCommandLine(String[] args) throws IllegalArgumentException {
-        if (args.length < 5) {
-            throw new IllegalArgumentException("Too few arguments supplied");
-        }
-        
-        Path projectDirectory = Path.of(args[0]);
-        Path sourceDirectory = Path.of(args[1]);
-        List<Path> compilationClasspath = readClasspath(args[2]);
-        List<Path> testExecutionClassPath = readClasspath(args[3]);
-        List<String> testClassNames = Arrays.stream(args).skip(4).toList();
-        
-        return new Project(projectDirectory, sourceDirectory, compilationClasspath,
-                testExecutionClassPath, testClassNames);
-    }
-    
-    private static List<Path> readClasspath(String combined) {
-        List<Path> classpath = new LinkedList<>();
-        
-        if (!combined.isEmpty()) {
-            char seperator;
-            if (combined.indexOf(':') != -1 && combined.indexOf(';') == -1) {
-                seperator = ':';
-            } else {
-                seperator = File.pathSeparatorChar;
-            }
-            
-            for (String element : combined.split(String.valueOf(seperator))) {
-                classpath.add(Path.of(element));
-            }
-            
-        }
-        
-        return classpath;
     }
     
 }

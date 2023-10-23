@@ -1,5 +1,6 @@
 package net.ssehub.program_repair.geneseer.evaluation;
 
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -11,7 +12,7 @@ import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 public class JunitEvaluation {
 
     public EvaluationResult runTests(Path workingDirectory, List<Path> classpath, Path classes,
-            List<String> testClasses) throws EvaluationException {
+            List<String> testClasses, Charset encoding) throws EvaluationException {
         
         try (Probe probe = Measurement.INSTANCE.start("junit-evaluation")) {
             
@@ -20,7 +21,7 @@ public class JunitEvaluation {
             fullClasspath.addAll(classpath);
             
             List<TestResult> executedTests = new LinkedList<>();
-            try (TestExecution testExec = new TestExecution(workingDirectory, fullClasspath, false)) {
+            try (TestExecution testExec = new TestExecution(workingDirectory, fullClasspath, encoding, false)) {
                 for (String className : testClasses) {
                     runTestOrTimeout(workingDirectory, fullClasspath, executedTests, testExec, className);
                 }

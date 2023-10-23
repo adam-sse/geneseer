@@ -1,10 +1,17 @@
 package net.ssehub.program_repair.geneseer;
 
+import java.io.File;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+
+import net.ssehub.program_repair.geneseer.util.CliArguments;
 
 /**
  * Represents a project the project that is under repair.
@@ -24,6 +31,8 @@ public class Project {
     private List<Path> testExecutionClassPath;
     
     private List<String> testClassNames;
+    
+    private Charset encoding;
     
     /**
      * @param projectDirectory The root directory of the project.
@@ -47,6 +56,7 @@ public class Project {
         this.compilationClasspath = compilationClasspath;
         this.testExecutionClassPath = testExecutionClassPath;
         this.testClassNames = testClassNames;
+        this.encoding = Charset.defaultCharset();
         
         checkConsistency();
     }
@@ -105,6 +115,60 @@ public class Project {
                         + projectDirectory);
             }
         }
+    }
+    
+    public static String getCliUsage() {
+        return "Usage: --project-directory <projectDirectory> --source-directory <sourceDirectory> "
+                + "[--compile-classpath <compilationClasspath>] --test-classpath <testExecutionClassPath> "
+                + "--test-classes <testClasses> [--encoding <encoding>]";
+    }
+    
+    public static Project readFromCommandLine(String[] args) throws IllegalArgumentException {
+        CliArguments cli = new CliArguments(args, Set.of("--project-directory", "--source-directory",
+                "--compile-classpath", "--test-classpath", "--test-classes", "--encoding"));
+        
+        Path projectDirectory = Path.of(cli.getOptionOrThrow("--project-directory"));
+        Path sourceDirectory = Path.of(cli.getOptionOrThrow("--source-directory"));
+        List<Path> compilationClasspath = readClasspath(cli.getOption("--compile-classpath", ""));
+        List<Path> testExecutionClassPath = readClasspath(cli.getOptionOrThrow("--test-classpath"));
+        List<String> testClassNames = Arrays.asList(cli.getOptionOrThrow("--test-classes").split(":"));
+        
+        if (!cli.getRemaining().isEmpty()) {
+            throw new IllegalArgumentException("Too many arguments: " + cli.getRemaining());
+        }
+        
+        Project project = new Project(projectDirectory, sourceDirectory, compilationClasspath, testExecutionClassPath,
+                testClassNames);
+        
+        if (cli.hasOption("--encoding")) {
+            project.setEncoding(Charset.forName(cli.getOption("--encoding")));
+        }
+        
+        return project;
+    }
+    
+    private static List<Path> readClasspath(String combined) {
+        List<Path> classpath = new LinkedList<>();
+        
+        if (!combined.isEmpty()) {
+            char seperator;
+            if (combined.indexOf(':') != -1 && combined.indexOf(';') == -1) {
+                seperator = ':';
+            } else {
+                seperator = File.pathSeparatorChar;
+            }
+            
+            for (String element : combined.split(String.valueOf(seperator))) {
+                classpath.add(Path.of(element));
+            }
+            
+        }
+        
+        return classpath;
+    }
+    
+    public void setEncoding(Charset encoding) {
+        this.encoding = encoding;
     }
     
     /**
@@ -169,6 +233,10 @@ public class Project {
      */
     public List<String> getTestClassNames() {
         return testClassNames;
+    }
+    
+    public Charset getEncoding() {
+        return encoding;
     }
     
 }

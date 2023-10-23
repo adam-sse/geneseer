@@ -27,11 +27,10 @@ public class SetupTest {
     public static void main(String[] args) {
         Project project = null;
         try {
-            project = Geneseer.readProjectFromCommandLine(args);
+            project = Project.readFromCommandLine(args);
         } catch (IllegalArgumentException e) {
             LOG.severe("Command line arguments invalid: " + e.getMessage());
-            LOG.severe("Usage: <projectDirectory> <sourceDirectory> <compilationClasspath> <testExecutionClassPath> "
-                    + "<testClassName>...");
+            LOG.severe(Project.getCliUsage());
             System.exit(1);
         }
         
@@ -41,19 +40,20 @@ public class SetupTest {
         LOG.info("    compilation classpath: " + project.getCompilationClasspath());
         LOG.info("    test execution classpath: " + project.getTestExecutionClassPath());
         LOG.info("    test classes (" + project.getTestClassNames().size() + "): " + project.getTestClassNames());
-        LOG.fine("Using encoding " + Configuration.INSTANCE.getEncoding());
+        LOG.info("    encoding: " + project.getEncoding());
         
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
-            Node ast = Parser.parse(project.getSourceDirectoryAbsolute());
+            Node ast = Parser.parse(project.getSourceDirectoryAbsolute(), project.getEncoding());
             ast.lock();
             LOG.fine(() -> ast.stream().count() + " nodes in AST");
             
             Path sourceDirectory = tempDirManager.createTemporaryDirectory();
-            Writer.write(ast, project.getSourceDirectoryAbsolute(), sourceDirectory);
+            Writer.write(ast, project.getSourceDirectoryAbsolute(), sourceDirectory, project.getEncoding());
             
             Path binDirectory = tempDirManager.createTemporaryDirectory();
-            ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute());
+            ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute(),
+                    project.getEncoding());
             compiler.setLogOutput(true);
             boolean compiled = compiler.compile(sourceDirectory, binDirectory);
             if (compiled) {
@@ -62,7 +62,8 @@ public class SetupTest {
                 
                 try {
                     EvaluationResult evaluationResult = evaluation.runTests(project.getProjectDirectory(),
-                            project.getTestExecutionClassPathAbsolute(), binDirectory, project.getTestClassNames());
+                            project.getTestExecutionClassPathAbsolute(), binDirectory, project.getTestClassNames(),
+                            project.getEncoding());
 
                     LOG.info(() -> evaluationResult.getFailures().size() + " failing tests:");
                     for (TestResult failure : evaluationResult.getFailures()) {

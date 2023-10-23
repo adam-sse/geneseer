@@ -2,6 +2,7 @@ package eu.stamp_project.testrunner;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,7 +45,9 @@ public class EntryPoint {
     
     private Path classesDirectory;
     
-    public void setup(Path workingDirectory, List<Path> classpath, Path classesDirectory) {
+    private Charset encoding;
+    
+    public void setup(Path workingDirectory, List<Path> classpath, Path classesDirectory, Charset encoding) {
         this.workingDirectoryInternal = workingDirectory;
         
         this.classpath = new ArrayList<>(classpath.size() + 1);
@@ -52,11 +55,12 @@ public class EntryPoint {
         this.classpath.addAll(classpath);
         
         this.classesDirectory = classesDirectory;
+        this.encoding = encoding;
     }
     
     public CoveredTestResultPerTestMethod run(String... methodNames) throws EvaluationException {
         try (Probe probe = Measurement.INSTANCE.start("junit-coverage-matrix");
-                TestExecution testExec = new TestExecution(workingDirectoryInternal, classpath, true)) {
+                TestExecution testExec = new TestExecution(workingDirectoryInternal, classpath, encoding, true)) {
             testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
             
             CoveredTestResultPerTestMethod result;

@@ -1,6 +1,7 @@
 package net.ssehub.program_repair.geneseer.fault_localization;
 
 import java.io.File;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
@@ -44,9 +45,12 @@ public class Flacoco {
     
     private Set<String> expectedFailures;
     
-    public Flacoco(Path rootDirectory, List<Path> testExecutionClassPath) {
+    private Charset encoding;
+    
+    public Flacoco(Path rootDirectory, List<Path> testExecutionClassPath, Charset encoding) {
         this.rootDirectory = rootDirectory;
         this.testExecutionClassPath = testExecutionClassPath;
+        this.encoding = encoding;
         
         flacocoConfig = new FlacocoConfig();
         flacocoConfig.setProjectPath(rootDirectory.toString());
@@ -62,7 +66,7 @@ public class Flacoco {
         flacocoConfig.setBinTestDir(Collections.emptyList());
         
         flacocoConfig.setTestRunnerTimeoutInMs(Configuration.INSTANCE.getTestExecutionTimeoutMs());
-        flacocoConfig.setTestRunnerJVMArgs("-Dfile.encoding=" + Configuration.INSTANCE.getEncoding());
+        flacocoConfig.setTestRunnerJVMArgs("-Dfile.encoding=" + encoding.toString());
         flacocoConfig.setTestRunnerVerbose(true);
         
         flacocoConfig.setFamily(FaultLocalizationFamily.SPECTRUM_BASED);
@@ -78,7 +82,7 @@ public class Flacoco {
     public LinkedHashMap<Location, Double> run(Path sourceDir, Path binDir, List<String> testMethodsWithHash) {
         try (Probe probe = Measurement.INSTANCE.start("flacoco")) {
             
-            EntryPoint.INSTANCE.setup(rootDirectory, testExecutionClassPath, binDir);
+            EntryPoint.INSTANCE.setup(rootDirectory, testExecutionClassPath, binDir, encoding);
             
             flacocoConfig.setBinJavaDir(List.of(binDir.toString()));
             flacocoConfig.setSrcJavaDir(List.of(sourceDir.toString()));

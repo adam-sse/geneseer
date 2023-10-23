@@ -1,11 +1,11 @@
 package net.ssehub.program_repair.geneseer.parsing;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Stack;
 
-import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
@@ -18,14 +18,15 @@ public class Writer {
     private Writer() {
     }
     
-    public static void write(Node parseTree, Path sourceDirectory, Path outputDirectory) throws IOException {
+    public static void write(Node parseTree, Path sourceDirectory, Path outputDirectory, Charset encoding)
+            throws IOException {
         try (Probe probe = Measurement.INSTANCE.start("code-writing")) {
             
             for (Node compilationUnit : parseTree.childIterator()) {
                 Path file = outputDirectory.resolve((Path) compilationUnit.getMetadata(Metadata.FILENAME));
                 Files.createDirectories(file.getParent());
                 
-                Files.writeString(file, toText(compilationUnit), Configuration.INSTANCE.getEncoding());
+                Files.writeString(file, toText(compilationUnit), encoding);
             }
             
             FileUtils.copyAllNonJavaSourceFiles(sourceDirectory, outputDirectory);

@@ -2,6 +2,7 @@ package net.ssehub.program_repair.geneseer.parsing;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.logging.Logger;
@@ -15,7 +16,6 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaLexer;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser;
 import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
@@ -34,7 +34,7 @@ public class Parser {
     private Parser() {
     }
     
-    public static Node parse(Path sourceDirectory) throws IOException {
+    public static Node parse(Path sourceDirectory, Charset encoding) throws IOException {
         try (Probe probe = Measurement.INSTANCE.start("parsing")) {
             
             Node parseTree = new InnerNode(Type.OTHER);
@@ -43,7 +43,7 @@ public class Parser {
                 Files.walk(sourceDirectory)
                         .filter(f -> f.getFileName().toString().endsWith(".java"))
                         .forEach(f -> {
-                            Node file = parseFile(f);
+                            Node file = parseFile(f, encoding);
                             fix(file);
                             file.setMetadata(Metadata.FILENAME, sourceDirectory.relativize(f));
                             parseTree.add(file);
@@ -56,10 +56,9 @@ public class Parser {
         }
     }
     
-    private static Node parseFile(Path file) throws UncheckedIOException {
+    private static Node parseFile(Path file, Charset encoding) throws UncheckedIOException {
         try {
-            JavaLexer lexer = new JavaLexer(CharStreams.fromFileName(file.toString(),
-                    Configuration.INSTANCE.getEncoding()));
+            JavaLexer lexer = new JavaLexer(CharStreams.fromFileName(file.toString(), encoding));
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             JavaParser parser = new JavaParser(tokens);
             parser.removeErrorListeners(); // remove the default console listener

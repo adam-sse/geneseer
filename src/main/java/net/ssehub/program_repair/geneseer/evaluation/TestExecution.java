@@ -8,6 +8,7 @@ import java.io.ObjectOutputStream;
 import java.io.UncheckedIOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.net.ServerSocket;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedList;
@@ -68,6 +69,8 @@ public class TestExecution implements AutoCloseable {
     
     private List<Path> classpath;
     
+    private Charset encoding;
+    
     private boolean withCoverage;
     
     private Process process;
@@ -82,10 +85,12 @@ public class TestExecution implements AutoCloseable {
     
     private int jacocoPort;
     
-    public TestExecution(Path workingDirectory, List<Path> classpath, boolean withCoverage) throws EvaluationException {
+    public TestExecution(Path workingDirectory, List<Path> classpath, Charset encoding, boolean withCoverage)
+            throws EvaluationException {
         tempDirManager = new TemporaryDirectoryManager();
         this.workingDirectory = workingDirectory;
         this.classpath = classpath;
+        this.encoding = encoding;
         this.withCoverage = withCoverage;
         
         startProcess();
@@ -321,7 +326,7 @@ public class TestExecution implements AutoCloseable {
             command.add("-javaagent:" + JACOCO_AGENT.toAbsolutePath() + "=output=tcpserver,port=" + jacocoPort);
         }
         
-        command.add("-Dfile.encoding=" + Configuration.INSTANCE.getEncoding());
+        command.add("-Dfile.encoding=" + encoding.toString());
         command.add("-Djava.io.tmpdir=" + tempDirManager.createTemporaryDirectory());
 
         StringBuilder cp = new StringBuilder(GENESEER_TEST_DRIVER.toAbsolutePath().toString());

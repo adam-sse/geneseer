@@ -8,41 +8,42 @@ Start a JVM with geneseer and all its dependencies on the classpath. We recommen
 `jar-with-dependencies` of geneseer, then you only need to provide that single jar file. The main class is
 `net.ssehub.program_repair.geneseer.Geneseer`.
 
-The following command line arguments must be specified in this order:
+The following command line arguments must be specified, each with a following value:
 
-1. The path to the root directory of the project to repair. Execution of the test suite will be done with this as the
-working directory.
-2. The path to the directory that contains the source code files to repair. May be relative to the root directory of
-the project to repair.
-3. The classpath to use when compiling the source code files. This should include all the compile-time dependencies;
-usually this is a list of jars. Entries may be relative to the root directory of the project to repair.
-4. The classpath to execute the test suite of the project to repair. This should include the test classes themselves,
-the required runtime dependencies (both for the program and for the test suite), but *not* the compiled classes of the
-program under test. Note that Junit must not be specified, as the test driver of geneseer already includes that.
-Entries may be relative to the root directory of the project to repair.
+* `--project-directory`: The path to the root directory of the project to repair. Execution of the test suite will be
+done with this as the working directory.
+* `--source-directory`: The path to the directory that contains the source code files to repair. May be relative to the
+project directory.
+* `--test-classpath`: The classpath to execute the test suite of the project to repair. This should include the test
+classes themselves, the required runtime dependencies (both for the program and for the test suite), but *not* the
+compiled classes of the program under test. Note that Junit must not be specified, as the test driver of geneseer
+already includes that. Entries may be relative to the project directory
+* `--test-classes`: The fully qualified class names of the test classes in the test suite, joined with `:`.
 
-After these four, all further command line arguments are fully qualified class names of the test classes in the test
-suite.
+The following optional command line arguments can be specified (also with a following value):
 
-The classpaths (command line arguments 3 and 4) can be specified with the platform-specific file separator character
-(`;` on Windows, `:` on Unix-likes). If `;` is not used, then `:` may also be used on Windows.
+* `--compile-classpath`: The classpath to use when compiling the source code files. This should include all the
+compile-time dependencies; usually this is a list of jars. Entries may be relative to the project directory.
+* `--encoding`: The encoding of the source files of the project to repair. For example `ISO-8859-1`. If this is not
+specified, the default encoding of the operating system is used.
 
-To specify the encoding of the source files of the project to repair, pass the JVM argument `file.encoding`. Note that
-this is *not* a command line argument for this program, it needs to be specified before the main class or `-jar`
-parameter with `-D`. For example `-Dfile.encoding=ISO-8859-1`. If this is not specified, the default encoding of the
-operating system is used.
+The classpaths (`--test-classpath` and `--compile-classpath`) can be specified with the platform-specific file separator
+character (`;` on Windows, `:` on Unix-likes). If `;` does not occur, then `:` may also be used on Windows.
 
 To get prettier and filtered log output, add the following JVM arguments:
 
 * `-Djava.util.logging.config.class=net.ssehub.program_repair.geneseer.logging.LoggingConfiguration`
 * `-Djava.util.logging.config.file=logging.properties`
 
+Note that these are *not* a command line arguments for this program, they need to be specified before the main class or
+`-jar` parameter.
+
 `logging.properties` should point to the file included in this repository; if it is not available in the working
 directory where you launch this program, copy it there or specify the full path to it in the JVM argument.
 
 As an example, a full execution of geneseer may look like this:
 ```
-java -Djava.util.logging.config.class=net.ssehub.program_repair.geneseer.logging.LoggingConfiguration -Djava.util.logging.config.file=logging.properties -Dfile.encoding=ISO-8859-1 -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.Geneseer /path/to/project-to-fix src/main/java lib/some-lib.jar:lib/other-lib.jar target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar com.example.TestClass1 com.example.TestClass2
+java -Djava.util.logging.config.class=net.ssehub.program_repair.geneseer.logging.LoggingConfiguration -Djava.util.logging.config.file=logging.properties -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.Geneseer --project-directory /path/to/project-to-fix --source-directory src/main/java --encoding ISO-8859-1 --compile-classpath lib/some-lib.jar:lib/other-lib.jar --test-classpath target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar --test-classes com.example.TestClass1:com.example.TestClass2
 ```
 
 ### Environment

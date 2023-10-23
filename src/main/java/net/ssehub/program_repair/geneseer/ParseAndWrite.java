@@ -1,6 +1,7 @@
 package net.ssehub.program_repair.geneseer;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedList;
@@ -33,12 +34,12 @@ public class ParseAndWrite {
         
         Node ast;
         try (Probe probe = Measurement.INSTANCE.start("parsing")) {
-            ast = Parser.parse(in);
+            ast = Parser.parse(in, StandardCharsets.UTF_8);
         }
         System.out.println("Parsed ast with " + ast.childCount() + " files in "
                 + Measurement.INSTANCE.getAccumulatedTimings("parsing") + " ms");
         
-        Writer.write(ast, in, out);
+        Writer.write(ast, in, out, StandardCharsets.UTF_8);
         System.out.println("Wrote model to " + out.toAbsolutePath());
         
 //        System.out.println(ast.get(2).dumpTree());

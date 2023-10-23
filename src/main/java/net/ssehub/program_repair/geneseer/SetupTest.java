@@ -64,7 +64,10 @@ public class SetupTest {
                     EvaluationResult evaluationResult = evaluation.runTests(project.getProjectDirectory(),
                             project.getTestExecutionClassPathAbsolute(), binDirectory, project.getTestClassNames());
 
-                    LOG.info(() -> "Failing tests: " + evaluationResult.getFailures());
+                    LOG.info(() -> evaluationResult.getFailures().size() + " failing tests:");
+                    for (TestResult failure : evaluationResult.getFailures()) {
+                        LOG.info(() -> "    " + failure + " " + failure.failureMessage());
+                    }
                     
                     System.out.println("failing tests:");
                     for (TestResult failure : evaluationResult.getFailures()) {

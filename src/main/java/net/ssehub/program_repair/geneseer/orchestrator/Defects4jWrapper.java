@@ -2,6 +2,7 @@ package net.ssehub.program_repair.geneseer.orchestrator;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -114,8 +115,12 @@ public class Defects4jWrapper {
             copyTimeTzData(bug, checkoutDirectory);
         }
         
-        return new Project(checkoutDirectory, sourceDirectory, compilationClasspath,
+        Project project = new Project(checkoutDirectory, sourceDirectory, compilationClasspath,
                 testExecutionClassPath, testClassNames);
+        if (bug.project().equals("Lang")) {
+            project.setEncoding(StandardCharsets.ISO_8859_1);
+        }
+        return project;
     }
     
     public Set<String> getFailingTests(Bug bug) throws IOException {

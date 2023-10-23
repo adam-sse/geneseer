@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.Writer;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -76,23 +77,24 @@ public class Orchestrator {
         return nextBug;
     }
     
-    private String runSetupTest(Bug bug) throws IOException, IllegalArgumentException {
-        LOG.info(() -> "[" + bug + "] Preparing project...");
-        Project config = defects4j.prepareProject(bug);
-        
-        LOG.info(() -> "[" + bug + "] Running geneseer setup test...");
+    private List<String> buildCommand(Class<?> mainClass, Path checkoutDirectory, Project config) {
         List<String> command = new LinkedList<>();
         command.add(jvmExecutable);
         command.add("-Djava.util.logging.config.class=" + LoggingConfiguration.class.getName());
         command.add("-Djava.util.logging.config.file=logging.properties");
-        command.add("-Dfile.encoding=" + bug.getEncoding().name());
         command.add("-cp");
         command.add(geneseerJar);
-        command.add(SetupTest.class.getName());
+        command.add(mainClass.getName());
         command.add("--project-directory");
-        command.add(bug.getDirectory().toString());
+        command.add(checkoutDirectory.toString());
         command.add("--source-directory");
         command.add(config.getSourceDirectory().toString());
+        
+        if (config.getEncoding() != Charset.defaultCharset()) {
+            command.add("--encoding");
+            command.add(config.getEncoding().toString());
+        }
+        
         if (!config.getCompilationClasspath().isEmpty()) {
             command.add("--compile-classpath");
             command.add(config.getCompilationClasspath().stream()
@@ -106,9 +108,19 @@ public class Orchestrator {
         command.add("--test-classes");
         command.add(config.getTestClassNames().stream()
                 .collect(Collectors.joining(":")));
+        
+        return command;
+    }
     
+    private interface StdoutProcessor {
+        public String processStdout(String stdout) throws IOException;
+    }
+    
+    private String runProcess(Bug bug, List<String> command, String logFileName, StdoutProcessor stdoutProcessor)
+            throws IOException, IllegalArgumentException {
+        
         ProcessBuilder pb = new ProcessBuilder(command);
-        pb.redirectError(bug.getDirectory().resolve("geneseer-setup-test.log").toFile());
+        pb.redirectError(bug.getDirectory().resolve(logFileName).toFile());
         pb.redirectOutput(Redirect.PIPE);
         Process process = pb.start();
         
@@ -117,22 +129,7 @@ public class Orchestrator {
             stdout = stdout.substring(0, stdout.length() - 1);
         }
         
-        String result;
-        if (stdout.startsWith("failing tests:")) {
-            BufferedReader reader = new BufferedReader(new StringReader(stdout));
-            reader.readLine();
-            Set<String> failingTests = new HashSet<>();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                failingTests.add(line);
-            }
-            LOG.info(() -> "[" + bug + "] Failing tests detected by geneseer:   "
-                    + failingTests.stream().sorted().toList());
-            
-            result = checkFailingTests(bug, failingTests);
-        } else {
-            result = stdout.replace('\n', ' ').replace('\r', ' ');
-        }
+        String result = stdoutProcessor.processStdout(stdout);
         
         if (ProcessRunner.untilNoInterruptedException(() -> process.waitFor()) != 0) {
             if (result.isEmpty()) {
@@ -140,11 +137,37 @@ public class Orchestrator {
             } else {
                 LOG.warning(() -> "[" + bug + "] Exit code of geneseer: " + process.exitValue());
             }
-        } else {
-            String r = result;
-            LOG.info(() ->  "[" + bug + "] Completed: " + r);
         }
+        LOG.info(() ->  "[" + bug + "] Completed: " + result);
         return bug.project() + ";" + bug.bug() + ";" + result;
+    }
+    
+    private String runSetupTest(Bug bug) throws IOException, IllegalArgumentException {
+        LOG.info(() -> "[" + bug + "] Preparing project...");
+        Project config = defects4j.prepareProject(bug);
+        
+        LOG.info(() -> "[" + bug + "] Running geneseer setup test...");
+        
+        return runProcess(bug, buildCommand(SetupTest.class, bug.getDirectory(), config), "geneseer-setup-test.log",
+                (stdout) -> {
+                    String result;
+                    if (stdout.startsWith("failing tests:")) {
+                        BufferedReader reader = new BufferedReader(new StringReader(stdout));
+                        reader.readLine();
+                        Set<String> failingTests = new HashSet<>();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            failingTests.add(line);
+                        }
+                        LOG.info(() -> "[" + bug + "] Failing tests detected by geneseer:   "
+                                + failingTests.stream().sorted().toList());
+                        
+                        result = checkFailingTests(bug, failingTests);
+                    } else {
+                        result = stdout.replace('\n', ' ').replace('\r', ' ');
+                    }
+                    return result;
+                });
     }
 
     private String checkFailingTests(Bug bug, Set<String> failingTests) throws IOException {
@@ -170,55 +193,13 @@ public class Orchestrator {
         return result;
     }
     
-    private String runOnSingleBug(Bug bug) throws IOException, IllegalArgumentException {
+    private String runGeneseer(Bug bug) throws IOException, IllegalArgumentException {
         LOG.info(() -> "[" + bug + "] Preparing project...");
         Project config = defects4j.prepareProject(bug);
         
         LOG.info(() -> "[" + bug + "] Running geneseer...");
-        List<String> command = new LinkedList<>();
-        command.add(jvmExecutable);
-        command.add("-Djava.util.logging.config.class=" + LoggingConfiguration.class.getName());
-        command.add("-Djava.util.logging.config.file=logging.properties");
-        command.add("-Dfile.encoding=" + bug.getEncoding().name());
-        command.add("-cp");
-        command.add(geneseerJar);
-        command.add(Geneseer.class.getName());
-        command.add(bug.getDirectory().toString());
-        command.add(config.getSourceDirectory().toString());
-        command.add(config.getCompilationClasspath().stream()
-                .map(Path::toString)
-                .collect(Collectors.joining(File.pathSeparator)));
-        command.add(config.getTestExecutionClassPath().stream()
-                .map(Path::toString)
-                .collect(Collectors.joining(File.pathSeparator)));
-        command.addAll(config.getTestClassNames());
-    
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.redirectError(bug.getDirectory().resolve("geneseer.log").toFile());
-        pb.redirectOutput(Redirect.PIPE);
-        Process process = pb.start();
-        
-        String stdout = new String(process.getInputStream().readAllBytes());
-        if (stdout.endsWith("\n")) {
-            stdout = stdout.substring(0, stdout.length() - 1);
-        }
-        String result = null;
-        if (stdout.indexOf(';') != -1) {
-            result = stdout.substring(0, stdout.indexOf(';'));
-        }
-        
-        if (ProcessRunner.untilNoInterruptedException(() -> process.waitFor()) != 0) {
-            if (stdout.isEmpty()) {
-                throw new IOException("Failed to run geneseer on " + bug);
-            } else {
-                LOG.warning(() -> "[" + bug + "] Exit code of geneseer: " + process.exitValue());
-            }
-        } else {
-            String r = result;
-            LOG.info(() ->  "[" + bug + "] Completed" + (r != null ? (": " + r) : ""));
-        }
-        
-        return bug.project() + ";" + bug.bug() + ";" + stdout;
+        return runProcess(bug, buildCommand(Geneseer.class, bug.getDirectory(), config), "geneseer.log",
+                (stdout) -> stdout);
     }
     
     public void setJvmExecutable(String jvmExecutable) {
@@ -277,7 +258,7 @@ public class Orchestrator {
                             if (target == Target.SETUP_TEST) {
                                 output = runSetupTest(bug);
                             } else {
-                                output = runOnSingleBug(bug);
+                                output = runGeneseer(bug);
                             }
                             synchronized (writer) {
                                 writer.write(output + "\n");

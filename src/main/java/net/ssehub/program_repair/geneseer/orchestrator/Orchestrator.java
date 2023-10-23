@@ -35,13 +35,17 @@ public class Orchestrator {
     
     private static final Logger LOG = Logger.getLogger(Orchestrator.class.getName());
     
-    private static final boolean ONLY_RUN_SETUP_TEST = true;
+    public enum Target {
+        GENESEER, SETUP_TEST
+    }
+    
+    private Target target = Target.GENESEER;
     
     private Defects4jWrapper defects4j = new Defects4jWrapper();
     
     private List<Bug> bugs;
     
-    private int numThreads;
+    private int numThreads = 1;
     
     private int bugsFinished;
     
@@ -205,7 +209,15 @@ public class Orchestrator {
         return bug.project() + ";" + bug.bug() + ";" + stdout;
     }
     
-    public void runOnAllBugs() throws IOException {
+    public void setTarget(Target target) {
+        this.target = target;
+    }
+    
+    public void setNumThreads(int numThreads) {
+        this.numThreads = numThreads;
+    }
+    
+    public void selectAllBugs() throws IOException {
         bugs = defects4j.getAllBugs();
         LOG.info(() -> "Running on all " + bugs.size() + " bugs");
     }
@@ -214,16 +226,15 @@ public class Orchestrator {
         return defects4j.getBugsOfProject(project);
     }
     
-    public void setBugs(List<Bug> bugs) {
+    public void selectBugs(List<Bug> bugs) {
         this.bugs = bugs;
-        LOG.info(() -> "Running on selected " + bugs.size() + " bugs");
+        LOG.info(() -> "Running on " + bugs.size() + " specified bugs");
     }
 
-    public void runWithThreads(int numThreads) throws IOException {
+    public void run() throws IOException {
         LocalDateTime now = LocalDateTime.now();
         bugsFinished = 0;
         totalBugRuntimeInSeconds = 0;
-        this.numThreads = numThreads;
         
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HHmmss", Locale.ROOT);
         Path outputPath = Path.of("output_" + formatter.format(now) + ".csv");
@@ -239,10 +250,10 @@ public class Orchestrator {
                         long t0 = System.currentTimeMillis();
                         try {
                             String output;
-                            if (ONLY_RUN_SETUP_TEST) {
+                            if (target == Target.SETUP_TEST) {
                                 output = runSetupTest(bug);
                             } else {
-                                runOnSingleBug(bug);
+                                output = runOnSingleBug(bug);
                             }
                             synchronized (writer) {
                                 writer.write(output + "\n");
@@ -274,25 +285,46 @@ public class Orchestrator {
     }
     
     public static void main(String[] args) throws IOException {
-        int numThreads = Integer.parseInt(args[0]);
-        
         Orchestrator orchestrator = new Orchestrator();
-        if (args.length == 1) {
-            orchestrator.runOnAllBugs();
+        
+        int argsIndex = 0;
+        while (argsIndex < args.length && args[argsIndex].startsWith("--")) {
+            switch (args[argsIndex]) {
+            case "--target":
+                orchestrator.setTarget(Target.valueOf(args[argsIndex + 1].toUpperCase()));
+                argsIndex += 2;
+                break;
+            
+            case "--threads":
+                orchestrator.setNumThreads(Integer.parseInt(args[argsIndex + 1]));
+                argsIndex += 2;
+                break;
+            
+            default:
+                String option = args[argsIndex];
+                LOG.severe(() -> "Unknown command line option: " + option);
+                System.exit(1);
+                break;
+            }
+        }
+        
+        if (argsIndex == args.length) {
+            orchestrator.selectAllBugs();
+            
         } else {
             List<Bug> bugs = new LinkedList<>();
-            for (int i = 1; i < args.length; i++) {
-                String[] parts = args[i].split("/");
+            for (; argsIndex < args.length; argsIndex++) {
+                String[] parts = args[argsIndex].split("/");
                 if (parts[1].equals("*")) {
                     bugs.addAll(orchestrator.getBugsOfProject(parts[0]));
                 } else {
                     bugs.add(new Bug(parts[0], Integer.parseInt(parts[1])));
                 }
             }
-            orchestrator.setBugs(bugs);
+            orchestrator.selectBugs(bugs);
         }
         
-        orchestrator.runWithThreads(numThreads);
+        orchestrator.run();
     }
     
 }

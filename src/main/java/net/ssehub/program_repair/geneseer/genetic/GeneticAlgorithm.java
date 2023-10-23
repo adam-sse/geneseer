@@ -162,6 +162,14 @@ public class GeneticAlgorithm {
             originalIsFit = false;
         }
         
+        try {
+            tempDirManager.deleteTemporaryDirectory(sourceDir);
+            if (r.binDirectory != null) {
+                tempDirManager.deleteTemporaryDirectory(r.binDirectory);
+            }
+        } catch (IOException e) {
+            // ignore, will be cleaned up later when tempDirManager is closed
+        }
         return originalIsFit;
     }
 

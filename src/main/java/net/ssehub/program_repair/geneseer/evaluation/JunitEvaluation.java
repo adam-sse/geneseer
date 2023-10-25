@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
@@ -22,6 +23,7 @@ public class JunitEvaluation {
             
             List<TestResult> executedTests = new LinkedList<>();
             try (TestExecution testExec = new TestExecution(workingDirectory, fullClasspath, encoding, false)) {
+                testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
                 for (String className : testClasses) {
                     runTestOrTimeout(workingDirectory, fullClasspath, executedTests, testExec, className);
                 }

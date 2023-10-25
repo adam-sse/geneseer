@@ -15,7 +15,7 @@ public class Configuration {
     }
     
     public int getTestExecutionTimeoutMs() {
-        return (int) TimeUnit.MINUTES.toMillis(5);
+        return (int) TimeUnit.MINUTES.toMillis(2);
     }
     
     public long getRandomSeed() {

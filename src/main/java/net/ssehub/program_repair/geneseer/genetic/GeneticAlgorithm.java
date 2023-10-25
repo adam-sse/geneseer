@@ -226,7 +226,7 @@ public class GeneticAlgorithm {
                             + cn + ":" + line);
                 } else if (matchingStatements.size() > 1) {
                     String cn = className;
-                    LOG.warning(() -> "Found " + matchingStatements.size() + " statements for " + cn
+                    LOG.info(() -> "Found " + matchingStatements.size() + " statements for " + cn
                             + ":" + line + "; adding suspiciousness to all of them");
                 }
                     

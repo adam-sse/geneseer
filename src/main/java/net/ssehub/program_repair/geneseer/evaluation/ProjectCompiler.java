@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.util.FileUtils;
@@ -38,7 +39,15 @@ public class ProjectCompiler {
         try (Probe probe = Measurement.INSTANCE.start("compilation")) {
             List<String> command = buildCommand(sourceDirectory, outputDirectory, classpath);
             
-            LOG.fine(() -> "Running " + command);
+            LOG.fine(() -> {
+                String log;
+                if (command.size() <= 10) {
+                    log = "Running " + command;
+                } else {
+                    log = "Running " + Stream.concat(command.stream().limit(10), Stream.of("<...>")).toList();
+                }
+                return log;
+            });
             ProcessRunner process = new ProcessRunner.Builder(command)
                         .workingDirectory(sourceDirectory)
                         .captureOutput(logOutput)

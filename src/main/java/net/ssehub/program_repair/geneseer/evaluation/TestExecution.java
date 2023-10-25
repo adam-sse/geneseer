@@ -121,7 +121,11 @@ public class TestExecution implements AutoCloseable {
             }
             
             List<String> command = createCommand(classpath, withCoverage);
-            LOG.fine(() -> "Starting test runner process: " + command + " in " + workingDirectory);
+            LOG.fine(() -> {
+                List<String> shortened = new LinkedList<>(command);
+                shortened.set(shortened.indexOf("-cp") + 1, "<...>");
+                return "Starting test runner process: " + shortened + " in " + workingDirectory;
+            });
             ProcessBuilder builder = new ProcessBuilder(command);
             builder.directory(workingDirectory.toFile());
             builder.environment().put("TZ", "America/Los_Angeles");

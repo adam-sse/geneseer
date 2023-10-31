@@ -147,6 +147,11 @@
       <property name="onCommentFormat" value="checkstyle: resume member name check"/>
       <property name="checkFormat" value="MemberName|StaticVariableName"/>
     </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="checkstyle: stop exception check"/>
+      <property name="onCommentFormat" value="checkstyle: resume exception check"/>
+      <property name="checkFormat" value="IllegalThrows|IllegalCatch"/>
+    </module>
   </module>
   <module name="LineLength">
     <property name="fileExtensions" value="java"/>

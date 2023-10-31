@@ -25,6 +25,7 @@ import fr.spoonlabs.flacoco.core.config.FlacocoConfig.FaultLocalizationFamily;
 import fr.spoonlabs.flacoco.core.test.method.TestMethod;
 import fr.spoonlabs.flacoco.localization.spectrum.SpectrumFormula;
 import net.ssehub.program_repair.geneseer.Configuration;
+import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
@@ -79,7 +80,9 @@ public class Flacoco {
         this.expectedFailures = new HashSet<>(expectedFailures);
     }
     
-    public LinkedHashMap<Location, Double> run(Path sourceDir, Path binDir, List<String> testMethodsWithHash) {
+    public LinkedHashMap<Location, Double> run(Path sourceDir, Path binDir, List<String> testMethodsWithHash)
+            throws EvaluationException {
+        
         try (Probe probe = Measurement.INSTANCE.start("flacoco")) {
             
             EntryPoint.INSTANCE.setup(rootDirectory, testExecutionClassPath, binDir, encoding);
@@ -108,6 +111,16 @@ public class Flacoco {
             }
             
             return suspiciousness;
+            // checkstyle: stop exception check
+        } catch (RuntimeException e) {
+            // checkstyle: resume exception check
+            
+            // EvaluationException is wrapped in RuntimeExcpetion in:
+            // eu.stamp_project.testrunner.EntryPoint.runOnlineCoveredTestResultPerTestMethods()
+            if (e.getCause() != null && e.getCause() instanceof EvaluationException cause) {
+                throw cause;
+            }
+            throw e;
         }
     }
     

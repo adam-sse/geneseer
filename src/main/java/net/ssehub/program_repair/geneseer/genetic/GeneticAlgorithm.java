@@ -164,7 +164,12 @@ public class GeneticAlgorithm {
             bestFitness = unmodifiedVariant.getFitness();
             bestVariant = unmodifiedVariant;
             
-            annotateSuspiciousness(unmodifiedVariant, sourceDir, r.binDirectory, r.evaluation.getExecutedTests());
+            try {
+                annotateSuspiciousness(unmodifiedVariant, sourceDir, r.binDirectory, r.evaluation.getExecutedTests());
+            } catch (EvaluationException e) {
+                LOG.log(Level.SEVERE, "Failed evaluation coverage for suspiciousness", e);
+                originalIsFit = false;
+            }
             
         } else {
             originalIsFit = false;
@@ -182,7 +187,7 @@ public class GeneticAlgorithm {
     }
 
     private void annotateSuspiciousness(Variant variant, Path variantSourceDir, Path variantBinDir,
-            List<TestResult> tests) {
+            List<TestResult> tests) throws EvaluationException {
         
         LOG.info("Measuring suspiciousness");
         List<String> testMethodNamesWithHash = tests.stream()

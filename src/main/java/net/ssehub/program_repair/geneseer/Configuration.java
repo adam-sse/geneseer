@@ -23,14 +23,14 @@ public class Configuration {
     }
     
     public boolean getCoverageMatrixSimplified() {
-        return false;
+        return true;
     }
     
     public enum TestsToRun {
         ALL_TESTS, RELEVANT_TESTS
     }
     public TestsToRun getTestsToRun() {
-        return TestsToRun.RELEVANT_TESTS;
+        return TestsToRun.ALL_TESTS;
     }
     
     public boolean getDebugTestDriver() {

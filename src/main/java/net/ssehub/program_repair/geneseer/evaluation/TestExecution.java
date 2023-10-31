@@ -124,7 +124,7 @@ public class TestExecution implements AutoCloseable {
             LOG.fine(() -> {
                 List<String> shortened = new LinkedList<>(command);
                 shortened.set(shortened.indexOf("-cp") + 1, "<...>");
-                return "Starting test runner process: " + shortened + " in " + workingDirectory;
+                return "Starting test driver process: " + shortened + " in " + workingDirectory;
             });
             ProcessBuilder builder = new ProcessBuilder(command);
             builder.directory(workingDirectory.toFile());
@@ -137,7 +137,7 @@ public class TestExecution implements AutoCloseable {
             in = new ObjectInputStream(rawIn);
             
         } catch (IOException e) {
-            throw new EvaluationException("Failed to start runner process", e);
+            throw new EvaluationException("Failed to start test driver process", e);
         }
         
         checkHeartbeat();
@@ -148,20 +148,20 @@ public class TestExecution implements AutoCloseable {
             out.writeObject("HEARTBEAT");
             out.flush();
         } catch (IOException e) {
-            throw new EvaluationException("Communication with runner process failed", e);
+            throw new EvaluationException("Communication with test driver process failed", e);
         }
         
         String answer = readResult();
         
         if (!answer.equals("alive")) {
-            throw new EvaluationException("Runner process does not reply with alive");
+            throw new EvaluationException("Test driver process does not reply with alive");
         }
         
-        LOG.fine("Heartbeat of runner is alive");
+        LOG.fine("Heartbeat of test driver process is alive");
     }
     
     private void stopProcess() {
-        LOG.fine("Stopping test execution process"); 
+        LOG.fine("Stopping test driver process"); 
         
         process.destroy();
         boolean terminated = ProcessRunner.untilNoInterruptedException(
@@ -190,7 +190,8 @@ public class TestExecution implements AutoCloseable {
                 
                 // ObjectInputStream.available() always seems to return 0, so ask the raw InputStream from the process
                 // how many bytes are available
-                while (System.currentTimeMillis() - t0 < timeoutMs && rawIn.available() == 0) {
+                while (System.currentTimeMillis() - t0 < timeoutMs && rawIn.available() == 0
+                        && process.isAlive()) {
                     try {
                         Thread.sleep(1);
                     } catch (InterruptedException e) {
@@ -198,6 +199,9 @@ public class TestExecution implements AutoCloseable {
                     }
                 }
                 
+                if (!process.isAlive()) {
+                    throw new EvaluationException("Test driver process died");
+                }
                 if (rawIn.available() == 0) {
                     stopProcess();
                     startProcess();
@@ -208,7 +212,7 @@ public class TestExecution implements AutoCloseable {
             return (T) in.readObject();
             
         } catch (IOException | ClassNotFoundException e) {
-            throw new EvaluationException("Failed to read result from runner process", e);
+            throw new EvaluationException("Failed to read result from test driver process", e);
         }
     }
 
@@ -226,7 +230,7 @@ public class TestExecution implements AutoCloseable {
             return result;
             
         } catch (IOException e) {
-            throw new EvaluationException("Communication with runner process failed", e);
+            throw new EvaluationException("Communication with test driver process failed", e);
             
         } catch (TimeoutException e) {
             LOG.fine(() -> "Test class " + className + " timed out");
@@ -282,7 +286,7 @@ public class TestExecution implements AutoCloseable {
                     .toList();
             
         } catch (IOException e) {
-            throw new EvaluationException("Communication with runner process failed", e);
+            throw new EvaluationException("Communication with test driver process failed", e);
             
         } catch (TimeoutException e) {
             LOG.fine(() -> "Test class " + className + " timed out");
@@ -312,7 +316,7 @@ public class TestExecution implements AutoCloseable {
             return new TestResultWithCoverage(result, loader.getExecutionDataStore());
             
         } catch (IOException e) {
-            throw new EvaluationException("Communication with runner process failed", e);
+            throw new EvaluationException("Communication with test driver process failed", e);
             
         } catch (TimeoutException e) {
             LOG.fine(() -> "Test method " + className + "::" + methodName + " timed out");

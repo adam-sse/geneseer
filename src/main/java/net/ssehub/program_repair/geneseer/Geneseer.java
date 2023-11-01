@@ -30,13 +30,13 @@ public class Geneseer {
             System.exit(1);
         }
         
-        LOG.info("Project:");
-        LOG.info("    base directory: " + project.getProjectDirectory());
-        LOG.info("    source directory: " + project.getSourceDirectory());
-        LOG.info("    compilation classpath: " + project.getCompilationClasspath());
-        LOG.info("    test execution classpath: " + project.getTestExecutionClassPath());
-        LOG.info("    test classes (" + project.getTestClassNames().size() + "): " + project.getTestClassNames());
-        LOG.info("    encoding: " + project.getEncoding());
+        LOG.config("Project:");
+        LOG.config("    base directory: " + project.getProjectDirectory());
+        LOG.config("    source directory: " + project.getSourceDirectory());
+        LOG.config("    compilation classpath: " + project.getCompilationClasspath());
+        LOG.config("    test execution classpath: " + project.getTestExecutionClassPath());
+        LOG.config("    test classes (" + project.getTestClassNames().size() + "): " + project.getTestClassNames());
+        LOG.config("    encoding: " + project.getEncoding());
         
         Result result = null;
         boolean oom = false;

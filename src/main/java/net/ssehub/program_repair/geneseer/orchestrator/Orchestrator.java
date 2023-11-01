@@ -21,6 +21,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Geneseer;
 import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.SetupTest;
@@ -52,6 +53,8 @@ public class Orchestrator {
     private List<Bug> bugs;
     
     private int numThreads = 1;
+    
+    private Path configuration;
     
     private int bugsFinished;
     
@@ -85,6 +88,10 @@ public class Orchestrator {
         command.add("-cp");
         command.add(geneseerJar);
         command.add(mainClass.getName());
+        if (configuration != null) {
+            command.add("--config");
+            command.add(configuration.toString());
+        }
         command.add("--project-directory");
         command.add(checkoutDirectory.toString());
         command.add("--source-directory");
@@ -222,6 +229,12 @@ public class Orchestrator {
         this.numThreads = numThreads;
     }
     
+    public void setConfiguration(Path configuration) throws IOException {
+        this.configuration = configuration;
+        Configuration.INSTANCE.loadFromFile(configuration);
+        Configuration.INSTANCE.log();
+    }
+    
     public void selectAllBugs() throws IOException {
         bugs = defects4j.getAllBugs();
         LOG.info(() -> "Running on all " + bugs.size() + " bugs");
@@ -291,7 +304,7 @@ public class Orchestrator {
     
     public static void main(String[] args) throws IOException {
         CliArguments cli = new CliArguments(args, Set.of(
-                "--jvm", "--geneseer-jar", "--defects4j", "--target", "--threads"));
+                "--jvm", "--geneseer-jar", "--defects4j", "--target", "--threads", "--config"));
         
         Orchestrator orchestrator = new Orchestrator();
         orchestrator.setJvmExecutable(cli.getOptionOrThrow("--jvm"));
@@ -299,6 +312,9 @@ public class Orchestrator {
         orchestrator.setDefects4jPath(Path.of(cli.getOptionOrThrow("--defects4j")));
         orchestrator.setTarget(Target.valueOf(cli.getOption("--target", Target.GENESEER.name())));
         orchestrator.setNumThreads(Integer.parseInt(cli.getOption("--threads", "1")));
+        if (cli.hasOption("--config")) {
+            orchestrator.setConfiguration(Path.of(cli.getOption("--config")));
+        }
 
         if (cli.getRemaining().isEmpty()) {
             orchestrator.selectAllBugs();

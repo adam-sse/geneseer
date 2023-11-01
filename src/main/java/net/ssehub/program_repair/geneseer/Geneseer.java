@@ -1,6 +1,9 @@
 package net.ssehub.program_repair.geneseer;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.StreamSupport;
@@ -9,6 +12,7 @@ import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
 import net.ssehub.program_repair.geneseer.genetic.GeneticAlgorithm;
 import net.ssehub.program_repair.geneseer.genetic.Result;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
+import net.ssehub.program_repair.geneseer.util.CliArguments;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
@@ -20,13 +24,18 @@ public class Geneseer {
     
     private static final Logger LOG = Logger.getLogger(Geneseer.class.getName());
     
-    public static void main(String[] args) throws IOException {
+    static Project initialize(String[] args) throws IOException {
+        Set<String> options = new HashSet<>();
+        options.addAll(Project.getCliOptions());
+        options.add("--config");
+        CliArguments cli = new CliArguments(args, options);
+        
         Project project = null;
         try {
-            project = Project.readFromCommandLine(args);
+            project = Project.readFromCommandLine(cli);
         } catch (IllegalArgumentException e) {
             LOG.severe("Command line arguments invalid: " + e.getMessage());
-            LOG.severe(Project.getCliUsage());
+            LOG.severe("Usage: " + "[--config <configuration file>] " + Project.getCliUsage());
             System.exit(1);
         }
         
@@ -37,6 +46,25 @@ public class Geneseer {
         LOG.config("    test execution classpath: " + project.getTestExecutionClassPath());
         LOG.config("    test classes (" + project.getTestClassNames().size() + "): " + project.getTestClassNames());
         LOG.config("    encoding: " + project.getEncoding());
+        
+        if (cli.hasOption("--config")) {
+            Path configFile = Path.of(cli.getOption("--config"));
+            Configuration.INSTANCE.loadFromFile(configFile);
+        }
+        
+        Configuration.INSTANCE.log();
+        
+        return project;
+    }
+    
+    public static void main(String[] args) {
+        Project project = null;
+        try {
+            project = initialize(args);
+        } catch (IOException e) {
+            LOG.log(Level.SEVERE, "Failed to read configuration file", e);
+            System.exit(1);
+        }
         
         Result result = null;
         boolean oom = false;

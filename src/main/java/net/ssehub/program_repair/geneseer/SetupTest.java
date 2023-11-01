@@ -27,23 +27,13 @@ public class SetupTest {
     public static void main(String[] args) {
         Project project = null;
         try {
-            project = Project.readFromCommandLine(args);
-        } catch (IllegalArgumentException e) {
-            LOG.severe("Command line arguments invalid: " + e.getMessage());
-            LOG.severe(Project.getCliUsage());
+            project = Geneseer.initialize(args);
+        } catch (IOException e) {
+            LOG.log(Level.SEVERE, "Failed to read configuration file", e);
             System.exit(1);
         }
         
-        LOG.info("Project:");
-        LOG.info("    base directory: " + project.getProjectDirectory());
-        LOG.info("    source directory: " + project.getSourceDirectory());
-        LOG.info("    compilation classpath: " + project.getCompilationClasspath());
-        LOG.info("    test execution classpath: " + project.getTestExecutionClassPath());
-        LOG.info("    test classes (" + project.getTestClassNames().size() + "): " + project.getTestClassNames());
-        LOG.info("    encoding: " + project.getEncoding());
-        
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
-            
             Node ast = Parser.parse(project.getSourceDirectoryAbsolute(), project.getEncoding());
             ast.lock();
             LOG.fine(() -> ast.stream().count() + " nodes in AST");
@@ -74,17 +64,14 @@ public class SetupTest {
                     for (TestResult failure : evaluationResult.getFailures()) {
                         System.out.println(failure.toString());
                     }
-                    
                 } catch (EvaluationException e) {
                     LOG.log(Level.SEVERE, "Failed evaluation", e);
                     System.out.println("failed evaluation");
                 }
-                
             } else {
                 LOG.severe("Failed compilation");
                 System.out.println("failed compilation");
             }
-            
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IOException", e);
             System.out.println("IOException: " + e.getMessage());

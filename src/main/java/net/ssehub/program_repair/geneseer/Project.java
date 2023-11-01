@@ -118,30 +118,32 @@ public class Project {
     }
     
     public static String getCliUsage() {
-        return "Usage: --project-directory <projectDirectory> --source-directory <sourceDirectory> "
+        return "--project-directory <projectDirectory> --source-directory <sourceDirectory> "
                 + "[--compile-classpath <compilationClasspath>] --test-classpath <testExecutionClassPath> "
                 + "--test-classes <testClasses> [--encoding <encoding>]";
     }
     
-    public static Project readFromCommandLine(String[] args) throws IllegalArgumentException {
-        CliArguments cli = new CliArguments(args, Set.of("--project-directory", "--source-directory",
-                "--compile-classpath", "--test-classpath", "--test-classes", "--encoding"));
+    public static Set<String> getCliOptions() {
+        return Set.of("--project-directory", "--source-directory", "--compile-classpath", "--test-classpath",
+                "--test-classes", "--encoding");
+    }
+    
+    public static Project readFromCommandLine(CliArguments args) throws IllegalArgumentException {
+        Path projectDirectory = Path.of(args.getOptionOrThrow("--project-directory"));
+        Path sourceDirectory = Path.of(args.getOptionOrThrow("--source-directory"));
+        List<Path> compilationClasspath = readClasspath(args.getOption("--compile-classpath", ""));
+        List<Path> testExecutionClassPath = readClasspath(args.getOptionOrThrow("--test-classpath"));
+        List<String> testClassNames = Arrays.asList(args.getOptionOrThrow("--test-classes").split(":"));
         
-        Path projectDirectory = Path.of(cli.getOptionOrThrow("--project-directory"));
-        Path sourceDirectory = Path.of(cli.getOptionOrThrow("--source-directory"));
-        List<Path> compilationClasspath = readClasspath(cli.getOption("--compile-classpath", ""));
-        List<Path> testExecutionClassPath = readClasspath(cli.getOptionOrThrow("--test-classpath"));
-        List<String> testClassNames = Arrays.asList(cli.getOptionOrThrow("--test-classes").split(":"));
-        
-        if (!cli.getRemaining().isEmpty()) {
-            throw new IllegalArgumentException("Too many arguments: " + cli.getRemaining());
+        if (!args.getRemaining().isEmpty()) {
+            throw new IllegalArgumentException("Too many arguments: " + args.getRemaining());
         }
         
         Project project = new Project(projectDirectory, sourceDirectory, compilationClasspath, testExecutionClassPath,
                 testClassNames);
         
-        if (cli.hasOption("--encoding")) {
-            project.setEncoding(Charset.forName(cli.getOption("--encoding")));
+        if (args.hasOption("--encoding")) {
+            project.setEncoding(Charset.forName(args.getOption("--encoding")));
         }
         
         return project;

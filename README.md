@@ -90,17 +90,24 @@ launching the orchestrator and also pass it via the `--jvm` argument (e.g. on Ub
 ### Configuration file
 
 The optional command line argument `--config` can specify the path to a properties file that contains configuration
-options for geneseer. Here is a list of possible keys, their meaning, and the default values:
+options for geneseer. The prefix `setup.` refers to configuration options regarding compiling, running tests, etc. The
+prefix `genetic.` refers to configurations options of the genetic algorithm. Here is a list of possible keys, their
+meaning, and the default values:
 
-| Key                      |  Default Value       | Description   |
-|--------------------------|----------------------|---------------|
-| jvmBinaryPath            | `java`               | The path to the JVM binary to run tests. May be absolute or on the path. |
-| javaCompilerBinaryPath   | `javac`              | The path to the Java compiler to compile the project. May be absolute or on the path. |
-| testExecutionTimeoutMs   | `120000` (2 minutes) | The amount of milliseconds before considering a test execution timed-out. The test process will be killed and the tests count as failures. |
-| randomSeed               | `0`                  | The seed to initialize the random source with. If this is the same (and the test cases are deterministic), then the same result is produced. |
-| coverageMatrixSimplified | `true`               | Whether to aggregate the coverage per-class instead of running each test method individually when measuring the suspiciousness. If this is `true`, then the execution is (much) faster, but the suspiciousness values will be less accurate. |
-| debugTestDriver          | `false`              | Whether to print debug output of the test driver process to stderr. |
-| testsToRun               | `ALL_TESTS`          | Relevant only for the orchestrator: Whether to run all tests or only the tests that defects4j marked as relevant. Possible values are `ALL_TESTS` and `RELEVANT_TESTS`. |
+| Key                              |  Default Value       | Description                                                |
+|----------------------------------|----------------------|------------------------------------------------------------|
+| `setup.jvmBinaryPath`            | `java`               | The path to the JVM binary to run tests. May be absolute or on the path. |
+| `setup.javaCompilerBinaryPath`   | `javac`              | The path to the Java compiler to compile the project. May be absolute or on the path. |
+| `setup.testExecutionTimeoutMs`   | `120000` (2 minutes) | The amount of milliseconds before considering a test execution timed-out. The test process will be killed and the tests count as failures. |
+| `setup.coverageMatrixSimplified` | `true`               | Whether to aggregate the coverage per-class instead of running each test method individually when measuring the suspiciousness. If this is `true`, then the execution is (much) faster, but the suspiciousness values will be less accurate. |
+| `setup.debugTestDriver`          | `false`              | Whether to print debug output of the test driver process to stderr. |
+| `setup.testsToRun`               | `ALL_TESTS`          | Relevant only for the orchestrator: Whether to run all tests or only the tests that defects4j marked as relevant. Possible values are `ALL_TESTS` and `RELEVANT_TESTS`. |
+| `genetic.randomSeed`             | `0`                  | The seed to initialize the random source with. If this is the same (and the test cases are deterministic), then the same result is produced. |
+| `genetic.populationSize`         | `40`                 | The number of variants in a generation. |
+| `genetic.generationLimit`        | `10`                 | The maximum number of generations to run for (inclusive). |
+| `genetic.negativeTestsWeight`    | `10`                 | The fitness function weight of test cases that are negative for the unmodified, original code. |
+| `genetic.positiveTestsWeight`    | `1`                  | The fitness function weight of test cases that are positive for the unmodified, original code. |
+| `genetic.mutationProbability`    | `4`                  | Controls the probability that mutations are created in a variant. This value is divided by the number of suspicious statements to get the probability of introducing a mutation at a suspicious statement. |
 
 ## Output
 

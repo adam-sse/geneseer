@@ -42,13 +42,6 @@ public class GeneticAlgorithm {
 
     private static final Logger LOG = Logger.getLogger(GeneticAlgorithm.class.getName());
     
-    private static final double WEIGHT_NEGATIVE_TESTS = 10; // W_negT = 10
-    private static final double WEIGHT_POSITIVE_TESTS = 1; // W_posT = 1
-    private static final int POPULATION_SIZE = 40; // pop_size = 40
-    private static final double MUTATION_PROBABILITY = 4; // W_mut = 0.06
-    
-    private static final int MAX_GENERATIONS = 10; // generations = 10
-    
     private Random random = new Random(Configuration.INSTANCE.getRandomSeed());
     
     private ProjectCompiler compiler;
@@ -98,7 +91,7 @@ public class GeneticAlgorithm {
             LOG.info("Creating initial population");
             List<Variant> population = createInitialPopulation();
             
-            while (indexWithMaxFitness(population) < 0 && ++generation <= MAX_GENERATIONS) {
+            while (indexWithMaxFitness(population) < 0 && ++generation <= Configuration.INSTANCE.getGenerationLimit()) {
                 singleGeneration(population);
             }
             
@@ -107,9 +100,10 @@ public class GeneticAlgorithm {
                 LOG.info(() -> "Variant with max fitness: " + population.get(index));
                 result = Result.foundFix(unmodifiedVariant.getFitness(), getMaxFitness(), generation);
             } else {
-                LOG.info(() -> "Stopping because limit of " + MAX_GENERATIONS + " generations reached");
-                result = Result.generationLimitReached(MAX_GENERATIONS, unmodifiedVariant.getFitness(), getMaxFitness(),
-                        bestFitness);
+                LOG.info(() -> "Stopping because limit of " + Configuration.INSTANCE.getGenerationLimit()
+                        + " generations reached");
+                result = Result.generationLimitReached(Configuration.INSTANCE.getGenerationLimit(),
+                        unmodifiedVariant.getFitness(), getMaxFitness(), bestFitness);
             }
             
             try {
@@ -254,8 +248,8 @@ public class GeneticAlgorithm {
     }
 
     private List<Variant> createInitialPopulation() throws IOException {
-        List<Variant> population = new ArrayList<>(POPULATION_SIZE);
-        for (int i = 0; i < POPULATION_SIZE; i++) {
+        List<Variant> population = new ArrayList<>(Configuration.INSTANCE.getPopulationSize());
+        for (int i = 0; i < Configuration.INSTANCE.getPopulationSize(); i++) {
             population.add(newVariant());
         }
         LOG.fine(() -> "Population fitness: " + population.stream()
@@ -279,8 +273,9 @@ public class GeneticAlgorithm {
         List<Double> cummulativeProbabilityDistribution = calculateCummulativeProbabilityDistribution(viable);
         
         List<Integer> selected;
-        if (viable.size() > POPULATION_SIZE / 2) {
-            selected = stochasticUniversalSampling(cummulativeProbabilityDistribution, POPULATION_SIZE / 2);
+        if (viable.size() > Configuration.INSTANCE.getPopulationSize() / 2) {
+            selected = stochasticUniversalSampling(cummulativeProbabilityDistribution,
+                    Configuration.INSTANCE.getPopulationSize() / 2);
         } else {
             selected = IntStream.range(0, viable.size()).mapToObj(Integer::valueOf).toList();
         }
@@ -302,7 +297,7 @@ public class GeneticAlgorithm {
             }
         }
         
-        while (population.size() < POPULATION_SIZE) {
+        while (population.size() < Configuration.INSTANCE.getPopulationSize()) {
             population.add(newVariant());
         }
         
@@ -354,7 +349,7 @@ public class GeneticAlgorithm {
                 .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                 .toList();
         
-        double mutationProbability = MUTATION_PROBABILITY / suspiciousStatements.size();
+        double mutationProbability = Configuration.INSTANCE.getMutationProbability() / suspiciousStatements.size();
         List<Node> ss = suspiciousStatements;
         LOG.fine(() -> ss.size() + " suspicious statements -> mutation probability " + mutationProbability);
         for (int i = 0; i < suspiciousStatements.size(); i++) {
@@ -647,7 +642,8 @@ public class GeneticAlgorithm {
                 }
             }
             
-            fitness = WEIGHT_NEGATIVE_TESTS * numPassingNegative + WEIGHT_POSITIVE_TESTS * numPassingPositive;
+            fitness = Configuration.INSTANCE.getNegativeTestsWeight() * numPassingNegative
+                    + Configuration.INSTANCE.getPositiveTestsWeight() * numPassingPositive;
         } else {
             fitness = 0.0;
         }
@@ -655,7 +651,8 @@ public class GeneticAlgorithm {
     }
     
     private double getMaxFitness() {
-        return negativeTests.size() * WEIGHT_NEGATIVE_TESTS + positiveTests.size() * WEIGHT_POSITIVE_TESTS;
+        return negativeTests.size() * Configuration.INSTANCE.getNegativeTestsWeight()
+                + positiveTests.size() * Configuration.INSTANCE.getPositiveTestsWeight();
     }
     
     private int indexWithMaxFitness(List<Variant> population) {

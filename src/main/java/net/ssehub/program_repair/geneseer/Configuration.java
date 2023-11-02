@@ -21,8 +21,6 @@ public class Configuration {
     
     private int testExecutionTimeoutMs = (int) TimeUnit.MINUTES.toMillis(2);
     
-    private long randomSeed = 0;
-    
     private boolean coverageMatrixSimplified = true;
     
     public enum TestsToRun {
@@ -33,6 +31,18 @@ public class Configuration {
     
     private boolean debugTestDriver = false;
     
+    private long randomSeed = 0;
+    
+    private int populationSize = 40;
+    
+    private int generationLimit = 10;
+    
+    private double negativeTestsWeight = 10;
+    
+    private double positiveTestsWeight = 1;
+    
+    private double mutationProbability = 4;
+    
     public void loadFromFile(Path file) throws IOException {
         LOG.info(() -> "Loading configuration file " + file.toAbsolutePath());
         Properties properties = new Properties();
@@ -41,26 +51,41 @@ public class Configuration {
         for (Object key : properties.keySet()) {
             String value = properties.getProperty((String) key);
             switch ((String) key) {
-            case "jvmBinaryPath":
+            case "setup.jvmBinaryPath":
                 jvmBinaryPath = value;
                 break;
-            case "javaCompilerBinaryPath":
+            case "setup.javaCompilerBinaryPath":
                 javaCompilerBinaryPath = value;
                 break;
-            case "testExecutionTimeoutMs":
+            case "setup.testExecutionTimeoutMs":
                 testExecutionTimeoutMs = Integer.parseInt(value);
                 break;
-            case "randomSeed":
-                randomSeed = Long.parseLong(value);
-                break;
-            case "coverageMatrixSimplified":
+            case "setup.coverageMatrixSimplified":
                 coverageMatrixSimplified = Boolean.parseBoolean(value);
                 break;
-            case "testsToRun":
+            case "setup.testsToRun":
                 testsToRun = TestsToRun.valueOf(value);
                 break;
-            case "debugTestDriver":
+            case "setup.debugTestDriver":
                 debugTestDriver = Boolean.parseBoolean(value);
+                break;
+            case "genetic.randomSeed":
+                randomSeed = Long.parseLong(value);
+                break;
+            case "genetic.populationSize":
+                populationSize = Integer.parseInt(value);
+                break;
+            case "genetic.generationLimit":
+                generationLimit = Integer.parseInt(value);
+                break;
+            case "genetic.negativeTestsWeight":
+                negativeTestsWeight = Double.parseDouble(value);
+                break;
+            case "genetic.positiveTestsWeight":
+                positiveTestsWeight = Double.parseDouble(value);
+                break;
+            case "genetic.mutationProbability":
+                mutationProbability = Double.parseDouble(value);
                 break;
             
             default:
@@ -94,10 +119,6 @@ public class Configuration {
         return testExecutionTimeoutMs;
     }
     
-    public long getRandomSeed() {
-        return randomSeed;
-    }
-    
     public boolean getCoverageMatrixSimplified() {
         return coverageMatrixSimplified;
     }
@@ -108,6 +129,30 @@ public class Configuration {
     
     public boolean getDebugTestDriver() {
         return debugTestDriver;
+    }
+
+    public long getRandomSeed() {
+        return randomSeed;
+    }
+    
+    public int getPopulationSize() {
+        return populationSize;
+    }
+    
+    public int getGenerationLimit() {
+        return generationLimit;
+    }
+    
+    public double getNegativeTestsWeight() {
+        return negativeTestsWeight;
+    }
+    
+    public double getPositiveTestsWeight() {
+        return positiveTestsWeight;
+    }
+    
+    public double getMutationProbability() {
+        return mutationProbability;
     }
     
 }

@@ -96,7 +96,6 @@ public class Configuration {
     }
     
     public void log() {
-        System.out.println(testExecutionTimeoutMs);
         LOG.config("Configuration:");
         LOG.config(() -> "    JVM binary path: " + jvmBinaryPath);
         LOG.config(() -> "    Java compiler binary path: " + javaCompilerBinaryPath);

@@ -17,7 +17,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
-import fr.spoonlabs.flacoco.api.result.Location;
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
@@ -25,7 +24,8 @@ import net.ssehub.program_repair.geneseer.evaluation.EvaluationResult;
 import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
 import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
-import net.ssehub.program_repair.geneseer.fault_localization.Flacoco;
+import net.ssehub.program_repair.geneseer.evaluation.fault_localization.FaultLocalization;
+import net.ssehub.program_repair.geneseer.evaluation.fault_localization.Location;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.Writer;
 import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
@@ -184,14 +184,10 @@ public class GeneticAlgorithm {
             List<TestResult> tests) throws EvaluationException {
         
         LOG.info("Measuring suspiciousness");
-        List<String> testMethodNamesWithHash = tests.stream()
-                .map(test -> test.testClass() + "#" + test.testMethod())
-                .toList();
-        Flacoco flacoco = new Flacoco(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute(),
-                project.getEncoding());
-        flacoco.setExpectedFailures(negativeTests);
-        LinkedHashMap<Location, Double> suspiciousness = flacoco.run(variantSourceDir, variantBinDir,
-                testMethodNamesWithHash);
+        FaultLocalization faultLocalization = new FaultLocalization(project.getProjectDirectory(),
+                project.getTestExecutionClassPathAbsolute(), project.getEncoding());
+        
+        LinkedHashMap<Location, Double> suspiciousness = faultLocalization.run(tests, variantBinDir);
         
         Map<String, Node> classes = new HashMap<>(variant.getAst().childCount());
         for (Node file : variant.getAst().childIterator()) {
@@ -204,13 +200,13 @@ public class GeneticAlgorithm {
         
         AtomicInteger suspiciousStatementCount = new AtomicInteger();
         for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
-            String className = entry.getKey().getClassName();
+            String className = entry.getKey().className();
             int dollarIndex = className.indexOf('$');
             if (dollarIndex != -1) {
                 className = className.substring(0, dollarIndex);
             }
             
-            int line = entry.getKey().getLineNumber();
+            int line = entry.getKey().line();
             
             Node ast = classes.get(className);
             if (ast != null) {

@@ -128,7 +128,9 @@ public class Defects4jWrapper {
     }
     
     private void checkout(Bug bug) throws IOException {
-        if (!Files.exists(bug.getDirectory())) {
+        if (!Files.isDirectory(bug.getDirectory())) {
+            Files.createDirectories(bug.getDirectory());
+            
             ProcessRunner process = new ProcessRunner.Builder(getDefects4jBinary(), "checkout", "-p", bug.project(),
                     "-v", bug.bug() + "b", "-w", bug.getDirectory().toString())
                     .captureOutput(true)

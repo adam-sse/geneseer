@@ -234,22 +234,17 @@ public class FaultLocalization {
             String className = classCoverage.getName().replace('/', '.');
             
             for (IMethodCoverage methodCoverage : classCoverage.getMethods()) {
-
-                if (!"<clinit>".equals(methodCoverage.getName())) {
-
-                    for (int line = methodCoverage.getFirstLine(); line <= methodCoverage.getLastLine() + 1; line++) {
-                        int coveredI = methodCoverage.getLine(line).getInstructionCounter().getCoveredCount();
-                        if (coveredI > 0) {
-                            coverage.compute(new Location(className, line), (k, v) -> {
-                                if (v == null) {
-                                    v = new HashSet<>();
-                                }
-                                v.addAll(test);
-                                return v;
-                            });
-                        }
+                for (int line = methodCoverage.getFirstLine(); line <= methodCoverage.getLastLine() + 1; line++) {
+                    int coveredI = methodCoverage.getLine(line).getInstructionCounter().getCoveredCount();
+                    if (coveredI > 0) {
+                        coverage.compute(new Location(className, line), (k, v) -> {
+                            if (v == null) {
+                                v = new HashSet<>();
+                            }
+                            v.addAll(test);
+                            return v;
+                        });
                     }
-
                 }
             }
         }

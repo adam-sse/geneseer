@@ -131,15 +131,33 @@ public class Defects4jWrapper {
         if (!Files.exists(bug.getDirectory())) {
             ProcessRunner process = new ProcessRunner.Builder(getDefects4jBinary(), "checkout", "-p", bug.project(),
                     "-v", bug.bug() + "b", "-w", bug.getDirectory().toString())
+                    .captureOutput(true)
                     .run();
             if (process.getExitCode() != 0) {
+                String stdout = new String(process.getStdout());
+                String stderr = new String(process.getStderr());
+                if (!stdout.isEmpty()) {
+                    LOG.warning(() -> "defects4j stdout:\n" + stdout);
+                }
+                if (!stderr.isEmpty()) {
+                    LOG.warning(() -> "defects4j stdout:\n" + stderr);
+                }
                 throw new IOException("Failed to checkout " + bug);
             }
             
             process = new ProcessRunner.Builder(getDefects4jBinary(), "compile")
                     .workingDirectory(bug.getDirectory())
+                    .captureOutput(true)
                     .run();
             if (process.getExitCode() != 0) {
+                String stdout = new String(process.getStdout());
+                String stderr = new String(process.getStderr());
+                if (!stdout.isEmpty()) {
+                    LOG.warning(() -> "defects4j stdout:\n" + stdout);
+                }
+                if (!stderr.isEmpty()) {
+                    LOG.warning(() -> "defects4j stdout:\n" + stderr);
+                }
                 throw new IOException("Failed to compile " + bug);
             }
         }

@@ -96,14 +96,20 @@ public class Configuration {
     }
     
     public void log() {
-        LOG.config("Configuration:");
+        LOG.config("Setup Configuration:");
         LOG.config(() -> "    JVM binary path: " + jvmBinaryPath);
         LOG.config(() -> "    Java compiler binary path: " + javaCompilerBinaryPath);
         LOG.config(() -> "    Test execution timeout: " + TimeUtils.formatMilliseconds(testExecutionTimeoutMs));
-        LOG.config(() -> "    Random seed: " + randomSeed);
         LOG.config(() -> "    Simplified coverage matrix: " + coverageMatrixSimplified);
         LOG.config(() -> "    Tests to run: " + testsToRun);
         LOG.config(() -> "    Debug test driver: " + debugTestDriver);
+        LOG.config("Genetic Configuration:");
+        LOG.config(() -> "    Random seed: " + randomSeed);
+        LOG.config(() -> "    Population size: " + populationSize);
+        LOG.config(() -> "    Generation limit: " + generationLimit);
+        LOG.config(() -> "    Negative tests weight: " + negativeTestsWeight);
+        LOG.config(() -> "    Positive tests weight: " + positiveTestsWeight);
+        LOG.config(() -> "    Mutation probability: " + mutationProbability);
     }
     
     public String getJvmBinaryPath() {

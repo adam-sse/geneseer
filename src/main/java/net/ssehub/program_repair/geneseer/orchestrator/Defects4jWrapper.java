@@ -106,49 +106,6 @@ public class Defects4jWrapper {
         return project;
     }
 
-    private void applyProjectSpecificFixes(Bug bug, Path checkoutDirectory, List<Path> compilationClasspath,
-            List<Path> testExecutionClassPath) {
-        switch (bug.project()) {
-        case "Cli":
-            testExecutionClassPath.remove(Path.of("file"));
-            testExecutionClassPath.remove(Path.of("${test.classes.dir}"));
-            testExecutionClassPath.remove(Path.of("${classes.dir}"));
-            break;
-            
-        case "Closure":
-            compilationClasspath.add(Path.of("lib/junit.jar"));
-            compilationClasspath.add(Path.of("lib/json.jar"));
-            compilationClasspath.add(Path.of("build/classes"));
-            testExecutionClassPath.add(Path.of("build/classes"));
-            break;
-            
-        case "Compress":
-            testExecutionClassPath.remove(Path.of("${dependency.jar}"));
-            break;
-            
-        case "Mockito":
-            compilationClasspath.add(defects4jHome.resolve("framework/projects/lib/junit-4.11.jar").toAbsolutePath());
-            compilationClasspath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
-            testExecutionClassPath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
-            testExecutionClassPath.add(Path.of("build/classes/main"));
-            break;
-            
-        case "Math":
-            if (bug.bug() >= 100) {
-                compilationClasspath.add(defects4jHome.resolve("framework/projects/Math/lib/commons-discovery-0.5.jar")
-                        .toAbsolutePath());
-            }
-            break;
-            
-        case "Time":
-            copyTimeTzData(bug, checkoutDirectory);
-            break;
-            
-        default:
-            break;
-        }
-    }
-    
     public Set<String> getFailingTests(Bug bug) throws IOException {
         return Arrays.stream(exportProperty(bug.getDirectory(), "tests.trigger")).collect(Collectors.toSet());
     }
@@ -223,6 +180,49 @@ public class Defects4jWrapper {
         return new String(process.getStdout()).split("\n");
     }
     
+    private void applyProjectSpecificFixes(Bug bug, Path checkoutDirectory, List<Path> compilationClasspath,
+            List<Path> testExecutionClassPath) {
+        switch (bug.project()) {
+        case "Cli":
+            testExecutionClassPath.remove(Path.of("file"));
+            testExecutionClassPath.remove(Path.of("${test.classes.dir}"));
+            testExecutionClassPath.remove(Path.of("${classes.dir}"));
+            break;
+            
+        case "Closure":
+            compilationClasspath.add(Path.of("lib/junit.jar"));
+            compilationClasspath.add(Path.of("lib/json.jar"));
+            compilationClasspath.add(Path.of("build/classes"));
+            testExecutionClassPath.add(Path.of("build/classes"));
+            break;
+            
+        case "Compress":
+            testExecutionClassPath.remove(Path.of("${dependency.jar}"));
+            break;
+            
+        case "Mockito":
+            compilationClasspath.add(defects4jHome.resolve("framework/projects/lib/junit-4.11.jar").toAbsolutePath());
+            compilationClasspath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
+            testExecutionClassPath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
+            testExecutionClassPath.add(Path.of("build/classes/main"));
+            break;
+            
+        case "Math":
+            if (bug.bug() >= 100) {
+                compilationClasspath.add(defects4jHome.resolve("framework/projects/Math/lib/commons-discovery-0.5.jar")
+                        .toAbsolutePath());
+            }
+            break;
+            
+        case "Time":
+            copyTimeTzData(bug, checkoutDirectory);
+            break;
+            
+        default:
+            break;
+        }
+    }
+
     private void copyTimeTzData(Bug bug, Path checkoutDirectory) {
         Path from;
         if (bug.bug() <= 11) {

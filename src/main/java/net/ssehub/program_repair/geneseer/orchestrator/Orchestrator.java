@@ -87,7 +87,9 @@ public class Orchestrator {
         List<String> command = new LinkedList<>();
         command.add(jvmExecutable);
         command.add("-Djava.util.logging.config.class=" + LoggingConfiguration.class.getName());
-        command.add("-Djava.util.logging.config.file=logging.properties");
+        if (System.getProperty("java.util.logging.config.file") != null) {
+            command.add("-Djava.util.logging.config.file=" + System.getProperty("java.util.logging.config.file"));
+        }
         command.add("-cp");
         command.add(geneseerJar);
         command.add(mainClass.getName());

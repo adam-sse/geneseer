@@ -95,25 +95,8 @@ public class Defects4jWrapper {
         
         testClassNames = new LinkedList<>(List.of(exportProperty(checkoutDirectory,
                 Configuration.INSTANCE.getTestsToRun() == TestsToRun.ALL_TESTS ? "tests.all" : "tests.relevant")));
-        
-        if (bug.project().equals("Closure")) {
-            compilationClasspath.add(Path.of("lib/junit.jar"));
-            compilationClasspath.add(Path.of("lib/json.jar"));
-            compilationClasspath.add(Path.of("build/classes"));
-            testExecutionClassPath.add(Path.of("build/classes"));
-            
-        } else if (bug.project().equals("Mockito")) {
-            compilationClasspath.add(defects4jHome.resolve("framework/projects/lib/junit-4.11.jar"));
-            compilationClasspath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
-            testExecutionClassPath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
-            testExecutionClassPath.add(Path.of("build/classes/main"));
-            
-        } else if (bug.project().equals("Math") && bug.bug() >= 100) {
-            compilationClasspath.add(defects4jHome.resolve("framework/projects/Math/lib/commons-discovery-0.5.jar"));
-            
-        } else if (bug.project().equals("Time")) {
-            copyTimeTzData(bug, checkoutDirectory);
-        }
+
+        applyProjectSpecificFixes(bug, checkoutDirectory, compilationClasspath, testExecutionClassPath);
         
         Project project = new Project(checkoutDirectory, sourceDirectory, compilationClasspath,
                 testExecutionClassPath, testClassNames);
@@ -121,6 +104,45 @@ public class Defects4jWrapper {
             project.setEncoding(StandardCharsets.ISO_8859_1);
         }
         return project;
+    }
+
+    private void applyProjectSpecificFixes(Bug bug, Path checkoutDirectory, List<Path> compilationClasspath,
+            List<Path> testExecutionClassPath) {
+        switch (bug.project()) {
+        case "Cli":
+            testExecutionClassPath.remove(Path.of("file"));
+            testExecutionClassPath.remove(Path.of("${test.classes.dir}"));
+            testExecutionClassPath.remove(Path.of("${classes.dir}"));
+            break;
+            
+        case "Closure":
+            compilationClasspath.add(Path.of("lib/junit.jar"));
+            compilationClasspath.add(Path.of("lib/json.jar"));
+            compilationClasspath.add(Path.of("build/classes"));
+            testExecutionClassPath.add(Path.of("build/classes"));
+            break;
+            
+        case "Mockito":
+            compilationClasspath.add(defects4jHome.resolve("framework/projects/lib/junit-4.11.jar"));
+            compilationClasspath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
+            testExecutionClassPath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
+            testExecutionClassPath.add(Path.of("build/classes/main"));
+            break;
+            
+        case "Math":
+            if (bug.bug() >= 100) {
+                compilationClasspath.add(
+                        defects4jHome.resolve("framework/projects/Math/lib/commons-discovery-0.5.jar"));
+            }
+            break;
+            
+        case "Time":
+            copyTimeTzData(bug, checkoutDirectory);
+            break;
+            
+        default:
+            break;
+        }
     }
     
     public Set<String> getFailingTests(Bug bug) throws IOException {

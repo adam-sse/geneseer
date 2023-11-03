@@ -231,6 +231,9 @@ public class Defects4jWrapper {
                 compilationClasspath.add(defects4jHome.resolve("framework/projects/Math/lib/commons-discovery-0.5.jar")
                         .toAbsolutePath());
             }
+            if (bug.bug() < 85) {
+                testExecutionClassPath.add(Path.of("src/main/resources"));
+            }
             break;
             
         case "Time":

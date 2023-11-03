@@ -23,6 +23,7 @@ import org.jacoco.core.tools.ExecFileLoader;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
+import net.ssehub.program_repair.geneseer.util.ProcessRunner.CaptureThread;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
 public class TestExecution implements AutoCloseable {
@@ -81,6 +82,8 @@ public class TestExecution implements AutoCloseable {
     
     private ObjectOutputStream out;
     
+    private CaptureThread stderrCapture;
+    
     private long timeoutMs = -1;
     
     private int jacocoPort;
@@ -129,12 +132,21 @@ public class TestExecution implements AutoCloseable {
             ProcessBuilder builder = new ProcessBuilder(command);
             builder.directory(workingDirectory.toFile());
             builder.environment().put("TZ", "America/Los_Angeles");
-            builder.redirectError(Redirect.INHERIT); // TODO: for now, we just hope there is no error output
+            if (Configuration.INSTANCE.getDebugTestDriver()) {
+                builder.redirectError(Redirect.INHERIT);
+            } else {
+                builder.redirectError(Redirect.PIPE);
+            }
             
             process = builder.start();
             out = new ObjectOutputStream(process.getOutputStream());
             rawIn = process.getInputStream();
             in = new ObjectInputStream(rawIn);
+            
+            if (!Configuration.INSTANCE.getDebugTestDriver()) {
+                stderrCapture = new CaptureThread(process.getErrorStream(), "test-driver stderr");
+                stderrCapture.start();
+            }
             
         } catch (IOException e) {
             throw new EvaluationException("Failed to start test driver process", e);
@@ -167,7 +179,17 @@ public class TestExecution implements AutoCloseable {
         boolean terminated = ProcessRunner.untilNoInterruptedException(
                 () -> process.waitFor(500, TimeUnit.MILLISECONDS));
         if (!terminated) {
+            LOG.warning("Focribly stopping test driver process");
             process.destroyForcibly();
+        }
+        
+        ProcessRunner.untilNoInterruptedException(() -> {
+            stderrCapture.join();
+            return 0;
+        });
+        String stderr = new String(stderrCapture.getOutput());
+        if (!stderr.isEmpty()) {
+            LOG.warning(() -> "Test driver stderr:\n" + stderr);
         }
     }
     
@@ -346,7 +368,7 @@ public class TestExecution implements AutoCloseable {
         command.add("-cp");
         command.add(cp.toString());
 
-        command.add("net.ssehub.program_repair.geneseer.evaluation.Runner");
+        command.add("net.ssehub.program_repair.geneseer.evaluation.TestDriver");
         if (Configuration.INSTANCE.getDebugTestDriver()) {
             command.add("DEBUG");
         }

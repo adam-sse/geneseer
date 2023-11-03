@@ -64,12 +64,9 @@ public class Orchestrator {
     private synchronized Bug nextBug() {
         Bug nextBug;
         if (!bugs.isEmpty()) {
-            nextBug = bugs.remove(0);
-            LOG.info(() -> "Pulled " + nextBug + " from queue");
-
             if (bugsFinished > 0) {
                 long secondsPerBug = totalBugRuntimeInSeconds / bugsFinished;
-                int remaining = bugs.size() + 1;
+                int remaining = bugs.size();
                 long secondsRemaining = (secondsPerBug * remaining) / numThreads;
                 LocalDateTime eta = LocalDateTime.now().plusSeconds(secondsRemaining).truncatedTo(ChronoUnit.SECONDS);
                 
@@ -77,6 +74,9 @@ public class Orchestrator {
                         + " remaining in " + numThreads +  " threads = " + TimeUtils.formatSeconds(secondsRemaining)
                         + " (" + eta + ")");
             }
+            
+            nextBug = bugs.remove(0);
+            LOG.info(() -> "Pulled " + nextBug + " from queue");
         } else {
             nextBug = null;
         }

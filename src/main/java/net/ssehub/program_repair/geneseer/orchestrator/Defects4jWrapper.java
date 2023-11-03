@@ -97,7 +97,7 @@ public class Defects4jWrapper {
         testClassNames = new LinkedList<>(List.of(exportProperty(checkoutDirectory,
                 Configuration.INSTANCE.getTestsToRun() == TestsToRun.ALL_TESTS ? "tests.all" : "tests.relevant")));
 
-        applyProjectSpecificFixes(bug, checkoutDirectory, compilationClasspath, testExecutionClassPath);
+        applyProjectSpecificFixes(bug, checkoutDirectory, compilationClasspath, testExecutionClassPath, testClassNames);
         
         Project project = new Project(checkoutDirectory, sourceDirectory, compilationClasspath,
                 testExecutionClassPath, testClassNames);
@@ -195,7 +195,7 @@ public class Defects4jWrapper {
     }
 
     private void applyProjectSpecificFixes(Bug bug, Path checkoutDirectory, List<Path> compilationClasspath,
-            List<Path> testExecutionClassPath) {
+            List<Path> testExecutionClassPath, List<String> testClassNames) {
         switch (bug.project()) {
         case "Cli":
             testExecutionClassPath.remove(Path.of("file"));
@@ -233,6 +233,7 @@ public class Defects4jWrapper {
             if (bug.bug() < 85) {
                 testExecutionClassPath.add(Path.of("src/main/resources"));
             }
+            testClassNames.remove("org.apache.commons.math3.genetics.FixedElapsedTimeTest");
             break;
             
         case "Time":

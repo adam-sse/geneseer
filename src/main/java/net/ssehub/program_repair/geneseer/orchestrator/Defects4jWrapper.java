@@ -220,7 +220,7 @@ public class Defects4jWrapper {
             break;
             
         case "Mockito":
-            compilationClasspath.add(defects4jHome.resolve("framework/projects/lib/junit-4.11.jar").toAbsolutePath());
+            compilationClasspath.add(defects4jResource("framework/projects/lib/junit-4.11.jar"));
             compilationClasspath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
             testExecutionClassPath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
             testExecutionClassPath.add(Path.of("build/classes/main"));
@@ -228,8 +228,7 @@ public class Defects4jWrapper {
             
         case "Math":
             if (bug.bug() >= 100) {
-                compilationClasspath.add(defects4jHome.resolve("framework/projects/Math/lib/commons-discovery-0.5.jar")
-                        .toAbsolutePath());
+                compilationClasspath.add(defects4jResource("framework/projects/Math/lib/commons-discovery-0.5.jar"));
             }
             if (bug.bug() < 85) {
                 testExecutionClassPath.add(Path.of("src/main/resources"));
@@ -249,6 +248,10 @@ public class Defects4jWrapper {
         if (Files.exists(dir.resolve(toAdd))) {
             list.add(toAdd);
         }
+    }
+    
+    private Path defects4jResource(String pathInDefects4jRoot) {
+        return defects4jHome.resolve(pathInDefects4jRoot).toAbsolutePath();
     }
 
     private void copyTimeTzData(Bug bug, Path checkoutDirectory) {

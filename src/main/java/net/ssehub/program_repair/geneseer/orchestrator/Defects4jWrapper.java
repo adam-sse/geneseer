@@ -92,6 +92,7 @@ public class Defects4jWrapper {
         testExecutionClassPath = getMultiplePathsProperty(checkoutDirectory, "cp.test");
         testExecutionClassPath = normalizeAndRemoveBinDirectory(testExecutionClassPath, absoluteBinDirectory,
                 checkoutDirectory);
+        testExecutionClassPath = removeJunit(testExecutionClassPath);
         
         testClassNames = new LinkedList<>(List.of(exportProperty(checkoutDirectory,
                 Configuration.INSTANCE.getTestsToRun() == TestsToRun.ALL_TESTS ? "tests.all" : "tests.relevant")));
@@ -156,15 +157,6 @@ public class Defects4jWrapper {
                 .collect(Collectors.toList());
     }
     
-    private List<Path> normalizeAndRemoveBinDirectory(List<Path> classpath, Path absoluteBinDirectory,
-            Path checkoutDirectory) {
-        return classpath.stream()
-                .map(p -> checkoutDirectory.resolve(p))
-                .filter(p -> !p.equals(absoluteBinDirectory))
-                .map(p -> p.startsWith(checkoutDirectory) ? checkoutDirectory.relativize(p) : p)
-                .collect(Collectors.toList());
-    }
-    
     private String[] exportProperty(Path checkoutDirectory, String propertyName) throws IOException {
         
         ProcessRunner process = new ProcessRunner.Builder(getDefects4jBinary(), "export", "-p", propertyName)
@@ -180,6 +172,28 @@ public class Defects4jWrapper {
         return new String(process.getStdout()).split("\n");
     }
     
+    private List<Path> normalizeAndRemoveBinDirectory(List<Path> classpath, Path absoluteBinDirectory,
+            Path checkoutDirectory) {
+        return classpath.stream()
+                .map(p -> checkoutDirectory.resolve(p))
+                .filter(p -> !p.equals(absoluteBinDirectory))
+                .map(p -> p.startsWith(checkoutDirectory) ? checkoutDirectory.relativize(p) : p)
+                .collect(Collectors.toList());
+    }
+    
+    private List<Path> removeJunit(List<Path> classpath) {
+        return classpath.stream()
+                .filter(entry -> {
+                    String name = entry.getFileName().toString();
+                    boolean isJunit = name.matches("junit(-[0-9\\.\\-]+|4-core|4-legacy)?\\.jar");
+                    if (isJunit) {
+                        LOG.fine(() -> "Removing junit jar: " + entry);
+                    }
+                    return !isJunit;
+                })
+                .collect(Collectors.toList());
+    }
+
     private void applyProjectSpecificFixes(Bug bug, Path checkoutDirectory, List<Path> compilationClasspath,
             List<Path> testExecutionClassPath) {
         switch (bug.project()) {

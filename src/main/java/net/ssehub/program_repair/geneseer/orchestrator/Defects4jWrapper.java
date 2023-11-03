@@ -123,7 +123,7 @@ public class Defects4jWrapper {
             break;
             
         case "Mockito":
-            compilationClasspath.add(defects4jHome.resolve("framework/projects/lib/junit-4.11.jar"));
+            compilationClasspath.add(defects4jHome.resolve("framework/projects/lib/junit-4.11.jar").toAbsolutePath());
             compilationClasspath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
             testExecutionClassPath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
             testExecutionClassPath.add(Path.of("build/classes/main"));
@@ -131,8 +131,8 @@ public class Defects4jWrapper {
             
         case "Math":
             if (bug.bug() >= 100) {
-                compilationClasspath.add(
-                        defects4jHome.resolve("framework/projects/Math/lib/commons-discovery-0.5.jar"));
+                compilationClasspath.add(defects4jHome.resolve("framework/projects/Math/lib/commons-discovery-0.5.jar")
+                        .toAbsolutePath());
             }
             break;
             

@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -70,7 +71,7 @@ public class Orchestrator {
                 long secondsPerBug = totalBugRuntimeInSeconds / bugsFinished;
                 int remaining = bugs.size() + 1;
                 long secondsRemaining = (secondsPerBug * remaining) / numThreads;
-                LocalDateTime eta = LocalDateTime.now().plusSeconds(secondsRemaining);
+                LocalDateTime eta = LocalDateTime.now().plusSeconds(secondsRemaining).truncatedTo(ChronoUnit.SECONDS);
                 
                 LOG.info(() -> TimeUtils.formatSeconds(secondsPerBug) + " per bug times " + remaining
                         + " remaining in " + numThreads +  " threads = " + TimeUtils.formatSeconds(secondsRemaining)

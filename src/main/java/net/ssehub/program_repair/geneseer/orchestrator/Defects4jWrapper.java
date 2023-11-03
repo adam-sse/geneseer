@@ -223,7 +223,7 @@ public class Defects4jWrapper {
             compilationClasspath.add(defects4jResource("framework/projects/lib/junit-4.11.jar"));
             compilationClasspath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
             testExecutionClassPath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
-            testExecutionClassPath.add(Path.of("build/classes/main"));
+            addIfExists(Path.of("build/classes/main"), checkoutDirectory, testExecutionClassPath);
             break;
             
         case "Math":

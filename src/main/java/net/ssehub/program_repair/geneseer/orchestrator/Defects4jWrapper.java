@@ -122,6 +122,10 @@ public class Defects4jWrapper {
             testExecutionClassPath.add(Path.of("build/classes"));
             break;
             
+        case "Compress":
+            testExecutionClassPath.remove(Path.of("${dependency.jar}"));
+            break;
+            
         case "Mockito":
             compilationClasspath.add(defects4jHome.resolve("framework/projects/lib/junit-4.11.jar").toAbsolutePath());
             compilationClasspath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));

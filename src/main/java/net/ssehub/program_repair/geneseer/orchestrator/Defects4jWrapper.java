@@ -190,14 +190,19 @@ public class Defects4jWrapper {
             break;
             
         case "Closure":
-            compilationClasspath.add(Path.of("lib/junit.jar"));
-            compilationClasspath.add(Path.of("lib/json.jar"));
+            addIfExists(checkoutDirectory, Path.of("lib/junit.jar"), compilationClasspath);
+            addIfExists(checkoutDirectory, Path.of("lib/json.jar"), compilationClasspath);
             compilationClasspath.add(Path.of("build/classes"));
             testExecutionClassPath.add(Path.of("build/classes"));
             break;
             
         case "Compress":
             testExecutionClassPath.remove(Path.of("${dependency.jar}"));
+            break;
+            
+        case "JacksonXml":
+            compilationClasspath.removeIf(p -> p.getFileName().toString().equals("stax-api-1.0-2.jar"));
+            testExecutionClassPath.removeIf(p -> p.getFileName().toString().equals("stax-api-1.0-2.jar"));
             break;
             
         case "Mockito":
@@ -220,6 +225,12 @@ public class Defects4jWrapper {
             
         default:
             break;
+        }
+    }
+    
+    private void addIfExists(Path dir, Path toAdd, List<Path> list) {
+        if (Files.exists(dir.resolve(toAdd))) {
+            list.add(toAdd);
         }
     }
 

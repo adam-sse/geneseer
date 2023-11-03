@@ -70,9 +70,11 @@ public class Orchestrator {
                 long secondsPerBug = totalBugRuntimeInSeconds / bugsFinished;
                 int remaining = bugs.size() + 1;
                 long secondsRemaining = (secondsPerBug * remaining) / numThreads;
+                LocalDateTime eta = LocalDateTime.now().plusSeconds(secondsRemaining);
                 
                 LOG.info(() -> TimeUtils.formatSeconds(secondsPerBug) + " per bug times " + remaining
-                        + " remaining in " + numThreads +  " threads = " + TimeUtils.formatSeconds(secondsRemaining));
+                        + " remaining in " + numThreads +  " threads = " + TimeUtils.formatSeconds(secondsRemaining)
+                        + " (" + eta + ")");
             }
         } else {
             nextBug = null;

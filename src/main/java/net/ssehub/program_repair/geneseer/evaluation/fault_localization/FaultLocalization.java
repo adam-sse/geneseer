@@ -21,11 +21,12 @@ import org.jacoco.core.analysis.IMethodCoverage;
 import org.jacoco.core.data.ExecutionDataStore;
 
 import net.ssehub.program_repair.geneseer.Configuration;
-import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
+import net.ssehub.program_repair.geneseer.evaluation.TestCoverageException;
 import net.ssehub.program_repair.geneseer.evaluation.TestExecution;
 import net.ssehub.program_repair.geneseer.evaluation.TestExecution.TestResultWithCoverage;
+import net.ssehub.program_repair.geneseer.evaluation.TestExecutionException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
-import net.ssehub.program_repair.geneseer.evaluation.TimeoutException;
+import net.ssehub.program_repair.geneseer.evaluation.TestTimeoutException;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
@@ -46,7 +47,7 @@ public class FaultLocalization {
     }
     
     public LinkedHashMap<Location, Double> run(List<TestResult> tests, Path classesDirectory)
-            throws EvaluationException {
+            throws TestExecutionException {
         
         Map<Location, Set<TestResult>> coverage = measureCoverage(tests, classesDirectory);
         
@@ -91,7 +92,7 @@ public class FaultLocalization {
     }
     
     private Map<Location, Set<TestResult>> measureCoverage(List<TestResult> tests, Path classesDirectory)
-            throws EvaluationException {
+            throws TestExecutionException {
         
         Map<Location, Set<TestResult>> result = new HashMap<>();
         
@@ -117,7 +118,7 @@ public class FaultLocalization {
     }
     
     private void measureCoverageWithClassAggregation(List<TestResult> tests, Path classesDirectory,
-            TestExecution testExec, Map<Location, Set<TestResult>> result) throws EvaluationException {
+            TestExecution testExec, Map<Location, Set<TestResult>> result) throws TestExecutionException {
         
         Map<String, List<TestResult>> testsByClass = new HashMap<>();
         for (TestResult test : tests) {
@@ -135,7 +136,7 @@ public class FaultLocalization {
     }
     
     private void measureCoverageForWholeClass(String className, List<TestResult> tests, Path classesDirectory,
-            TestExecution testExec, Map<Location, Set<TestResult>> result) throws EvaluationException {
+            TestExecution testExec, Map<Location, Set<TestResult>> result) throws TestExecutionException {
         
         boolean containsFailure = false;
         List<TestResultWithCoverage> coverageResults = null;
@@ -147,7 +148,7 @@ public class FaultLocalization {
                     containsFailure = true;
                 }
             }
-        } catch (TimeoutException e) {
+        } catch (TestTimeoutException e) {
             containsFailure = true;
         }
         
@@ -191,7 +192,7 @@ public class FaultLocalization {
     }
     
     private void measureCoverageForSingleTest(TestResult test, Map<Location, Set<TestResult>> coverage,
-            TestExecution testExec, Path classesDirectory) throws EvaluationException {
+            TestExecution testExec, Path classesDirectory) throws TestExecutionException {
         try {
             TestResultWithCoverage testResult = testExec.executeTestMethodWithCoverage(
                     test.testClass(), test.testMethod());
@@ -212,13 +213,13 @@ public class FaultLocalization {
                 LOG.warning("Test " + test + " did not return a result");
             }
             
-        } catch (TimeoutException e) {
+        } catch (TestTimeoutException e) {
             LOG.warning(() -> "Test " + test + " timed out when run with coverage");
         }
     }
     
     private void parseJacocoCoverage(List<TestResult> test, ExecutionDataStore executionData, Path classesDirectory,
-            Map<Location, Set<TestResult>> coverage) throws EvaluationException {
+            Map<Location, Set<TestResult>> coverage) throws TestCoverageException {
 
         final CoverageBuilder coverageBuilder = new CoverageBuilder();
         final Analyzer analyzer = new Analyzer(executionData, coverageBuilder);
@@ -226,7 +227,7 @@ public class FaultLocalization {
         try {
             analyzer.analyzeAll(classesDirectory.toFile());
         } catch (IOException e) {
-            throw new EvaluationException("Failed to parse jacoco data", e);
+            throw new TestCoverageException("Failed to parse jacoco data", e);
         }
 
         for (IClassCoverage classCoverage : coverageBuilder.getClasses()) {

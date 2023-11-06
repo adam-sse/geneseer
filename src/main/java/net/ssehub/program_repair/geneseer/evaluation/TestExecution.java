@@ -89,7 +89,7 @@ public class TestExecution implements AutoCloseable {
     private int jacocoPort;
     
     public TestExecution(Path workingDirectory, List<Path> classpath, Charset encoding, boolean withCoverage)
-            throws EvaluationException {
+            throws TestExecutionException {
         tempDirManager = new TemporaryDirectoryManager();
         this.workingDirectory = workingDirectory;
         this.classpath = classpath;
@@ -117,7 +117,7 @@ public class TestExecution implements AutoCloseable {
         return port;
     }
     
-    private void startProcess() throws EvaluationException {
+    private void startProcess() throws TestExecutionException {
         try {
             if (withCoverage) {
                 jacocoPort = generateRandomPort();
@@ -149,24 +149,24 @@ public class TestExecution implements AutoCloseable {
             }
             
         } catch (IOException e) {
-            throw new EvaluationException("Failed to start test driver process", e);
+            throw new TestExecutionException("Failed to start test driver process", e);
         }
         
         checkHeartbeat();
     }
     
-    private void checkHeartbeat() throws EvaluationException {
+    private void checkHeartbeat() throws TestExecutionException {
         try  {
             out.writeObject("HEARTBEAT");
             out.flush();
         } catch (IOException e) {
-            throw new EvaluationException("Communication with test driver process failed", e);
+            throw new TestExecutionException("Communication with test driver process failed", e);
         }
         
         String answer = readResult();
         
         if (!answer.equals("alive")) {
-            throw new EvaluationException("Test driver process does not reply with alive");
+            throw new TestExecutionException("Test driver process does not reply with alive");
         }
         
         LOG.fine("Heartbeat of test driver process is alive");
@@ -194,7 +194,7 @@ public class TestExecution implements AutoCloseable {
     }
     
     @Override
-    public void close() throws EvaluationException {
+    public void close() throws TestExecutionException {
         stopProcess();
         
         try {
@@ -205,7 +205,7 @@ public class TestExecution implements AutoCloseable {
     }
     
     @SuppressWarnings("unchecked")
-    private <T> T readResult() throws EvaluationException, TimeoutException {
+    private <T> T readResult() throws TestExecutionException {
         try {
             if (timeoutMs > 0) {
                 long t0 = System.currentTimeMillis();
@@ -222,23 +222,23 @@ public class TestExecution implements AutoCloseable {
                 }
                 
                 if (!process.isAlive()) {
-                    throw new EvaluationException("Test driver process died");
+                    throw new TestExecutionException("Test driver process died");
                 }
                 if (rawIn.available() == 0) {
                     stopProcess();
                     startProcess();
-                    throw new TimeoutException("Test execution did not finish in " + timeoutMs + " ms");
+                    throw new TestTimeoutException("Test execution did not finish in " + timeoutMs + " ms");
                 }
             }
             
             return (T) in.readObject();
             
         } catch (IOException | ClassNotFoundException e) {
-            throw new EvaluationException("Failed to read result from test driver process", e);
+            throw new TestExecutionException("Failed to read result from test driver process", e);
         }
     }
 
-    public List<TestResult> executeTestClass(String className) throws EvaluationException, TimeoutException {
+    public List<TestResult> executeTestClass(String className) throws TestExecutionException {
         try {
             out.writeObject("CLASS");
             out.writeObject(className);
@@ -252,9 +252,9 @@ public class TestExecution implements AutoCloseable {
             return result;
             
         } catch (IOException e) {
-            throw new EvaluationException("Communication with test driver process failed", e);
+            throw new TestExecutionException("Communication with test driver process failed", e);
             
-        } catch (TimeoutException e) {
+        } catch (TestTimeoutException e) {
             LOG.fine(() -> "Test class " + className + " timed out");
             throw e;
         }
@@ -281,7 +281,7 @@ public class TestExecution implements AutoCloseable {
     }
     
     public List<TestResultWithCoverage> executeTestClassWithCoverage(String className)
-            throws EvaluationException, TimeoutException {
+            throws TestExecutionException {
         
         try {
             ExecDumpClient jacocoClient = new ExecDumpClient();
@@ -308,16 +308,16 @@ public class TestExecution implements AutoCloseable {
                     .toList();
             
         } catch (IOException e) {
-            throw new EvaluationException("Communication with test driver process failed", e);
+            throw new TestExecutionException("Communication with test driver process failed", e);
             
-        } catch (TimeoutException e) {
+        } catch (TestTimeoutException e) {
             LOG.fine(() -> "Test class " + className + " timed out");
             throw e;
         }
     }
     
     public TestResultWithCoverage executeTestMethodWithCoverage(String className, String methodName)
-            throws EvaluationException, TimeoutException {
+            throws TestExecutionException {
         
         try {
             ExecDumpClient jacocoClient = new ExecDumpClient();
@@ -338,9 +338,9 @@ public class TestExecution implements AutoCloseable {
             return new TestResultWithCoverage(result, loader.getExecutionDataStore());
             
         } catch (IOException e) {
-            throw new EvaluationException("Communication with test driver process failed", e);
+            throw new TestExecutionException("Communication with test driver process failed", e);
             
-        } catch (TimeoutException e) {
+        } catch (TestTimeoutException e) {
             LOG.fine(() -> "Test method " + className + "::" + methodName + " timed out");
             throw e;
         }

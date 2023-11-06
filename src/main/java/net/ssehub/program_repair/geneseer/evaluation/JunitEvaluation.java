@@ -11,9 +11,20 @@ import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
 public class JunitEvaluation {
+    
+    private Path workingDirectory;
+    
+    private List<Path> classpath;
+    
+    private Charset encoding;
+    
+    public JunitEvaluation(Path workingDirectory, List<Path> classpath, Charset encoding) {
+        this.workingDirectory = workingDirectory;
+        this.classpath = classpath;
+        this.encoding = encoding;
+    }
 
-    public EvaluationResult runTests(Path workingDirectory, List<Path> classpath, Path classes,
-            List<String> testClasses, Charset encoding) throws EvaluationException {
+    public EvaluationResult runTests(Path classes, List<String> testClasses) throws TestExecutionException {
         
         try (Probe probe = Measurement.INSTANCE.start("junit-evaluation")) {
             
@@ -25,7 +36,7 @@ public class JunitEvaluation {
             try (TestExecution testExec = new TestExecution(workingDirectory, fullClasspath, encoding, false)) {
                 testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
                 for (String className : testClasses) {
-                    runTestOrTimeout(workingDirectory, fullClasspath, executedTests, testExec, className);
+                    runTestCatchingTimeout(workingDirectory, fullClasspath, executedTests, testExec, className);
                 }
             }
             
@@ -36,12 +47,12 @@ public class JunitEvaluation {
         }
     }
 
-    private void runTestOrTimeout(Path workingDirectory, List<Path> fullClasspath,
-            List<TestResult> executedTests, TestExecution testExec, String className) throws EvaluationException {
+    private void runTestCatchingTimeout(Path workingDirectory, List<Path> fullClasspath,
+            List<TestResult> executedTests, TestExecution testExec, String className) throws TestExecutionException {
         try {
             executedTests.addAll(testExec.executeTestClass(className));
             
-        } catch (TimeoutException e) {
+        } catch (TestTimeoutException e) {
             executedTests.add(new TestResult(className, "<none>", "Timeout", "Timeout"));
         }
     }

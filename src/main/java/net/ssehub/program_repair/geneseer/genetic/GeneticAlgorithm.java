@@ -19,10 +19,10 @@ import java.util.stream.IntStream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Project;
-import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
+import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationResult;
-import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
-import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
+import net.ssehub.program_repair.geneseer.evaluation.Evaluator;
+import net.ssehub.program_repair.geneseer.evaluation.TestExecutionException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.fault_localization.FaultLocalization;
 import net.ssehub.program_repair.geneseer.evaluation.fault_localization.Location;
@@ -44,9 +44,9 @@ public class GeneticAlgorithm {
     
     private Random random = new Random(Configuration.INSTANCE.getRandomSeed());
     
-    private ProjectCompiler compiler;
-    
     private Project project;
+    
+    private Evaluator evaluator;
     
     private TemporaryDirectoryManager tempDirManager;
     
@@ -58,8 +58,8 @@ public class GeneticAlgorithm {
     private double bestFitness;
     private Variant bestVariant;
     
-    public GeneticAlgorithm(ProjectCompiler compiler, Project project, TemporaryDirectoryManager tempDirManager) {
-        this.compiler = compiler;
+    public GeneticAlgorithm(Project project, Evaluator evaluator, TemporaryDirectoryManager tempDirManager) {
+        this.evaluator = evaluator;
         this.project = project;
         this.tempDirManager = tempDirManager;
     }
@@ -126,22 +126,25 @@ public class GeneticAlgorithm {
         this.unmodifiedVariant = new Variant(ast);
     }
 
-    private boolean evaluateUnmodifiedOriginal() throws IOException {
-        Path sourceDir = tempDirManager.createTemporaryDirectory();
-        Writer.write(unmodifiedVariant.getAst(), project.getSourceDirectoryAbsolute(), sourceDir,
-                project.getEncoding());
-        
-        compiler.setLogOutput(true);
-        EvaluationResultAndBinDirectory r = compileAndEvaluateVariant(unmodifiedVariant.getAst());
-        compiler.setLogOutput(false); // only log compiler output for unmodified original
-        
+    private boolean evaluateUnmodifiedOriginal() {
         boolean originalIsFit;
-        if (r.evaluation != null) {
+        Path binDirectory = null;
+        
+        try {
+            evaluator.setLogCompilerOutput(true);
+            evaluator.setKeepBinDirectory(true);
+            
+            EvaluationResult evaluation = evaluator.evaluate(unmodifiedVariant.getAst());
+            binDirectory = evaluator.getLastBinDirectory();
+            
+            evaluator.setKeepBinDirectory(false);
+            evaluator.setLogCompilerOutput(false); // only log compiler output for unmodified original
+            
             originalIsFit = true;
             
             negativeTests = new HashSet<>();
             positiveTests = new HashSet<>();
-            for (TestResult test : r.evaluation.getExecutedTests()) {
+            for (TestResult test : evaluation.getExecutedTests()) {
                 if (test.isFailure()) {
                     negativeTests.add(test.toString());
                 } else {
@@ -152,27 +155,26 @@ public class GeneticAlgorithm {
             LOG.fine(() -> "Negative tests (" + negativeTests.size() + "): " + negativeTests);
             LOG.fine(() -> "Positive tests (" + positiveTests.size() + "): " + positiveTests);
             
-            unmodifiedVariant.setFitness(getFitness(r.evaluation));
+            unmodifiedVariant.setFitness(getFitness(evaluation));
             LOG.info(() -> "Fitness of unmodified variant (" + unmodifiedVariant.getName() + ") and max fitness: "
                     + unmodifiedVariant.getFitness() + " / " + getMaxFitness());
             bestFitness = unmodifiedVariant.getFitness();
             bestVariant = unmodifiedVariant;
             
-            try {
-                annotateSuspiciousness(unmodifiedVariant, sourceDir, r.binDirectory, r.evaluation.getExecutedTests());
-            } catch (EvaluationException e) {
-                LOG.log(Level.SEVERE, "Failed evaluation coverage for suspiciousness", e);
-                originalIsFit = false;
-            }
+            annotateSuspiciousness(unmodifiedVariant, binDirectory, evaluation.getExecutedTests());
             
-        } else {
+        } catch (CompilationException e) {
+            LOG.log(Level.SEVERE, "Failed compilation of unmodified original", e);
+            originalIsFit = false;
+            
+        } catch (TestExecutionException e) {
+            LOG.log(Level.SEVERE, "Failed running tests on unmodified original", e);
             originalIsFit = false;
         }
         
         try {
-            tempDirManager.deleteTemporaryDirectory(sourceDir);
-            if (r.binDirectory != null) {
-                tempDirManager.deleteTemporaryDirectory(r.binDirectory);
+            if (binDirectory != null) {
+                tempDirManager.deleteTemporaryDirectory(binDirectory);
             }
         } catch (IOException e) {
             // ignore, will be cleaned up later when tempDirManager is closed
@@ -180,8 +182,8 @@ public class GeneticAlgorithm {
         return originalIsFit;
     }
 
-    private void annotateSuspiciousness(Variant variant, Path variantSourceDir, Path variantBinDir,
-            List<TestResult> tests) throws EvaluationException {
+    private void annotateSuspiciousness(Variant variant, Path variantBinDir, List<TestResult> tests)
+            throws TestExecutionException {
         
         LOG.info("Measuring suspiciousness");
         FaultLocalization faultLocalization = new FaultLocalization(project.getProjectDirectory(),
@@ -301,15 +303,7 @@ public class GeneticAlgorithm {
             boolean mutated = mutate(variant);
             
             if (mutated || !variant.hasFitness()) {
-                double fitness = getFitness(evaluateVariant(variant.getAst()));
-                LOG.fine(() -> "Fitness: " + fitness);
-                variant.setFitness(fitness);
-                LOG.fine(() -> variant.toString());
-                if (fitness > bestFitness) {
-                    bestFitness = fitness;
-                    bestVariant = variant;
-                    LOG.info(() -> "New best variant: " + variant.getName());
-                }
+                measureFitness(variant);
             } else {
                 LOG.fine(() -> "Skipping fitness evaluation because variant was not mutated: " + variant);
             }
@@ -323,16 +317,7 @@ public class GeneticAlgorithm {
         Variant variant = new Variant(unmodifiedVariant.getAst());
         LOG.fine("Creating new variant " + variant.getName());
         mutate(variant);
-        
-        double fitness = getFitness(evaluateVariant(variant.getAst()));
-        variant.setFitness(fitness);
-        LOG.fine(() -> variant.toString());
-        if (fitness > bestFitness) {
-            bestFitness = fitness;
-            bestVariant = variant;
-            LOG.info(() -> "New best variant: " + variant.getName());
-        }
-        
+        measureFitness(variant);
         return variant;
     }
     
@@ -570,80 +555,46 @@ public class GeneticAlgorithm {
         LOG.info(() -> "Best variant " + bestVariant + ":\n" + diff);
     }
     
-    private EvaluationResult evaluateVariant(Node variant) throws IOException {
-        
-        EvaluationResultAndBinDirectory result = null;
+    private void measureFitness(Variant variant) {
+        double fitness;
         try {
-            result = compileAndEvaluateVariant(variant);
-            return result.evaluation;
-        } finally {
-            if (result != null) {
-                tempDirManager.deleteTemporaryDirectory(result.binDirectory);
-            }
-        }
-    }
-    
-    private static record EvaluationResultAndBinDirectory(EvaluationResult evaluation, Path binDirectory) {
-    }
-    
-    private EvaluationResultAndBinDirectory compileAndEvaluateVariant(Node variant) throws IOException {
-        EvaluationResult evalResult = null;
-        
-        Path sourceDirectory = tempDirManager.createTemporaryDirectory();
-        Path binDirectory = tempDirManager.createTemporaryDirectory();
+            fitness = getFitness(evaluator.evaluate(variant.getAst()));
             
-        Writer.write(variant, project.getSourceDirectoryAbsolute(), sourceDirectory, project.getEncoding());
-        boolean compiled = compiler.compile(sourceDirectory, binDirectory);
-        if (compiled) {
-            JunitEvaluation evaluation = new JunitEvaluation();
+        } catch (CompilationException e) {
+            fitness = 0;
             
-            try {
-                evalResult = evaluation.runTests(project.getProjectDirectory(),
-                        project.getTestExecutionClassPathAbsolute(), binDirectory, project.getTestClassNames(),
-                        project.getEncoding());
-                
-                
-            } catch (EvaluationException e) {
-                LOG.log(Level.WARNING, "Failed to run tests on variant", e);
-            }
-            
-        } else {
-            LOG.info("Failed to compile variant");
-        }
-            
-        try {
-            tempDirManager.deleteTemporaryDirectory(sourceDirectory);
-        } catch (IOException e) {
-            // ignore, will be cleaned up later when tempDirManager is closed
+        } catch (TestExecutionException e) {
+            LOG.log(Level.WARNING, "Failed running tests on variant", e);
+            fitness = 0;
         }
         
-        return new EvaluationResultAndBinDirectory(evalResult, binDirectory);
+        variant.setFitness(fitness);
+        
+        LOG.fine(() -> variant.toString());
+        if (fitness > bestFitness) {
+            bestFitness = fitness;
+            bestVariant = variant;
+            LOG.info(() -> "New best variant: " + variant.getName());
+        }
     }
     
     private double getFitness(EvaluationResult evaluation) {
-        double fitness;
-        if (evaluation != null) {
-            
-            int numPassingNegative = 0;
-            int numPassingPositive = 0;
-            for (TestResult test : evaluation.getExecutedTests()) {
-                if (!test.isFailure()) {
-                    if (negativeTests.contains(test.toString())) {
-                        numPassingNegative++;
-                    } else if (positiveTests.contains(test.toString())) {
-                        numPassingPositive++;
-                    } else {
-                        LOG.warning(() -> test.toString() + " is neither in positive nor negative test cases");
-                    }
+        int numPassingNegative = 0;
+        int numPassingPositive = 0;
+        for (TestResult test : evaluation.getExecutedTests()) {
+            if (!test.isFailure()) {
+                if (negativeTests.contains(test.toString())) {
+                    numPassingNegative++;
+                } else if (positiveTests.contains(test.toString())) {
+                    numPassingPositive++;
+                } else {
+                    LOG.warning(() -> test.toString() + " is neither in positive nor negative test cases");
                 }
             }
-            
-            fitness = Configuration.INSTANCE.getNegativeTestsWeight() * numPassingNegative
-                    + Configuration.INSTANCE.getPositiveTestsWeight() * numPassingPositive;
-        } else {
-            fitness = 0.0;
         }
-        return fitness;
+        
+        return Configuration.INSTANCE.getNegativeTestsWeight() * numPassingNegative
+                + Configuration.INSTANCE.getPositiveTestsWeight() * numPassingPositive;
     }
     
     private double getMaxFitness() {

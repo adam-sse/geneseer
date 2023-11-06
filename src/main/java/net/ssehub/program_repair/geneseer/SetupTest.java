@@ -5,10 +5,11 @@ import java.nio.file.Path;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
+import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationResult;
 import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
 import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
+import net.ssehub.program_repair.geneseer.evaluation.TestExecutionException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
@@ -45,33 +46,28 @@ public class SetupTest {
             ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute(),
                     project.getEncoding());
             compiler.setLogOutput(true);
-            boolean compiled = compiler.compile(sourceDirectory, binDirectory);
-            if (compiled) {
+            compiler.compile(sourceDirectory, binDirectory);
                 
-                JunitEvaluation evaluation = new JunitEvaluation();
-                
-                try {
-                    EvaluationResult evaluationResult = evaluation.runTests(project.getProjectDirectory(),
-                            project.getTestExecutionClassPathAbsolute(), binDirectory, project.getTestClassNames(),
-                            project.getEncoding());
+            JunitEvaluation evaluation = new JunitEvaluation(project.getProjectDirectory(),
+                    project.getTestExecutionClassPathAbsolute(), project.getEncoding());
+            
+            EvaluationResult evaluationResult = evaluation.runTests(binDirectory, project.getTestClassNames());
 
-                    LOG.info(() -> evaluationResult.getFailures().size() + " failing tests:");
-                    for (TestResult failure : evaluationResult.getFailures()) {
-                        LOG.info(() -> "    " + failure + " " + failure.failureMessage());
-                    }
-                    
-                    System.out.println("failing tests:");
-                    for (TestResult failure : evaluationResult.getFailures()) {
-                        System.out.println(failure.toString());
-                    }
-                } catch (EvaluationException e) {
-                    LOG.log(Level.SEVERE, "Failed evaluation", e);
-                    System.out.println("failed evaluation");
-                }
-            } else {
-                LOG.severe("Failed compilation");
-                System.out.println("failed compilation");
+            LOG.info(() -> evaluationResult.getFailures().size() + " failing tests:");
+            System.out.println("failing tests:");
+            for (TestResult failure : evaluationResult.getFailures()) {
+                LOG.info(() -> "    " + failure + " " + failure.failureMessage());
+                System.out.println(failure.toString());
             }
+            
+        } catch (CompilationException e) {
+            LOG.severe("Failed compilation");
+            System.out.println("failed compilation");
+            
+        } catch (TestExecutionException e) {
+            LOG.log(Level.SEVERE, "Failed test execution", e);
+            System.out.println("failed test execution");
+            
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IOException", e);
             System.out.println("IOException: " + e.getMessage());

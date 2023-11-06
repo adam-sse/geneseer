@@ -33,9 +33,7 @@ public class ProjectCompiler {
         this.encoding = encoding;
     }
 
-    public boolean compile(Path sourceDirectory, Path outputDirectory) {
-        boolean success;
-        
+    public void compile(Path sourceDirectory, Path outputDirectory) throws CompilationException {
         try (Probe probe = Measurement.INSTANCE.start("compilation")) {
             List<String> command = buildCommand(sourceDirectory, outputDirectory, classpath);
             
@@ -72,14 +70,14 @@ public class ProjectCompiler {
                 LOG.log(Level.WARNING, "Failed to copy non-Java source files", e);
             }
             
-            success = process.getExitCode() == 0;
+            if (process.getExitCode() != 0) {
+                throw new CompilationException("Compiler exited with " + process.getExitCode());
+            }
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "Failed to run compiler process", e);
-            success = false;
+            throw new CompilationException("Failed to run compiler process", e);
         }
-        
-        return success;
     }
     
     private List<String> buildCommand(Path sourceDirectory, Path outputDirectory, List<Path> classpath)

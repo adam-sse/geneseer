@@ -150,14 +150,14 @@ public class OnlyDelete {
         String result;
         if (best == 0) {
             LOG.info(() -> "Result: Found full fix");
-            result = "FULL_FIX;" + originalFailingTests + ";0";
+            result = "FULL_FIX;" + originalFailingTests + ";" + best;
         } else if (best < originalFailingTests) {
             int b = best;
             LOG.info(() -> "Result: Improved from " + originalFailingTests + " to " + b + " failing tests");
             result = "IMPROVED;" + originalFailingTests + ";" + best;
         } else {
             LOG.info(() -> "Result: No improvement");
-            result = "NO_CHANGE";
+            result = "NO_CHANGE;" + originalFailingTests + ";" + best;
         }
         return result;
     }

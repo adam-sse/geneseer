@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Geneseer;
+import net.ssehub.program_repair.geneseer.OnlyDelete;
 import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.SetupTest;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
@@ -40,7 +41,43 @@ public class Orchestrator {
     private static final Logger LOG = Logger.getLogger(Orchestrator.class.getName());
     
     public enum Target {
-        GENESEER, SETUP_TEST
+        GENESEER(Geneseer.class, "geneseer.log", (orchestrator, bug, stdout) -> stdout),
+        
+        SETUP_TEST(SetupTest.class, "geneseer-setup-test.log", (orchestrator, bug, stdout) -> {
+            String result;
+            if (stdout.startsWith("failing tests:")) {
+                BufferedReader reader = new BufferedReader(new StringReader(stdout));
+                reader.readLine();
+                Set<String> failingTests = new HashSet<>();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    failingTests.add(line);
+                }
+                LOG.info(() -> "[" + bug + "] Failing tests detected by geneseer:   "
+                        + failingTests.stream().sorted().toList());
+                
+                result = orchestrator.checkFailingTests(bug, failingTests);
+            } else {
+                result = stdout.replace('\n', ' ').replace('\r', ' ');
+            }
+            return result;
+        }),
+        
+        ONLY_DELETE(OnlyDelete.class, "geneseer.log", (orchestrator, bug, stdout) -> stdout);
+        
+        private Class<?> mainClass;
+        
+        private String logFileName;
+        
+        private StdoutProcessor stdoutProcessor;
+        
+        
+        private Target(Class<?> mainClass, String logFileName, StdoutProcessor stdoutProcessor) {
+            this.mainClass = mainClass;
+            this.logFileName = logFileName;
+            this.stdoutProcessor = stdoutProcessor;
+        }
+        
     }
     
     private String jvmExecutable;
@@ -125,7 +162,7 @@ public class Orchestrator {
     }
     
     private interface StdoutProcessor {
-        public String processStdout(String stdout) throws IOException;
+        public String processStdout(Orchestrator orchestrator, Bug bug, String stdout) throws IOException;
     }
     
     private String runProcess(Bug bug, List<String> command, String logFileName, StdoutProcessor stdoutProcessor)
@@ -141,7 +178,7 @@ public class Orchestrator {
             stdout = stdout.substring(0, stdout.length() - 1);
         }
         
-        String result = stdoutProcessor.processStdout(stdout);
+        String result = stdoutProcessor.processStdout(this, bug, stdout);
         
         if (ProcessRunner.untilNoInterruptedException(() -> process.waitFor()) != 0) {
             if (result.isEmpty()) {
@@ -154,34 +191,6 @@ public class Orchestrator {
         return bug.project() + ";" + bug.bug() + ";" + result;
     }
     
-    private String runSetupTest(Bug bug) throws IOException, IllegalArgumentException {
-        LOG.info(() -> "[" + bug + "] Preparing project...");
-        Project config = defects4j.prepareProject(bug);
-        
-        LOG.info(() -> "[" + bug + "] Running geneseer setup test...");
-        
-        return runProcess(bug, buildCommand(SetupTest.class, bug.getDirectory(), config), "geneseer-setup-test.log",
-                (stdout) -> {
-                    String result;
-                    if (stdout.startsWith("failing tests:")) {
-                        BufferedReader reader = new BufferedReader(new StringReader(stdout));
-                        reader.readLine();
-                        Set<String> failingTests = new HashSet<>();
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            failingTests.add(line);
-                        }
-                        LOG.info(() -> "[" + bug + "] Failing tests detected by geneseer:   "
-                                + failingTests.stream().sorted().toList());
-                        
-                        result = checkFailingTests(bug, failingTests);
-                    } else {
-                        result = stdout.replace('\n', ' ').replace('\r', ' ');
-                    }
-                    return result;
-                });
-    }
-
     private String checkFailingTests(Bug bug, Set<String> failingTests) throws IOException {
         String result;
         Set<String> defects4jFailingTests = defects4j.getFailingTests(bug);
@@ -203,15 +212,6 @@ public class Orchestrator {
             }
         }
         return result;
-    }
-    
-    private String runGeneseer(Bug bug) throws IOException, IllegalArgumentException {
-        LOG.info(() -> "[" + bug + "] Preparing project...");
-        Project config = defects4j.prepareProject(bug);
-        
-        LOG.info(() -> "[" + bug + "] Running geneseer...");
-        return runProcess(bug, buildCommand(Geneseer.class, bug.getDirectory(), config), "geneseer.log",
-                (stdout) -> stdout);
     }
     
     public void setJvmExecutable(String jvmExecutable) {
@@ -272,12 +272,14 @@ public class Orchestrator {
                     while ((bug = nextBug()) != null) {
                         long t0 = System.currentTimeMillis();
                         try {
-                            String output;
-                            if (target == Target.SETUP_TEST) {
-                                output = runSetupTest(bug);
-                            } else {
-                                output = runGeneseer(bug);
-                            }
+                            Bug b = bug;
+                            LOG.info(() -> "[" + b + "] Preparing project...");
+                            Project config = defects4j.prepareProject(bug);
+                            
+                            LOG.info(() -> "[" + b + "] Running " + target + "...");
+                            String output = runProcess(bug, buildCommand(target.mainClass, bug.getDirectory(), config),
+                                    target.logFileName, target.stdoutProcessor);
+                            
                             synchronized (writer) {
                                 writer.write(output + "\n");
                                 writer.flush();

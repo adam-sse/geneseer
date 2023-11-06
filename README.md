@@ -63,9 +63,11 @@ The following command line arguments are mandatory (each with a following value)
 
 The following optional command line arguments can be specified (each with a following value):
 
-* `--target`: Either `GENESEER` (the default) or `SETUP_TEST`. `GENESEER` will run normal geneseer on each bug.
-`SETUP_TEST` will only parse, compile, and evaluate (run tests) on the projects, to check if everything is set up
+* `--target`: Select which main program should be run on the projects. Either of the following values:
+    * `GENESEER` (the default) will run normal geneseer on each bug.
+    * `SETUP_TEST` will only parse, compile, and evaluate (run tests) on the projects, to check if everything is set up
 properly.
+    * `ONLY_DELETE` will go through each suspicious statement one by one and try to delete it individually.
 * `--threads`: How many instances of genseer to run in parallel. Default is 1.
 * `--config`: A path to the configuration file to use. See below. This is passed to each geneseer execution.
 

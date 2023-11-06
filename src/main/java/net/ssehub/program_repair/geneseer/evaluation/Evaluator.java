@@ -33,7 +33,7 @@ public class Evaluator {
         this.tempDirManager = tempDirManager;
         this.compiler = compiler;
         this.junit = junit;
-        this.originalSourceDirectory = project.getSourceDirectory();
+        this.originalSourceDirectory = project.getSourceDirectoryAbsolute();
         this.encoding = project.getEncoding();
         this.testClassNames = project.getTestClassNames();
     }

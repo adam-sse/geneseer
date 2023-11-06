@@ -90,6 +90,7 @@ public class OnlyDelete {
             faultLocalization.measureAndAnnotateSuspiciousness(original, binDir, evaluation.getExecutedTests());
             
             int originalFailingTests = evaluation.getFailures().size();
+            LOG.info(() -> originalFailingTests + " failing tests in original");
             result = runThroughSuspicious(original, originalFailingTests, evaluator);
             
         } catch (CompilationException e) {
@@ -148,10 +149,14 @@ public class OnlyDelete {
         
         String result;
         if (best == 0) {
+            LOG.info(() -> "Result: Found full fix");
             result = "FULL_FIX;" + originalFailingTests + ";0";
         } else if (best < originalFailingTests) {
+            int b = best;
+            LOG.info(() -> "Result: Improved from " + originalFailingTests + " to " + b + " failing tests");
             result = "IMPROVED;" + originalFailingTests + ";" + best;
         } else {
+            LOG.info(() -> "Result: No improvement");
             result = "NO_CHANGE";
         }
         return result;

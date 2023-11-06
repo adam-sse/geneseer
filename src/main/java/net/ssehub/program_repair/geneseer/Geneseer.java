@@ -8,6 +8,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.StreamSupport;
 
+import net.ssehub.program_repair.geneseer.evaluation.Evaluator;
+import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
 import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
 import net.ssehub.program_repair.geneseer.genetic.GeneticAlgorithm;
 import net.ssehub.program_repair.geneseer.genetic.Result;
@@ -72,8 +74,11 @@ public class Geneseer {
             
             ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute(),
                     project.getEncoding());
+            JunitEvaluation junit = new JunitEvaluation(project.getProjectDirectory(),
+                    project.getTestExecutionClassPathAbsolute(), project.getEncoding());
+            Evaluator evaluator = new Evaluator(project, compiler, junit, tempDirManager);
             
-            result = new GeneticAlgorithm(compiler, project, tempDirManager).run();
+            result = new GeneticAlgorithm(project, evaluator, tempDirManager).run();
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);

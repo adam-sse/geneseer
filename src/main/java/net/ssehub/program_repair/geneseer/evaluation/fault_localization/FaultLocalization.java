@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import org.jacoco.core.analysis.Analyzer;
@@ -27,6 +28,9 @@ import net.ssehub.program_repair.geneseer.evaluation.TestExecution.TestResultWit
 import net.ssehub.program_repair.geneseer.evaluation.TestExecutionException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestTimeoutException;
+import net.ssehub.program_repair.geneseer.parsing.model.Node;
+import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
+import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
@@ -46,7 +50,67 @@ public class FaultLocalization {
         this.encoding = encoding;
     }
     
-    public LinkedHashMap<Location, Double> run(List<TestResult> tests, Path classesDirectory)
+    public void measureAndAnnotateSuspiciousness(Node ast, Path variantBinDir, List<TestResult> tests)
+            throws TestExecutionException {
+        
+        LOG.info("Measuring suspiciousness");
+        LinkedHashMap<Location, Double> suspiciousness = measureSuspiciousness(tests, variantBinDir);
+        
+        Map<String, Node> classes = new HashMap<>(ast.childCount());
+        for (Node file : ast.childIterator()) {
+            String className = file.getMetadata(Metadata.FILENAME).toString().replaceAll("[/\\\\]", ".");
+            if (className.endsWith(".java")) {
+                className = className.substring(0, className.length() - ".java".length());
+            }
+            classes.put(className, file);
+        }
+        
+        AtomicInteger suspiciousStatementCount = new AtomicInteger();
+        for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
+            String className = entry.getKey().className();
+            int dollarIndex = className.indexOf('$');
+            if (dollarIndex != -1) {
+                className = className.substring(0, dollarIndex);
+            }
+            
+            int line = entry.getKey().line();
+            
+            Node classNode = classes.get(className);
+            if (classNode != null) {
+                List<Node> matchingStatements = classNode.stream()
+                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+                        .filter(n -> n.hasLine(line))
+                        .toList();
+                
+                if (matchingStatements.isEmpty()) {
+                    String cn = className;
+                    LOG.info(() -> "Found no statements for suspicious " + entry.getValue() + " at "
+                            + cn + ":" + line);
+                } else if (matchingStatements.size() > 1) {
+                    String cn = className;
+                    LOG.info(() -> "Found " + matchingStatements.size() + " statements for " + cn
+                            + ":" + line + "; adding suspiciousness to all of them");
+                }
+                    
+                String cn = className;
+                matchingStatements.stream()
+                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+                        .forEach(n -> {
+                            LOG.fine(() -> "Suspicious " + entry.getValue() + " at " + cn + ":" + line
+                                    + " '" + n.getText() + "'");
+                            suspiciousStatementCount.incrementAndGet();
+                            n.setMetadata(Metadata.SUSPICIOUSNESS, entry.getValue());
+                        });
+                
+            } else {
+                String cn = className;
+                LOG.warning(() -> "Can't find class name " + cn);
+            }
+        }
+        LOG.info(() -> suspiciousStatementCount.get() + " suspicious statements");
+    }
+    
+    public LinkedHashMap<Location, Double> measureSuspiciousness(List<TestResult> tests, Path classesDirectory)
             throws TestExecutionException {
         
         Map<Location, Set<TestResult>> coverage = measureCoverage(tests, classesDirectory);

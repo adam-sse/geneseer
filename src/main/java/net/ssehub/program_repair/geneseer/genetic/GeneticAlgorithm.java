@@ -4,15 +4,11 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
@@ -25,7 +21,6 @@ import net.ssehub.program_repair.geneseer.evaluation.Evaluator;
 import net.ssehub.program_repair.geneseer.evaluation.TestExecutionException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.fault_localization.FaultLocalization;
-import net.ssehub.program_repair.geneseer.evaluation.fault_localization.Location;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.Writer;
 import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
@@ -161,7 +156,10 @@ public class GeneticAlgorithm {
             bestFitness = unmodifiedVariant.getFitness();
             bestVariant = unmodifiedVariant;
             
-            annotateSuspiciousness(unmodifiedVariant, binDirectory, evaluation.getExecutedTests());
+            FaultLocalization faultLocalization = new FaultLocalization(project.getProjectDirectory(),
+                    project.getTestExecutionClassPathAbsolute(), project.getEncoding());
+            faultLocalization.measureAndAnnotateSuspiciousness(unmodifiedVariant.getAst(), binDirectory,
+                    evaluation.getExecutedTests());
             
         } catch (CompilationException e) {
             LOG.log(Level.SEVERE, "Failed compilation of unmodified original", e);
@@ -180,69 +178,6 @@ public class GeneticAlgorithm {
             // ignore, will be cleaned up later when tempDirManager is closed
         }
         return originalIsFit;
-    }
-
-    private void annotateSuspiciousness(Variant variant, Path variantBinDir, List<TestResult> tests)
-            throws TestExecutionException {
-        
-        LOG.info("Measuring suspiciousness");
-        FaultLocalization faultLocalization = new FaultLocalization(project.getProjectDirectory(),
-                project.getTestExecutionClassPathAbsolute(), project.getEncoding());
-        
-        LinkedHashMap<Location, Double> suspiciousness = faultLocalization.run(tests, variantBinDir);
-        
-        Map<String, Node> classes = new HashMap<>(variant.getAst().childCount());
-        for (Node file : variant.getAst().childIterator()) {
-            String className = file.getMetadata(Metadata.FILENAME).toString().replaceAll("[/\\\\]", ".");
-            if (className.endsWith(".java")) {
-                className = className.substring(0, className.length() - ".java".length());
-            }
-            classes.put(className, file);
-        }
-        
-        AtomicInteger suspiciousStatementCount = new AtomicInteger();
-        for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
-            String className = entry.getKey().className();
-            int dollarIndex = className.indexOf('$');
-            if (dollarIndex != -1) {
-                className = className.substring(0, dollarIndex);
-            }
-            
-            int line = entry.getKey().line();
-            
-            Node ast = classes.get(className);
-            if (ast != null) {
-                List<Node> matchingStatements = ast.stream()
-                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
-                        .filter(n -> n.hasLine(line))
-                        .toList();
-                
-                if (matchingStatements.isEmpty()) {
-                    String cn = className;
-                    LOG.info(() -> "Found no statements for suspicious " + entry.getValue() + " at "
-                            + cn + ":" + line);
-                } else if (matchingStatements.size() > 1) {
-                    String cn = className;
-                    LOG.info(() -> "Found " + matchingStatements.size() + " statements for " + cn
-                            + ":" + line + "; adding suspiciousness to all of them");
-                }
-                    
-                String cn = className;
-                matchingStatements.stream()
-                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
-                        .forEach(n -> {
-                            LOG.fine(() -> "Suspicious " + entry.getValue() + " at " + cn + ":" + line
-                                    + " '" + n.getText() + "'");
-                            suspiciousStatementCount.incrementAndGet();
-                            n.setMetadata(Metadata.SUSPICIOUSNESS, entry.getValue());
-                        });
-                
-            } else {
-                String cn = className;
-                LOG.warning(() -> "Can't find class name " + cn);
-            }
-        }
-        LOG.info(() -> suspiciousStatementCount.get() + " suspicious statements");
     }
 
     private List<Variant> createInitialPopulation() throws IOException {

@@ -96,12 +96,16 @@ public class FaultLocalization {
                 matchingStatements.stream()
                         .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
                         .forEach(n -> {
-                            LOG.fine(() -> "Suspicious " + entry.getValue() + " at " + cn + ":" + line
-                                    + " '" + n.getText() + "'");
-                            suspiciousStatementCount.incrementAndGet();
-                            n.setMetadata(Metadata.SUSPICIOUSNESS, entry.getValue());
+                            Double previousSuspiciousness = (Double) n.getMetadata(Metadata.SUSPICIOUSNESS);
+                            if (previousSuspiciousness == null || entry.getValue() > previousSuspiciousness) {
+                                LOG.fine(() -> "Suspicious " + entry.getValue() + " at " + cn + ":" + line
+                                        + " '" + n.getText() + "'");
+                                n.setMetadata(Metadata.SUSPICIOUSNESS, entry.getValue());
+                                if (previousSuspiciousness == null) {
+                                    suspiciousStatementCount.incrementAndGet();
+                                }
+                            }
                         });
-                
             } else {
                 String cn = className;
                 LOG.warning(() -> "Can't find class name " + cn);

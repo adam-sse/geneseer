@@ -123,7 +123,6 @@ public class Orchestrator {
     private List<String> buildCommand(Class<?> mainClass, Path checkoutDirectory, Project config) {
         List<String> command = new LinkedList<>();
         command.add(jvmExecutable);
-        command.add("-Djava.util.logging.config.class=" + LoggingConfiguration.class.getName());
         if (System.getProperty("java.util.logging.config.file") != null) {
             command.add("-Djava.util.logging.config.file=" + System.getProperty("java.util.logging.config.file"));
         }

@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
 
+import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.Writer;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
@@ -17,6 +18,10 @@ import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
 public class ParseAndWrite {
+    
+    static {
+        System.setProperty("java.util.logging.config.class", LoggingConfiguration.class.getName());
+    }
 
     public static void main(String[] args) throws IOException {
         if (args.length != 2) {

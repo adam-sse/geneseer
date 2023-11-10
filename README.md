@@ -31,7 +31,7 @@ specified, the default encoding of the operating system is used.
 The classpaths (`--test-classpath` and `--compile-classpath`) can be specified with the platform-specific file separator
 character (`;` on Windows, `:` on Unix-likes). If `;` does not occur, then `:` may also be used on Windows.
 
-By default, the INFO level and above is logged. To change this, add the this JVM argument:
+By default, the CONFIG level and above is logged. To change this, add the this JVM argument:
 `-Djava.util.logging.config.file=logging.properties`. Note that this is *not* a command line argument for this program,
 it needs to be specified before the main class or `-jar` parameter. `logging.properties` should point to the
 configuration file for the Java logging facility (e.g. see the file included in this repository); if it is not available

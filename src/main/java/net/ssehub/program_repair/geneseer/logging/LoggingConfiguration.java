@@ -32,7 +32,7 @@ public class LoggingConfiguration {
         
         Logger rootLogger = manager.getLogger("");
         rootLogger.addHandler(console);
-        rootLogger.setLevel(Level.INFO);
+        rootLogger.setLevel(Level.CONFIG);
     }
     
 }

@@ -133,6 +133,10 @@
 						</goals>
 					</execution>
 				</executions>
+				<configuration>
+				    <includes>net.ssehub.program_repair.geneseer.*</includes>
+				    <excludes>net.ssehub.program_repair.geneseer.parsing.antlr.*</excludes>
+				</configuration>
 			</plugin>
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>

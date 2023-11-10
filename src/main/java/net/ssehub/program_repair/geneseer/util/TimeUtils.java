@@ -11,7 +11,7 @@ public class TimeUtils {
         StringBuilder str = new StringBuilder();
         long minutes = seconds / 60;
         seconds %= 60;
-        if (minutes > 60) {
+        if (minutes >= 60) {
             long hours = minutes / 60;
             minutes %= 60;
             

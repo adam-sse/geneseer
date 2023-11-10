@@ -15,7 +15,7 @@ class TimingCategories implements AnalysisEntity {
         "code-writing",
         "compilation",
         "junit-evaluation",
-        "flacoco",
+        "fault-localization",
         "junit-coverage-matrix"
     };
     

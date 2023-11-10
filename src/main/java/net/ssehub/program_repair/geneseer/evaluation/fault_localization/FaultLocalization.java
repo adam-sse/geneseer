@@ -117,46 +117,48 @@ public class FaultLocalization {
     public LinkedHashMap<Location, Double> measureSuspiciousness(List<TestResult> tests, Path classesDirectory)
             throws TestExecutionException {
         
-        Map<Location, Set<TestResult>> coverage = measureCoverage(tests, classesDirectory);
-        
-        Map<Location, Double> suspiciousness = new HashMap<>(coverage.size());
-        for (Map.Entry<Location, Set<TestResult>> coverageEntry : coverage.entrySet()) {
-            int nPassingNotExecuting = 0;
-            int nFailingNotExecuting = 0;
-            int nPassingExecuting = 0;
-            int nFailingExecuting = 0;
+        try (Probe probe = Measurement.INSTANCE.start("fault-localization")) {
+            Map<Location, Set<TestResult>> coverage = measureCoverage(tests, classesDirectory);
             
-            for (TestResult test : tests) {
-                boolean testCoversLine = coverageEntry.getValue().contains(test);
+            Map<Location, Double> suspiciousness = new HashMap<>(coverage.size());
+            for (Map.Entry<Location, Set<TestResult>> coverageEntry : coverage.entrySet()) {
+                int nPassingNotExecuting = 0;
+                int nFailingNotExecuting = 0;
+                int nPassingExecuting = 0;
+                int nFailingExecuting = 0;
                 
-                if (testCoversLine) {
-                    if (test.isFailure()) {
-                        nFailingExecuting++;
+                for (TestResult test : tests) {
+                    boolean testCoversLine = coverageEntry.getValue().contains(test);
+                    
+                    if (testCoversLine) {
+                        if (test.isFailure()) {
+                            nFailingExecuting++;
+                        } else {
+                            nPassingExecuting++;
+                        }
                     } else {
-                        nPassingExecuting++;
+                        if (test.isFailure()) {
+                            nFailingNotExecuting++;
+                        } else {
+                            nPassingNotExecuting++;
+                        }
                     }
-                } else {
-                    if (test.isFailure()) {
-                        nFailingNotExecuting++;
-                    } else {
-                        nPassingNotExecuting++;
-                    }
+                }
+                
+                double susValue = ochiaiFormula(nPassingNotExecuting, nFailingNotExecuting,
+                        nPassingExecuting, nFailingExecuting);
+                if (susValue > 0) {
+                    suspiciousness.put(coverageEntry.getKey(), susValue);
                 }
             }
             
-            double susValue = ochiaiFormula(nPassingNotExecuting, nFailingNotExecuting,
-                    nPassingExecuting, nFailingExecuting);
-            if (susValue > 0) {
-                suspiciousness.put(coverageEntry.getKey(), susValue);
-            }
+            LinkedHashMap<Location, Double> sortedSuspiciousness = new LinkedHashMap<>(suspiciousness.size());
+            suspiciousness.entrySet().stream()
+                    .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
+                    .forEach(e -> sortedSuspiciousness.put(e.getKey(), e.getValue()));
+            
+            return sortedSuspiciousness;
         }
-        
-        LinkedHashMap<Location, Double> sortedSuspiciousness = new LinkedHashMap<>(suspiciousness.size());
-        suspiciousness.entrySet().stream()
-                .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
-                .forEach(e -> sortedSuspiciousness.put(e.getKey(), e.getValue()));
-        
-        return sortedSuspiciousness;
     }
     
     private Map<Location, Set<TestResult>> measureCoverage(List<TestResult> tests, Path classesDirectory)

@@ -82,6 +82,7 @@ public class ProcessRunner {
             try {
                 output = input.readAllBytes();
             } catch (IOException e) {
+                output = new byte[0];
                 LOG.log(Level.WARNING, "Failed to read " + name, e);
             }
         }

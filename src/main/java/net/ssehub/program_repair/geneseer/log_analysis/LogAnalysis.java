@@ -41,6 +41,7 @@ public class LogAnalysis {
         analysisEntities.add(new ErrorWarningCount());
         analysisEntities.add(new AstNodeCount());
         analysisEntities.add(new SuspiciousStatementCount());
+        analysisEntities.add(new DiffAnalysis());
         analysisEntities.add(new TotalElapsedTime());
         analysisEntities.add(new TimingCategories());
         

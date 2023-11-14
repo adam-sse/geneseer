@@ -111,6 +111,18 @@ public class Defects4jWrapper {
         return Arrays.stream(exportProperty(bug.getDirectory(), "tests.trigger")).collect(Collectors.toSet());
     }
     
+    public Path getBinDirectory(Bug bug) throws IOException {
+        return Path.of(exportProperty(bug.getDirectory(), "dir.bin.classes")[0]);
+    }
+    
+    public Path getTestSourceDirectory(Bug bug) throws IOException {
+        return Path.of(exportProperty(bug.getDirectory(), "dir.src.tests")[0]);
+    }
+    
+    public Path getTestBinDirectory(Bug bug) throws IOException {
+        return Path.of(exportProperty(bug.getDirectory(), "dir.bin.tests")[0]);
+    }
+    
     private void checkout(Bug bug) throws IOException {
         if (!Files.isDirectory(bug.getDirectory())) {
             Files.createDirectories(bug.getDirectory());

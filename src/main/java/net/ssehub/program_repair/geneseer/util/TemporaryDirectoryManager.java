@@ -13,8 +13,18 @@ public class TemporaryDirectoryManager implements Closeable {
 
     private Set<Path> temporaryDirectories = new HashSet<>();
     
+    private String name;
+    
+    public TemporaryDirectoryManager() {
+        this("geneseer");
+    }
+    
+    public TemporaryDirectoryManager(String name) {
+        this.name = name;
+    }
+    
     public Path createTemporaryDirectory() throws IOException {
-        Path directory = Files.createTempDirectory("geneseer");
+        Path directory = Files.createTempDirectory(name);
         temporaryDirectories.add(directory);
         return directory;
     }

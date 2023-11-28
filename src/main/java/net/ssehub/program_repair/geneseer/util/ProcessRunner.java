@@ -73,16 +73,21 @@ public class ProcessRunner {
             this.name = streamName;
         }
         
-        public byte[] getOutput() {
+        public synchronized byte[] getOutput() {
             return output;
         }
         
         @Override
         public void run() {
             try {
-                output = input.readAllBytes();
+                byte[] content = input.readAllBytes();
+                synchronized (this) {
+                    output = content;
+                }
             } catch (IOException e) {
-                output = new byte[0];
+                synchronized (this) {
+                    output = new byte[0];
+                }
                 LOG.log(Level.WARNING, "Failed to read " + name, e);
             }
         }

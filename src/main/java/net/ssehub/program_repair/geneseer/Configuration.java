@@ -70,7 +70,7 @@ public class Configuration {
                 coverageMatrixSimplified = Boolean.parseBoolean(value);
                 break;
             case "setup.testsToRun":
-                testsToRun = TestsToRun.valueOf(value);
+                testsToRun = TestsToRun.valueOf(value.toUpperCase());
                 break;
             case "setup.debugTestDriver":
                 debugTestDriver = Boolean.parseBoolean(value);
@@ -94,7 +94,7 @@ public class Configuration {
                 mutationProbability = Double.parseDouble(value);
                 break;
             case "genetic.statementScope":
-                statementScope = MutationScope.valueOf(value);
+                statementScope = MutationScope.valueOf(value.toUpperCase());
                 break;
             
             default:

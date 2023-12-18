@@ -43,6 +43,12 @@ public class Configuration {
     
     private double mutationProbability = 4;
     
+    public enum MutationScope {
+        GLOBAL, FILE
+    }
+    
+    private MutationScope statementScope = MutationScope.GLOBAL;
+    
     public void loadFromFile(Path file) throws IOException {
         LOG.info(() -> "Loading configuration file " + file.toAbsolutePath());
         Properties properties = new Properties();
@@ -87,6 +93,9 @@ public class Configuration {
             case "genetic.mutationProbability":
                 mutationProbability = Double.parseDouble(value);
                 break;
+            case "genetic.statementScope":
+                statementScope = MutationScope.valueOf(value);
+                break;
             
             default:
                 LOG.warning(() -> "Unknown configuration key " + key);
@@ -110,6 +119,7 @@ public class Configuration {
         LOG.config(() -> "    Negative tests weight: " + negativeTestsWeight);
         LOG.config(() -> "    Positive tests weight: " + positiveTestsWeight);
         LOG.config(() -> "    Mutation probability: " + mutationProbability);
+        LOG.config(() -> "    Statement Scope: " + statementScope);
     }
     
     public String getJvmBinaryPath() {
@@ -158,6 +168,11 @@ public class Configuration {
     
     public double getMutationProbability() {
         return mutationProbability;
+    }
+    
+    
+    public MutationScope getStatementScope() {
+        return statementScope;
     }
     
 }

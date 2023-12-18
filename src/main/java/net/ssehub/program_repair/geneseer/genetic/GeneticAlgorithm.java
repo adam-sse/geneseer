@@ -14,6 +14,7 @@ import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
+import net.ssehub.program_repair.geneseer.Configuration.MutationScope;
 import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationResult;
@@ -311,10 +312,7 @@ public class GeneticAlgorithm {
             }
             
         } else {
-            List<Node> allStatements = astRoot.stream()
-                    .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
-                    .toList();
-            Node otherStatement = allStatements.get(random.nextInt(allStatements.size())).clone();
+            Node otherStatement = selectOtherStatement(astRoot, suspicious).clone();
             otherStatement.stream()
                     .filter(n -> n.getType() == Type.LEAF)
                     .forEach(n -> ((LeafNode) n).clearOriginalPosition());
@@ -340,6 +338,29 @@ public class GeneticAlgorithm {
         
         astRoot.lock();
         return astRoot;
+    }
+
+    private Node findFileNode(Node astRoot, Node node) {
+        List<Node> path = astRoot.getPath(node);
+
+        Node file = path.get(1);
+        if (file.getMetadata(Metadata.FILENAME) == null) {
+            LOG.warning(() -> "Element doesn't have filename, although it should be a file: " + file.toString());
+        }
+        
+        return file;
+    }
+    
+    private Node selectOtherStatement(Node astRoot, Node suspiciousStatement) {
+        if (Configuration.INSTANCE.getStatementScope() == MutationScope.FILE) {
+            astRoot = findFileNode(astRoot, suspiciousStatement);
+        }
+        
+        List<Node> allStatements = astRoot.stream()
+                .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+                .toList();
+        Node otherStatement = allStatements.get(random.nextInt(allStatements.size()));
+        return otherStatement;
     }
     
     private List<Variant> crossover(Variant p1, Variant p2) {

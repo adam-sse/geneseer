@@ -105,6 +105,7 @@ meaning, and the default values:
 | `genetic.negativeTestsWeight`    | `10`                 | The fitness function weight of test cases that are negative for the unmodified, original code. |
 | `genetic.positiveTestsWeight`    | `1`                  | The fitness function weight of test cases that are positive for the unmodified, original code. |
 | `genetic.mutationProbability`    | `4`                  | Controls the probability that mutations are created in a variant. This value is divided by the number of suspicious statements to get the probability of introducing a mutation at a suspicious statement. |
+| `genetic.statementScope`         | `global`             | Defines where other statements for mutations are taken from. Either `global` or `file`. |
 
 ## Output
 

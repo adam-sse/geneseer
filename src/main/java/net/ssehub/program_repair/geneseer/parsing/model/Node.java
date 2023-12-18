@@ -163,6 +163,28 @@ public abstract class Node implements Cloneable {
         return result;
     }
     
+    public List<Node> getPath(Node child) {
+        List<Node> result;
+        
+        if (children().contains(child)) {
+            result = new LinkedList<>();
+            result.add(0, child);
+            result.add(0, this);
+            
+        } else {
+            result = null;
+            for (Node c : children()) {
+                result = c.getPath(child);
+                if (result != null) {
+                    result.add(0, this);
+                    break;
+                }
+            }
+        }
+        
+        return result;
+    }
+    
     public abstract boolean hasLine(int lineNumber);
     
     public Node findEquivalentPath(Node otherRoot, Node toFind) throws IllegalArgumentException {

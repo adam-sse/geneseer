@@ -31,7 +31,7 @@ public abstract class Node implements Cloneable {
     private String textCache;
     
     public Node(Type type) {
-        this.type = type;
+        setType(type);
     }
     
     public Type getType() {
@@ -41,6 +41,9 @@ public abstract class Node implements Cloneable {
     public void setType(Type type) {
         if (locked) {
             throw new IllegalStateException("Node is locked");
+        }
+        if (type == Type.LEAF && !(this instanceof LeafNode)) {
+            throw new IllegalArgumentException("Only LeafNodes may have type LEAF");
         }
         this.type = type;
     }

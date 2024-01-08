@@ -434,15 +434,15 @@ public class GeneticAlgorithm {
     }
 
     private void findMatchingModifiedBlocks(Node node1, Node node2, List<Node> blocks1, List<Node> blocks2) {
+        for (int i = 0; i < Math.min(node1.childCount(), node2.childCount()); i++) {
+            findMatchingModifiedBlocks(node1.get(i), node2.get(i), blocks1, blocks2);
+        }
+        
         if (containsSuspiciousChild(node1) || containsSuspiciousChild(node2)) {
             if (!node1.getText().equals(node2.getText())) {
                 blocks1.add(node1);
                 blocks2.add(node2);
             }
-        }
-        
-        for (int i = 0; i < Math.min(node1.childCount(), node2.childCount()); i++) {
-            findMatchingModifiedBlocks(node1.get(i), node2.get(i), blocks1, blocks2);
         }
     }
 

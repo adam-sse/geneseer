@@ -42,6 +42,7 @@ public class Parser {
             try {
                 Files.walk(sourceDirectory)
                         .filter(f -> f.getFileName().toString().endsWith(".java"))
+                        .sorted()
                         .forEach(f -> {
                             Node file = parseFile(f, encoding);
                             fix(file);

@@ -252,11 +252,11 @@ public class LlmFixer {
         request.addMessage(new ChatGptMessage(query.toString(), "user"));
         
         ChatGptResponse response = llm.send(request);
+        if (response.choices() == null || response.choices().isEmpty()) {
+            throw new IOException("Got no choices in response " + response);
+        }
         if (response.choices().size() > 1) {
             LOG.warning(() -> "Got more than 1 choice: " + response);
-        }
-        if (response.choices().isEmpty()) {
-            throw new IOException("Got no choices in response " + response);
         }
         
         String diff = response.choices().get(0).message().content();

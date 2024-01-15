@@ -14,7 +14,7 @@ public class LlmConfiguration {
     
     private String model = "dummy";
     
-    private int maxCodeContext = 50;
+    private int maxCodeContext = 100;
     
     private String url;
     

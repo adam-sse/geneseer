@@ -167,8 +167,8 @@ public class FaultLocalization {
         Map<Location, Set<TestResult>> result = new HashMap<>();
         
         List<Path> classpath = new ArrayList<>(this.classpath.size() + 1);
-        classpath.addAll(this.classpath);
         classpath.add(classesDirectory);
+        classpath.addAll(this.classpath);
         
         try (Probe probe = Measurement.INSTANCE.start("junit-coverage-matrix");
                 TestExecution testExec = new TestExecution(workingDirectory, classpath, encoding, true)) {
@@ -300,14 +300,15 @@ public class FaultLocalization {
             throw new TestCoverageException("Failed to parse jacoco data", e);
         }
 
+        boolean foundCoveredLine = false;
         for (IClassCoverage classCoverage : coverageBuilder.getClasses()) {
 
             String className = classCoverage.getName().replace('/', '.');
-            
             for (IMethodCoverage methodCoverage : classCoverage.getMethods()) {
                 for (int line = methodCoverage.getFirstLine(); line <= methodCoverage.getLastLine() + 1; line++) {
                     int coveredI = methodCoverage.getLine(line).getInstructionCounter().getCoveredCount();
                     if (coveredI > 0) {
+                        foundCoveredLine = true;
                         coverage.compute(new Location(className, line), (k, v) -> {
                             if (v == null) {
                                 v = new HashSet<>();
@@ -318,6 +319,10 @@ public class FaultLocalization {
                     }
                 }
             }
+        }
+        
+        if (!foundCoveredLine) {
+            LOG.warning(() -> "Found no coverage for tests " + test.stream().map(TestResult::toString).toList());
         }
     }
     

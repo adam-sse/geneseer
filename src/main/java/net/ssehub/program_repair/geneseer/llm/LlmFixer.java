@@ -199,6 +199,7 @@ public class LlmFixer {
                         }
                         if (foundFirst && bracketDepth == 0) {
                             endLine = i;
+                            break;
                         }
                     }
                 }

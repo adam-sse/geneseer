@@ -183,13 +183,15 @@ public class TestExecution implements AutoCloseable {
             process.destroyForcibly();
         }
         
-        ProcessRunner.untilNoInterruptedException(() -> {
-            stderrCapture.join();
-            return 0;
-        });
-        String stderr = new String(stderrCapture.getOutput());
-        if (!stderr.isEmpty()) {
-            LOG.warning(() -> "Test driver stderr:\n" + stderr);
+        if (stderrCapture != null) {
+            ProcessRunner.untilNoInterruptedException(() -> {
+                stderrCapture.join();
+                return 0;
+            });
+            String stderr = new String(stderrCapture.getOutput());
+            if (!stderr.isEmpty()) {
+                LOG.warning(() -> "Test driver stderr:\n" + stderr);
+            }
         }
     }
     

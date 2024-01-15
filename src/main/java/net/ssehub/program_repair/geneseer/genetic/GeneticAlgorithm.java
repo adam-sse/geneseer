@@ -23,15 +23,14 @@ import net.ssehub.program_repair.geneseer.evaluation.TestExecutionException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.fault_localization.FaultLocalization;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
-import net.ssehub.program_repair.geneseer.parsing.Writer;
 import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
+import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
-import net.ssehub.program_repair.geneseer.util.ProcessRunner;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
 public class GeneticAlgorithm {
@@ -495,23 +494,9 @@ public class GeneticAlgorithm {
     }
     
     private void logDiffOfBestVariant() throws IOException {
-        Path unmodified = tempDirManager.createTemporaryDirectory();
-        Path best = tempDirManager.createTemporaryDirectory();
-        
-        Writer.write(unmodifiedVariant.getAst(), project.getSourceDirectoryAbsolute(), unmodified,
+        String diff = AstDiff.getDiff(unmodifiedVariant.getAst(), bestVariant.getAst(), tempDirManager,
                 project.getEncoding());
         
-        Writer.write(bestVariant.getAst(), project.getSourceDirectoryAbsolute(), best,
-                project.getEncoding());
-        
-        ProcessRunner diffProcess = new ProcessRunner.Builder("git", "diff", "--no-index",
-                unmodified.toString(), best.toString())
-                .captureOutput(true)
-                .run();
-        
-        String diff = new String(diffProcess.getStdout())
-                .replace("a/" + unmodified.toString().replace("\\", "\\\\"), "a")
-                .replace("b/" + best.toString().replace("\\", "\\\\"), "b");
         LOG.info(() -> "Best variant " + bestVariant + ":\n" + diff);
     }
     

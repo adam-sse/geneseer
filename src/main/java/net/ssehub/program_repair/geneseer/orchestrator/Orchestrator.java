@@ -26,6 +26,7 @@ import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Geneseer;
 import net.ssehub.program_repair.geneseer.OnlyDelete;
 import net.ssehub.program_repair.geneseer.Project;
+import net.ssehub.program_repair.geneseer.PureLlmFixer;
 import net.ssehub.program_repair.geneseer.SetupTest;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
@@ -63,14 +64,14 @@ public class Orchestrator {
             return result;
         }),
         
-        ONLY_DELETE(OnlyDelete.class, "geneseer.log", (orchestrator, bug, stdout) -> stdout);
+        ONLY_DELETE(OnlyDelete.class, "geneseer.log", (orchestrator, bug, stdout) -> stdout),
+        PURE_LLM(PureLlmFixer.class, "geneseer.log", (orchestrator, bug, stdout) -> stdout);
         
         private Class<?> mainClass;
         
         private String logFileName;
         
         private StdoutProcessor stdoutProcessor;
-        
         
         private Target(Class<?> mainClass, String logFileName, StdoutProcessor stdoutProcessor) {
             this.mainClass = mainClass;

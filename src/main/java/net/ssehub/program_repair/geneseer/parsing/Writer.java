@@ -29,7 +29,9 @@ public class Writer {
                 Files.writeString(file, toText(compilationUnit), encoding);
             }
             
-            FileUtils.copyAllNonJavaSourceFiles(sourceDirectory, outputDirectory);
+            if (sourceDirectory != null) {
+                FileUtils.copyAllNonJavaSourceFiles(sourceDirectory, outputDirectory);
+            }
         }
     }
     

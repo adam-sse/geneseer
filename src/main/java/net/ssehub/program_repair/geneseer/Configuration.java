@@ -46,8 +46,9 @@ public class Configuration {
     public enum MutationScope {
         GLOBAL, FILE
     }
-    
     private MutationScope statementScope = MutationScope.GLOBAL;
+    
+    private Path llmConfigFile = Path.of("llm.properties");
     
     public void loadFromFile(Path file) throws IOException {
         LOG.info(() -> "Loading configuration file " + file.toAbsolutePath());
@@ -96,6 +97,9 @@ public class Configuration {
             case "genetic.statementScope":
                 statementScope = MutationScope.valueOf(value.toUpperCase());
                 break;
+            case "llm.configFile":
+                llmConfigFile = Path.of(value);
+                break;
             
             default:
                 LOG.warning(() -> "Unknown configuration key " + key);
@@ -120,6 +124,7 @@ public class Configuration {
         LOG.config(() -> "    Positive tests weight: " + positiveTestsWeight);
         LOG.config(() -> "    Mutation probability: " + mutationProbability);
         LOG.config(() -> "    Statement Scope: " + statementScope);
+        LOG.config(() -> "LLM configuration file: " + llmConfigFile);
     }
     
     public String getJvmBinaryPath() {
@@ -170,9 +175,12 @@ public class Configuration {
         return mutationProbability;
     }
     
-    
     public MutationScope getStatementScope() {
         return statementScope;
+    }
+    
+    public Path getLlmConfigFile() {
+        return llmConfigFile;
     }
     
 }

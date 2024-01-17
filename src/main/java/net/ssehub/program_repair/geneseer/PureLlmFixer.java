@@ -21,6 +21,7 @@ import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.fault_localization.FaultLocalization;
 import net.ssehub.program_repair.geneseer.llm.ChatGptConnection;
 import net.ssehub.program_repair.geneseer.llm.DummyChatGptConnection;
+import net.ssehub.program_repair.geneseer.llm.IChatGptConnection;
 import net.ssehub.program_repair.geneseer.llm.LlmConfiguration;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
@@ -60,18 +61,17 @@ public class PureLlmFixer {
         String result;
         if (originalFailingTests != null) {
             
-            ChatGptConnection chatGpt;
+            IChatGptConnection chatGpt;
             if (LlmConfiguration.INSTANCE.getModel().equals("dummy")) {
                 LOG.warning("llm.model is set to \"dummy\"; not using a real LLM");
                 chatGpt = new DummyChatGptConnection();
             } else {
-                chatGpt = new ChatGptConnection();
+                chatGpt = new ChatGptConnection(LlmConfiguration.INSTANCE.getApiUrl(),
+                        LlmConfiguration.INSTANCE.getApiToken());
             }
-            chatGpt.login();
             LlmFixer llmFixer = new LlmFixer(chatGpt, tempDirManager, project.getEncoding(),
                     project.getProjectDirectory());
             Optional<Node> modifiedAst = llmFixer.createVariant(originalAst, originalFailingTests);
-            chatGpt.logout();
             
             if (modifiedAst.isPresent()) {
                 int modifiedFailingTests = evaluate(modifiedAst.get());

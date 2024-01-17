@@ -2,105 +2,62 @@ package net.ssehub.program_repair.geneseer.llm;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.CookieManager;
 import java.net.HttpURLConnection;
-import java.net.Socket;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.util.logging.Level;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.logging.Logger;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509ExtendedTrustManager;
-
 import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
+import com.google.gson.JsonParseException;
 
-public class ChatGptConnection {
+import net.ssehub.program_repair.geneseer.llm.ChatGptResponse.Choice;
+import net.ssehub.program_repair.geneseer.llm.ChatGptResponse.FinishReason;
+
+public class ChatGptConnection implements IChatGptConnection {
     
     private static final Logger LOG = Logger.getLogger(ChatGptConnection.class.getName());
     
-    private static final Gson GSON = new Gson();
+    private URL apiUrl;
     
-    private static boolean certificateIgnoringSetup = false;
+    private String token;
     
-    private CookieManager cookieManager = new CookieManager();
+    private Gson gson;
     
-    private static void ignoreCertificates() {
-        if (certificateIgnoringSetup) {
-            return;
-        }
-        certificateIgnoringSetup = true;
-        
-        TrustManager trustAll = new X509ExtendedTrustManager() {
-
-            @Override
-            public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-            }
-
-            @Override
-            public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-            }
-
-            @Override
-            public X509Certificate[] getAcceptedIssuers() {
-                return null;
-            }
-
-            @Override
-            public void checkClientTrusted(X509Certificate[] chain, String authType, Socket socket)
-                    throws CertificateException {
-            }
-
-            @Override
-            public void checkServerTrusted(X509Certificate[] chain, String authType, Socket socket)
-                    throws CertificateException {
-            }
-
-            @Override
-            public void checkClientTrusted(X509Certificate[] chain, String authType, SSLEngine engine)
-                    throws CertificateException {
-            }
-
-            @Override
-            public void checkServerTrusted(X509Certificate[] chain, String authType, SSLEngine engine)
-                    throws CertificateException {
-            }
-        };
-        
-        try {
-            SSLContext tls = SSLContext.getInstance("TLS");
-            tls.init(null, new TrustManager[] {trustAll}, new SecureRandom());
-            SSLContext.setDefault(tls);
-        } catch (NoSuchAlgorithmException | KeyManagementException e) {
-            LOG.log(Level.WARNING, "Failed to create SSLContext to accept all certificates", e);
-        }
+    public ChatGptConnection(URL apiUrl, String token) {
+        this.apiUrl = apiUrl;
+        this.token = token;
+        this.gson = new Gson();
     }
     
-    private HttpURLConnection createConnection(URL url) throws IOException {
-        if (LlmConfiguration.INSTANCE.getIgnoreCertificates()) {
-            ignoreCertificates();
+    @Override
+    public ChatGptResponse send(ChatGptRequest request) throws IOException {
+        LOG.info("Sending query to LLM: " + request);
+        
+        HttpURLConnection http = createConnection();
+        writePost(http, gson.toJson(request));
+        String content = readContent(http);
+        
+        try {
+            return parseResponse(content, request);
+        } catch (JsonParseException e) {
+            throw new IOException("Failed to parse JSON response " + content, e);
         }
-        CookieManager.setDefault(cookieManager);
-        HttpURLConnection http = (HttpURLConnection) url.openConnection();
-        http.setRequestProperty("Accept", "*/*");
-        http.setRequestProperty("User-Agent", LlmConfiguration.INSTANCE.getUserAgent());
+    }
+
+    private HttpURLConnection createConnection() throws IOException {
+        HttpURLConnection http = (HttpURLConnection) apiUrl.openConnection();
+        http.setRequestProperty("Accept", "application/json");
+        http.setRequestProperty("Content-Type", "application/json");
+        if (token != null) {
+            http.setRequestProperty("Authorization", "Bearer " + token);
+        }
         return http;
     }
     
-    private void writePost(HttpURLConnection http, String contentType, String content) throws IOException {
+    private void writePost(HttpURLConnection http, String content) throws IOException {
         http.setRequestMethod("POST");
-        if (contentType != null) {
-            http.setRequestProperty("Content-Type", contentType);
-        }
         http.setDoOutput(true);
         http.getOutputStream().write(content.getBytes(StandardCharsets.UTF_8));
     }
@@ -113,62 +70,62 @@ public class ChatGptConnection {
         }
     }
     
-    private String trySendRequest(ChatGptRequest request) throws IOException {
-        HttpURLConnection http = createConnection(new URL(LlmConfiguration.INSTANCE.getUrl()));
-        writePost(http, "application/json", GSON.toJson(request));
-        return readContent(http);
+    private ChatGptResponse parseResponse(String content, ChatGptRequest request) throws JsonParseException {
+        ChatGptResponse response = gson.fromJson(content, ChatGptResponse.class);
+        sanityChecks(response, request);
+        LOG.info(() -> "ChatGPT response usage: " + response.usage());
+        return response;
     }
     
-    public void login() throws IOException {
-        HttpURLConnection http = createConnection(new URL(LlmConfiguration.INSTANCE.getLoginUrl()));
+    private void sanityChecks(ChatGptResponse response, ChatGptRequest request) throws JsonParseException {
+        List<String> warnings = new LinkedList<>();
         
-        String usernameEncoded = URLEncoder.encode(LlmConfiguration.INSTANCE.getLoginUsername(),
-                StandardCharsets.UTF_8);
-        String passwordEncoded = URLEncoder.encode(LlmConfiguration.INSTANCE.getLoginPassword(),
-                StandardCharsets.UTF_8);
-        writePost(http, null, "account=" + usernameEncoded + "&password=" + passwordEncoded);
-        
-        int status = http.getResponseCode();
-        if (status != 200) {
-            throw new IOException("Login not succesful (HTTP status " + status + ")");
+        if (response.id() == null) {
+            warnings.add("Response id is null");
         }
-        LOG.fine("Login succesful");
-    }
-    
-    public ChatGptResponse send(ChatGptRequest request) throws IOException {
-        LOG.info("Sending query to LLM");
         
-        String content;
-        try {
-            content = trySendRequest(request);
-        } catch (IOException e) {
-            if (e.getMessage().contains("401")) {
-                LOG.info("Got 401, trying to log in");
-                login();
-                content = trySendRequest(request);           
-            } else {
-                throw e;
+        if (response.choices() == null || response.choices().isEmpty()) {
+            throw new JsonParseException("Got no choices in response");
+        }
+        if (response.choices().size() != 1) {
+            warnings.add("Response has " + response.choices().size() + " choices, expected 1; only using first");
+        }
+        for (int i = 0; i < response.choices().size(); i++) {
+            Choice choice = response.choices().get(i);
+            if (choice.finishReason() != FinishReason.STOP) {
+                warnings.add("Finish reason of choice " + i + " is not STOP, but: " + choice.finishReason());
+            }
+            if (choice.index() != i) {
+                warnings.add("Index of choice " + i + " is " + choice.index());
+            }
+            if (choice.message() == null) {
+                throw new JsonParseException("message of choice " + i + " is null");
             }
         }
         
-        try {
-            ChatGptResponse response = GSON.fromJson(content, ChatGptResponse.class);
-            LOG.info(() -> "ChatGPT response usage: " + response.usage());
-            return response;
-        } catch (JsonSyntaxException e) {
-            throw new IOException("Failed to parse JSON response " + content, e);
+        if (!request.getModel().equals(response.model())) {
+            warnings.add("Response model (" + response.model() + ") does not equal request model ("
+                    + request.getModel() + ")");
+        }
+        
+        if (response.systemFingerprint() == null) {
+            warnings.add("Response has no system_fingerprint");
+        }
+        
+        if (!"chat.completion".equals(response.object())) {
+            warnings.add("Response object is not \"chat.completion\"");
+        }
+        
+        if (response.usage() == null) {
+            warnings.add("Response usage is null");
+        }
+        
+        if (!warnings.isEmpty()) {
+            LOG.warning(() -> "Got sanity check warnings for response " + response);
+            for (String warning : warnings) {
+                LOG.warning(warning);
+            }
         }
     }
 
-    public void logout() throws IOException {
-        HttpURLConnection http = createConnection(new URL(LlmConfiguration.INSTANCE.getLogoutUrl()));
-        
-        int status = http.getResponseCode();
-        if (status != 200) {
-            LOG.warning(() -> "Logout not succesful (HTTP status " + status + ")");
-        } else {
-            LOG.fine("Logout succesful");
-        }
-    }
-    
 }

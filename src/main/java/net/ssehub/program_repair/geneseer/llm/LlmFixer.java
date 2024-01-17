@@ -14,6 +14,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
+import net.ssehub.program_repair.geneseer.llm.ChatGptMessage.Role;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.Writer;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
@@ -33,7 +34,7 @@ public class LlmFixer {
             should have no header.
             """;
 
-    private ChatGptConnection llm;
+    private IChatGptConnection llm;
     
     private TemporaryDirectoryManager tempDirManager;
     
@@ -41,7 +42,7 @@ public class LlmFixer {
     
     private Path projectRoot;
     
-    public LlmFixer(ChatGptConnection llm, TemporaryDirectoryManager tempDirManager, Charset encoding,
+    public LlmFixer(IChatGptConnection llm, TemporaryDirectoryManager tempDirManager, Charset encoding,
             Path projectRoot) {
         this.llm = llm;
         this.tempDirManager = tempDirManager;
@@ -221,7 +222,7 @@ public class LlmFixer {
     private String queryForDiff(List<String> failureMessages, List<List<String>> testMethodContexts,
             List<String> code) throws IOException {
         ChatGptRequest request = new ChatGptRequest(LlmConfiguration.INSTANCE.getModel());
-        request.addMessage(new ChatGptMessage(SYSTEM_MESSAGE, "system"));
+        request.addMessage(new ChatGptMessage(SYSTEM_MESSAGE, Role.SYSTEM));
         
         StringBuilder query = new StringBuilder();
         for (int i = 0; i < failureMessages.size(); i++) {
@@ -249,17 +250,17 @@ public class LlmFixer {
         
         
         LOG.fine(() -> "Query:\n" + query);
-        request.addMessage(new ChatGptMessage(query.toString(), "user"));
+        request.addMessage(new ChatGptMessage(query.toString(), Role.USER));
+        if (LlmConfiguration.INSTANCE.getTemperature() != null) {
+            request.setTemperature(LlmConfiguration.INSTANCE.getTemperature());
+        }
+        if (LlmConfiguration.INSTANCE.getSeed() != null) {
+            request.setSeed(LlmConfiguration.INSTANCE.getSeed());
+        }
         
         ChatGptResponse response = llm.send(request);
-        if (response.choices() == null || response.choices().isEmpty()) {
-            throw new IOException("Got no choices in response " + response);
-        }
-        if (response.choices().size() > 1) {
-            LOG.warning(() -> "Got more than 1 choice: " + response);
-        }
         
-        String diff = response.choices().get(0).message().content();
+        String diff = response.getContent();
         if (diff.startsWith("```") && diff.indexOf('\n') != -1) {
             diff = diff.substring(diff.indexOf('\n') + 1);
             if (diff.endsWith("\n```")) {

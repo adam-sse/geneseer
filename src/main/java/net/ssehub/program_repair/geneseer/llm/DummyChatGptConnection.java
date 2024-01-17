@@ -1,25 +1,33 @@
 package net.ssehub.program_repair.geneseer.llm;
 
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.logging.Logger;
 
+import net.ssehub.program_repair.geneseer.llm.ChatGptMessage.Role;
+import net.ssehub.program_repair.geneseer.llm.ChatGptResponse.FinishReason;
 import net.ssehub.program_repair.geneseer.llm.ChatGptResponse.Usage;
 
-public class DummyChatGptConnection extends ChatGptConnection {
+public class DummyChatGptConnection implements IChatGptConnection {
 
-    @Override
-    public void login() throws IOException {
-    }
+    private static final Logger LOG = Logger.getLogger(ChatGptConnection.class.getName());
     
-    @Override
-    public void logout() throws IOException {
-    }
+    private static int id = 0;
     
     @Override
     public ChatGptResponse send(ChatGptRequest request) throws IOException {
-        return new ChatGptResponse("", "", 0, request.getModel(),
-                List.of(new ChatGptResponse.Choice(0, new ChatGptMessage("dummy message", "assistant"), null, "stop")),
-                new Usage(0, 0, 0), "");
+        LOG.fine(() -> "Got request: " + request);
+        
+        return new ChatGptResponse(
+                String.format("dummy-%04d", id++),
+                List.of(new ChatGptResponse.Choice(
+                        FinishReason.STOP, 0, new ChatGptMessage("dummy message", Role.ASSISTANT), null)),
+                ZonedDateTime.now().toEpochSecond(),
+                request.getModel(),
+                "dummy",
+                "chat.completion",
+                new Usage(0, 0, 0));
     }
     
 }

@@ -1,15 +1,15 @@
 package net.ssehub.program_repair.geneseer.llm;
 
 
-public class PatchDoesNotApplyException extends Exception {
+public class AnswerDoesNotApplyException extends Exception {
 
     private static final long serialVersionUID = -7304181087872893564L;
 
-    public PatchDoesNotApplyException() {
+    public AnswerDoesNotApplyException() {
         super();
     }
 
-    public PatchDoesNotApplyException(String message) {
+    public AnswerDoesNotApplyException(String message) {
         super(message);
     }
 

@@ -19,11 +19,13 @@ import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
 import net.ssehub.program_repair.geneseer.evaluation.TestExecutionException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.fault_localization.FaultLocalization;
+import net.ssehub.program_repair.geneseer.llm.AbstractLlmFixer;
 import net.ssehub.program_repair.geneseer.llm.ChatGptConnection;
+import net.ssehub.program_repair.geneseer.llm.CodeLlmFixer;
 import net.ssehub.program_repair.geneseer.llm.DummyChatGptConnection;
 import net.ssehub.program_repair.geneseer.llm.IChatGptConnection;
 import net.ssehub.program_repair.geneseer.llm.LlmConfiguration;
-import net.ssehub.program_repair.geneseer.llm.LlmFixer;
+import net.ssehub.program_repair.geneseer.llm.DiffLlmFixer;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
@@ -36,7 +38,7 @@ public class PureLlmFixer {
         System.setProperty("java.util.logging.config.class", LoggingConfiguration.class.getName());
     }
 
-    private static final Logger LOG = Logger.getLogger(LlmFixer.class.getName());
+    private static final Logger LOG = Logger.getLogger(PureLlmFixer.class.getName());
     
     private Project project;
     
@@ -60,17 +62,7 @@ public class PureLlmFixer {
         
         String result;
         if (originalFailingTests != null) {
-            
-            IChatGptConnection chatGpt;
-            if (LlmConfiguration.INSTANCE.getModel().equals("dummy")) {
-                LOG.warning("llm.model is set to \"dummy\"; not using a real LLM");
-                chatGpt = new DummyChatGptConnection();
-            } else {
-                chatGpt = new ChatGptConnection(LlmConfiguration.INSTANCE.getApiUrl(),
-                        LlmConfiguration.INSTANCE.getApiToken());
-            }
-            LlmFixer llmFixer = new LlmFixer(chatGpt, tempDirManager, project.getEncoding(),
-                    project.getProjectDirectory());
+            AbstractLlmFixer llmFixer = createLlmFixer();
             Optional<Node> modifiedAst = llmFixer.createVariant(originalAst, originalFailingTests);
             
             if (modifiedAst.isPresent()) {
@@ -95,6 +87,33 @@ public class PureLlmFixer {
         }
         
         return result;
+    }
+    
+    private AbstractLlmFixer createLlmFixer() {
+        IChatGptConnection chatGpt;
+        if (LlmConfiguration.INSTANCE.getModel().equals("dummy")) {
+            LOG.warning("llm.model is set to \"dummy\"; not using a real LLM");
+            chatGpt = new DummyChatGptConnection();
+        } else {
+            chatGpt = new ChatGptConnection(LlmConfiguration.INSTANCE.getApiUrl(),
+                    LlmConfiguration.INSTANCE.getApiToken());
+        }
+        
+        AbstractLlmFixer llmFixer;
+        switch (LlmConfiguration.INSTANCE.getQueryType()) {
+        case COMPLETE_CODE:
+            llmFixer = new CodeLlmFixer(chatGpt, tempDirManager, project.getEncoding(), project.getProjectDirectory());
+            break;
+            
+        case DIFF:
+            llmFixer = new DiffLlmFixer(chatGpt, tempDirManager, project.getEncoding(), project.getProjectDirectory());
+            break;
+            
+        default:
+            throw new IllegalArgumentException("Invalid query type: " + LlmConfiguration.INSTANCE.getQueryType());
+        }
+        
+        return llmFixer;
     }
     
     private int evaluate(Node ast) {

@@ -4,9 +4,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
@@ -25,15 +23,10 @@ import net.ssehub.program_repair.geneseer.parsing.model.Position;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
-public class LlmFixer {
+public abstract class AbstractLlmFixer {
 
-    private static final Logger LOG = Logger.getLogger(LlmFixer.class.getName());
+    private static final Logger LOG = Logger.getLogger(AbstractLlmFixer.class.getName());
     
-    private static final String SYSTEM_MESSAGE = """
-            You are an automated program repair tool. Write no explanations and only output a unified diff. The diff
-            should have no header.
-            """;
-
     private IChatGptConnection llm;
     
     private TemporaryDirectoryManager tempDirManager;
@@ -41,30 +34,31 @@ public class LlmFixer {
     private Charset encoding;
     
     private Path projectRoot;
-    
-    public LlmFixer(IChatGptConnection llm, TemporaryDirectoryManager tempDirManager, Charset encoding,
+
+    public AbstractLlmFixer(IChatGptConnection llm, TemporaryDirectoryManager tempDirManager, Charset encoding,
             Path projectRoot) {
         this.llm = llm;
         this.tempDirManager = tempDirManager;
         this.encoding = encoding;
         this.projectRoot = projectRoot;
     }
-    
+
     public Optional<Node> createVariant(Node original, List<TestResult> failingTests) throws IOException {
         Path sourceDir = tempDirManager.createTemporaryDirectory();
         Writer.write(original, null, sourceDir, encoding);
         
         Context codeContext = getContextOfMostSuspiciousStatement(original, sourceDir);
         
-        String diff = queryForDiff(failingTests.stream().map(TestResult::failureMessage).toList(),
+        String answer = query(failingTests.stream().map(TestResult::failureMessage).toList(),
                 failingTests.stream().map(this::getTestMethodContext).toList(),
                 codeContext.contextLines());
         
-        LOG.fine(() -> "Got diff:\n" + diff);
+        LOG.fine(() -> "Got answer:\n" + answer);
         
         Optional<Node> result;
         try {
-            List<String> newFileContent = applyDiff(diff, Files.readAllLines(codeContext.file(), encoding));
+            List<String> newFileContent = applyAnswer(answer, Files.readAllLines(codeContext.file(), encoding),
+                    codeContext.lineRange);
             
             Files.writeString(codeContext.file(), newFileContent.stream().collect(Collectors.joining("\n")), encoding);
             
@@ -78,18 +72,18 @@ public class LlmFixer {
                 LOG.log(Level.WARNING, "Failed to create diff of variant", e);
             }
             
-        } catch (PatchDoesNotApplyException e) {
-            LOG.log(Level.WARNING, "Patch does not apply", e);
+        } catch (AnswerDoesNotApplyException e) {
+            LOG.log(Level.WARNING, "Answer cannot be applied to variant", e);
             result = Optional.empty();
         }
         tempDirManager.deleteTemporaryDirectory(sourceDir);
         
         return result;
     }
-    
-    private record Context(Path file, List<String> contextLines) {
+
+    private record Context(Path file, LineRange lineRange,  List<String> contextLines) {
     }
-    
+
     private Context getContextOfMostSuspiciousStatement(Node original, Path sourceDir) throws IOException {
         List<Node> suspiciousNodes = original.stream()
                 .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
@@ -116,7 +110,7 @@ public class LlmFixer {
         Path file = sourceDir.resolve(location.file());
         List<String> lines = Files.readAllLines(file, encoding);
         
-        return new Context(file, lines.subList(range.start() - 1, range.end()));
+        return new Context(file, range, lines.subList(range.start() - 1, range.end()));
     }
 
     private record Location(Path file, int line) {
@@ -140,14 +134,14 @@ public class LlmFixer {
         
         return new Location(file, positionInFile.line());
     }
-    
-    private record LineRange(int start, int end) {
+
+    protected record LineRange(int start, int end) {
         public int size() {
             return end - start + 1;
         }
         
     }
-    
+
     private LineRange getRange(Node node) {
         Node firstLeaf = node;
         while (firstLeaf.getType() != Type.LEAF) {
@@ -163,7 +157,7 @@ public class LlmFixer {
         
         return new LineRange(start.line(), end.line());
     }
-    
+
     private List<String> getTestMethodContext(TestResult failingTest) {
         String testFileName = failingTest.testClass().substring(failingTest.testClass().lastIndexOf('.') + 1) + ".java";
         
@@ -218,11 +212,11 @@ public class LlmFixer {
         }
         return result;
     }
-    
-    private String queryForDiff(List<String> failureMessages, List<List<String>> testMethodContexts,
+
+    private String query(List<String> failureMessages, List<List<String>> testMethodContexts,
             List<String> code) throws IOException {
         ChatGptRequest request = new ChatGptRequest(LlmConfiguration.INSTANCE.getModel());
-        request.addMessage(new ChatGptMessage(SYSTEM_MESSAGE, Role.SYSTEM));
+        request.addMessage(new ChatGptMessage(getSysteMessage(), Role.SYSTEM));
         
         StringBuilder query = new StringBuilder();
         for (int i = 0; i < failureMessages.size(); i++) {
@@ -259,76 +253,19 @@ public class LlmFixer {
         }
         
         ChatGptResponse response = llm.send(request);
-        
-        String diff = response.getContent();
-        if (diff.startsWith("```") && diff.indexOf('\n') != -1) {
-            diff = diff.substring(diff.indexOf('\n') + 1);
-            if (diff.endsWith("\n```")) {
-                diff = diff.substring(0, diff.length() - 4);
-            }
-        }
-        
-        return diff;
+        return removeCodeBlockAroundAnswer(response.getContent());
     }
     
-    private static List<String> applyDiff(String diff, List<String> originalFileContent)
-            throws PatchDoesNotApplyException {
-        
-        List<String> diffLines = Arrays.asList(diff.split("\n"));
-        List<String> patchedFile = new LinkedList<>();
-        
-        int originalFileContentIndex = 0;
-        for (String diffLine : diffLines) {
-            if (diffLine.startsWith("@@") || diffLine.startsWith("+++") || diffLine.startsWith("---")) {
-                continue;
-            }
-            
-            if (diffLine.startsWith("+")) {
-                patchedFile.add(diffLine.substring(1));
-                
-            } else if (diffLine.startsWith("-")) {
-                diffLine = diffLine.substring(1).trim();
-                String currentFileLine = originalFileContent.get(originalFileContentIndex).trim();
-                while (currentFileLine.isEmpty() && !diffLine.equalsIgnoreCase(diffLine)) {
-                    patchedFile.add(originalFileContent.get(originalFileContentIndex));
-                    originalFileContentIndex++;
-                }
-                
-                if (!diffLine.equalsIgnoreCase(currentFileLine)) {
-                    throw new PatchDoesNotApplyException("Removed line from diff \"" + diffLine
-                            + "\" does not match with file content \"" + currentFileLine + "\"");
-                } else {
-                    originalFileContentIndex++;
-                }
-                
-            } else {
-                diffLine = diffLine.trim().toLowerCase();
-                String currentFileLine = originalFileContent.get(originalFileContentIndex).trim();
-                while (!currentFileLine.equalsIgnoreCase(diffLine)) {
-                    patchedFile.add(originalFileContent.get(originalFileContentIndex));
-                    originalFileContentIndex++;
-                    if (originalFileContentIndex < originalFileContent.size()) {
-                        currentFileLine = originalFileContent.get(originalFileContentIndex).trim();
-                    } else {
-                        break;
-                    }
-                }
-                
-                if (originalFileContentIndex >= originalFileContent.size()) {
-                    throw new PatchDoesNotApplyException("Can't find diff line in original file: " + diffLine);
-                }
-                
-                patchedFile.add(originalFileContent.get(originalFileContentIndex));
-                originalFileContentIndex++;
-            }
+    private String removeCodeBlockAroundAnswer(String answer) {
+        if (answer.startsWith("```") && answer.indexOf('\n') != -1 && answer.endsWith("\n```")) {
+            answer = answer.substring(answer.indexOf('\n') + 1, answer.length() - 4);
         }
-        
-        while (originalFileContentIndex < originalFileContent.size()) {
-            patchedFile.add(originalFileContent.get(originalFileContentIndex));
-            originalFileContentIndex++;
-        }
-        
-        return patchedFile;
+        return answer;
     }
+
+    protected abstract String getSysteMessage();
+    
+    protected abstract List<String> applyAnswer(String answer, List<String> originalFileContent,
+            LineRange submittedRange) throws AnswerDoesNotApplyException;
     
 }

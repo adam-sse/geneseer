@@ -108,7 +108,7 @@ public class ChatGptConnection implements IChatGptConnection {
     private void logRateLimitHeaders(HttpURLConnection http) {
         LOG.info("Ratelimit HTTP headers:");
         for (Map.Entry<String, List<String>> header : http.getHeaderFields().entrySet()) {
-            if (header.getKey().toLowerCase().startsWith("x-ratelimit-")) {
+            if (header.getKey() != null && header.getKey().toLowerCase().startsWith("x-ratelimit-")) {
                 String value;
                 if (header.getValue().size() == 1) {
                     value = header.getValue().get(0);

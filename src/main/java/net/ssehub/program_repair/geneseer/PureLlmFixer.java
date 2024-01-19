@@ -68,7 +68,9 @@ public class PureLlmFixer {
             if (modifiedAst.isPresent()) {
                 int modifiedFailingTests = evaluate(modifiedAst.get());
                 
-                if (modifiedFailingTests == 0) {
+                if (modifiedFailingTests == -1) {
+                    result = "VARIANT_UNFIT;" + originalFailingTests.size() + ";" + modifiedFailingTests;
+                } else if (modifiedFailingTests == 0) {
                     result = "FOUND_FIX;" + originalFailingTests.size() + ";" + modifiedFailingTests;
                 } else if (modifiedFailingTests < originalFailingTests.size()) {
                     result = "IMPROVED;" + originalFailingTests.size() + ";" + modifiedFailingTests;

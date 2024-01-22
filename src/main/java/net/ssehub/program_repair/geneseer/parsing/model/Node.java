@@ -68,6 +68,14 @@ public abstract class Node implements Cloneable {
         this.metadata = metadata;
     }
     
+    private boolean hasMetadata(Metadata key) {
+        return metadata != null ? (metadata.get(key) != null) : false;
+    }
+    
+    public boolean isFile() {
+        return hasMetadata(Metadata.FILENAME);
+    }
+
     public final void lock() {
         if (!locked) {
             locked = true;

@@ -11,6 +11,9 @@ public abstract class Node implements Cloneable {
 
     public enum Type {
         COMPILATION_UNIT,
+        CLASS,
+        METHOD,
+        CONSTRUCTOR,
         SINGLE_STATEMENT,
         COMPOSIT_STATEMENT,
         LEAF,
@@ -18,7 +21,10 @@ public abstract class Node implements Cloneable {
     }
     
     public enum Metadata {
-        FILENAME,
+        FILE_NAME,
+        CLASS_NAME,
+        METHOD_NAME,
+        CONSTRUCTOR_NAME,
         SUSPICIOUSNESS,
     }
     
@@ -68,14 +74,6 @@ public abstract class Node implements Cloneable {
         this.metadata = metadata;
     }
     
-    private boolean hasMetadata(Metadata key) {
-        return metadata != null ? (metadata.get(key) != null) : false;
-    }
-    
-    public boolean isFile() {
-        return hasMetadata(Metadata.FILENAME);
-    }
-
     public final void lock() {
         if (!locked) {
             locked = true;

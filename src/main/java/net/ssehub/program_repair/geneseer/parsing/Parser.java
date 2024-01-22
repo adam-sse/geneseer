@@ -18,6 +18,9 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaLexer;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser;
+import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.ClassDeclarationContext;
+import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.ConstructorDeclarationContext;
+import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.MethodDeclarationContext;
 import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
@@ -46,7 +49,7 @@ public class Parser {
                         .forEach(f -> {
                             Node file = parseFile(f, encoding);
                             fix(file);
-                            file.setMetadata(Metadata.FILENAME, sourceDirectory.relativize(f));
+                            file.setMetadata(Metadata.FILE_NAME, sourceDirectory.relativize(f));
                             parseTree.add(file);
                         });
             } catch (UncheckedIOException e) {
@@ -82,15 +85,21 @@ public class Parser {
         Type result;
         
         switch (typeName) {
-        
         case "CompilationUnitContext":
             result = Type.COMPILATION_UNIT;
             break;
-        
+        case "ClassDeclarationContext":
+            result = Type.CLASS;
+            break;
+        case "MethodDeclarationContext":
+            result = Type.METHOD;
+            break;
+        case "ConstructorDeclarationContext":
+            result = Type.CONSTRUCTOR;
+            break;
         case "BlockStatementContext":
             result = Type.SINGLE_STATEMENT;
             break;
-            
         case "BlockContext":
             result = Type.COMPOSIT_STATEMENT;
             break;
@@ -112,6 +121,17 @@ public class Parser {
             result = new InnerNode(getType(antlrTree.getClass().getSimpleName()));
             for (int i = 0; i < antlrTree.getChildCount(); i++) {
                 result.add(convert(antlrTree.getChild(i)));
+            }
+            
+            if (antlrTree instanceof ClassDeclarationContext classDecl) {
+                String className = classDecl.identifier().getText();
+                result.setMetadata(Metadata.CLASS_NAME, className);
+            } else if (antlrTree instanceof MethodDeclarationContext method) {
+                String methodName = method.identifier().getText();
+                result.setMetadata(Metadata.METHOD_NAME, methodName);
+            } else if (antlrTree instanceof ConstructorDeclarationContext constructor) {
+                String constructorName = constructor.identifier().getText();
+                result.setMetadata(Metadata.CONSTRUCTOR_NAME, constructorName);
             }
         }
         return result;

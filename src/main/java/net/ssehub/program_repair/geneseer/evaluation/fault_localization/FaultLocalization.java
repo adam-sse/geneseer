@@ -58,7 +58,7 @@ public class FaultLocalization {
         
         Map<String, Node> classes = new HashMap<>(ast.childCount());
         for (Node file : ast.childIterator()) {
-            String className = file.getMetadata(Metadata.FILENAME).toString().replaceAll("[/\\\\]", ".");
+            String className = file.getMetadata(Metadata.FILE_NAME).toString().replaceAll("[/\\\\]", ".");
             if (className.endsWith(".java")) {
                 className = className.substring(0, className.length() - ".java".length());
             }

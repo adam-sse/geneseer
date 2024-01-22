@@ -343,7 +343,7 @@ public class GeneticAlgorithm {
         List<Node> path = astRoot.getPath(node);
 
         Node file = path.get(1);
-        if (!file.isFile()) {
+        if (file.getType() != Type.COMPILATION_UNIT) {
             LOG.warning(() -> "Element doesn't have filename, although it should be a file: " + file.toString());
         }
         

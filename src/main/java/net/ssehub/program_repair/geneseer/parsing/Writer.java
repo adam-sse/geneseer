@@ -23,7 +23,7 @@ public class Writer {
         try (Probe probe = Measurement.INSTANCE.start("code-writing")) {
             
             for (Node compilationUnit : parseTree.childIterator()) {
-                Path file = outputDirectory.resolve((Path) compilationUnit.getMetadata(Metadata.FILENAME));
+                Path file = outputDirectory.resolve((Path) compilationUnit.getMetadata(Metadata.FILE_NAME));
                 Files.createDirectories(file.getParent());
                 
                 Files.writeString(file, toText(compilationUnit), encoding);

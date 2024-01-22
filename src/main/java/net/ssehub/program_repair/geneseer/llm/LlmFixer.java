@@ -269,22 +269,16 @@ public class LlmFixer {
             query.append(":\n```\n").append(failureMessages.get(i)).append("\n```\n\n");
         }
         
-        if (codeSnippets.size() == 1) {
-            query.append("Code to fix:\n```java\n");
-            codeSnippets.get(0).lines.stream().forEach(line -> query.append(line).append('\n'));
+        query.append("Here are " + codeSnippets.size() + " code snippets that may need to be fixed:");
+        int index = 1;
+        for (CodeSnippet snippet : codeSnippets) {
+            query.append("\n\nCode snippet number " + (index++) + ":\n```java\n");
+            snippet.lines.stream().forEach(line -> query.append(line).append('\n'));
             query.append("```");
-        } else {
-            query.append("Here are " + codeSnippets.size() + " code snippets that may need to be fixed:");
-            
-            int index = 1;
-            for (CodeSnippet snippet : codeSnippets) {
-                query.append("\n\nCode snippet number " + (index++) + ":\n```java\n");
-                snippet.lines.stream().forEach(line -> query.append(line).append('\n'));
-                query.append("```");
-            }
-            query.append("\n\nYou must prefix your fixed code with \"Code snippet number <number>\" to clarify which "
-                    + "code snippet you modified (you may modify multiple code snippets).");
         }
+        query.append("\n\nYou must prefix your fixed code with \"Code snippet number <number>\" to clarify which "
+                + "code snippet you modified (you may modify multiple code snippets). Do not output code snippets"
+                + " that you did not modify.");
         
         LOG.fine(() -> "Query:\n" + query);
         request.addMessage(new ChatGptMessage(query.toString(), Role.USER));

@@ -154,7 +154,7 @@ public class LlmFixer {
         }
     }
 
-    private CodeSnippet getSnippetForMethod(Node root, Node method, Path sourceDir) throws IOException {
+    private CodeSnippet getSnippetForMethod(Node root, Node method, Path fileOrSourceDir) throws IOException {
         Path filename = null;
         List<Node> parents = root.getPath(method);
         for (Node parent : parents) {
@@ -165,8 +165,11 @@ public class LlmFixer {
         }
         
         LineRange range = getRange(method);
-        
-        Path file = sourceDir.resolve(filename);
+
+        Path file = fileOrSourceDir;
+        if (!Files.isRegularFile(fileOrSourceDir)) {
+            file = fileOrSourceDir.resolve(filename);
+        }
         List<String> lines = Files.readAllLines(file, encoding);
         
         return new CodeSnippet(file, range, lines.subList(range.start() - 1, range.end()));
@@ -199,53 +202,45 @@ public class LlmFixer {
         
         List<String> result = null;
         try {
-            Optional<Path> testFile = Files.walk(projectRoot)
+            List<Path> testFiles = Files.walk(projectRoot)
                     .filter(p -> p.getFileName().toString().equals(testFileName))
                     .filter(p -> Files.isRegularFile(p))
-                    .findAny();
+                    .toList();
             
-            if (testFile.isPresent()) {
-                List<String> lines = Files.readAllLines(testFile.get(), encoding);
-                int startLine = -1;
-                for (int i = 0; i < lines.size(); i++) {
-                    if (lines.get(i).contains(failingTest.testMethod())) {
-                        startLine = i;
-                        break;
-                    }
-                }
-                
-                int endLine = -1;
-                if (startLine != -1) {
-                    int bracketDepth = 0;
-                    boolean foundFirst = false;
-                    for (int i = startLine; i < lines.size(); i++) {
-                        String line = lines.get(i);
-                        for (char ch : line.toCharArray()) {
-                            if (ch == '{') {
-                                bracketDepth++;
-                                foundFirst = true;
-                            } else if (ch == '}') {
-                                bracketDepth--;
-                            }
-                        }
-                        if (foundFirst && bracketDepth == 0) {
-                            endLine = i;
-                            break;
-                        }
-                    }
-                }
-                
-                if (startLine != -1 && endLine != -1) {
-                    result = lines.subList(startLine, endLine + 1);
-                } else {
-                    LOG.fine(() -> "Couldn't find test method " + failingTest.testMethod() + " in file:\n"
-                            + lines.stream().collect(Collectors.joining("\n")));
-                }
-                
+            for (Path testFile : testFiles) {
+                result = findTestMethodInFile(failingTest, testFile);
             }
+            
+            if (result == null) {
+                if (testFiles.isEmpty()) {
+                    LOG.warning(() -> "Could not find test file for test class " + failingTest.testClass());
+                } else {
+                    LOG.warning(() -> "Could not find test method " + failingTest.testMethod() + " in any of these"
+                            + " test files: " + testFiles);
+                }
+            }
+                
         } catch (IOException e) {
             LOG.log(Level.WARNING, "Failed to read test method file", e);
         }
+        return result;
+    }
+
+    private List<String> findTestMethodInFile(TestResult failingTest, Path testFile)
+            throws IOException {
+        
+        Node file = Parser.parseSingleFile(testFile, encoding);
+        Optional<Node> method = file.stream()
+                .filter(n -> n.getType() == Type.METHOD)
+                .filter(n -> n.getMetadata(Metadata.METHOD_NAME).equals(failingTest.testMethod()))
+                .findAny();
+        
+        List<String> result = null;
+        if (method.isPresent()) {
+            CodeSnippet snippet = getSnippetForMethod(file, method.get(), testFile);
+            result = snippet.lines;
+        }
+        
         return result;
     }
 

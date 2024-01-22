@@ -60,6 +60,17 @@ public class Parser {
         }
     }
     
+    public static Node parseSingleFile(Path sourceFile, Charset encoding) throws IOException {
+        try {
+            Node file = parseFile(sourceFile, encoding);
+            fix(file);
+            file.setMetadata(Metadata.FILE_NAME, sourceFile.getFileName());
+            return file;
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
+        }
+    }
+    
     private static Node parseFile(Path file, Charset encoding) throws UncheckedIOException {
         try {
             JavaLexer lexer = new JavaLexer(CharStreams.fromFileName(file.toString(), encoding));

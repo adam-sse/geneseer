@@ -126,7 +126,7 @@ public abstract class AbstractLlmFixer {
         List<Node> parents = original.getPath(n);
         Path file = null;
         for (Node parent : parents) {
-            if (parent.getMetadata(Metadata.FILE_NAME) != null) {
+            if (parent.getType() == Type.COMPILATION_UNIT) {
                 file = (Path) parent.getMetadata(Metadata.FILE_NAME);
                 break;
             }

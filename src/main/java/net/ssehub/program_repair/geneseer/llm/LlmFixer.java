@@ -300,7 +300,7 @@ public class LlmFixer {
     }
     
     private void parseAnswerSnippets(String answer, List<CodeSnippet> snippets) throws AnswerDoesNotApplyException {
-        Pattern pattern = Pattern.compile("Code snippet number (?<number>\\d)+", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile("Code snippet number (?<number>\\d+)", Pattern.CASE_INSENSITIVE);
         
         String[] answerLines = answer.split("\n");
         for (int i = 0; i < answerLines.length; i++) {

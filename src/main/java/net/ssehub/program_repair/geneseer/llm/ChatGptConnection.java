@@ -27,12 +27,21 @@ public class ChatGptConnection implements IChatGptConnection {
     
     private String token;
     
+    private String userHeader;
+    
     private Gson gson;
     
-    public ChatGptConnection(URL apiUrl, String token) {
+    public ChatGptConnection(URL apiUrl) {
         this.apiUrl = apiUrl;
-        this.token = token;
         this.gson = new Gson();
+    }
+    
+    public void setToken(String token) {
+        this.token = token;
+    }
+    
+    public void setUserHeader(String userHeader) {
+        this.userHeader = userHeader;
     }
     
     @Override
@@ -55,6 +64,9 @@ public class ChatGptConnection implements IChatGptConnection {
         HttpURLConnection http = (HttpURLConnection) apiUrl.openConnection();
         http.setRequestProperty("Accept", "application/json");
         http.setRequestProperty("Content-Type", "application/json");
+        if (userHeader != null) {
+            http.setRequestProperty("x-user", userHeader);
+        }
         if (token != null) {
             http.setRequestProperty("Authorization", "Bearer " + token);
         }

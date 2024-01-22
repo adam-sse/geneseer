@@ -30,6 +30,8 @@ public class LlmConfiguration {
     
     private String apiToken;
     
+    private String apiUserHeader;
+    
     public void loadFromFile(Path file) throws IOException {
         LOG.info(() -> "Loading configuration file " + file.toAbsolutePath());
         Properties properties = new Properties();
@@ -67,6 +69,10 @@ public class LlmConfiguration {
                 apiToken = value;
                 break;
                 
+            case "llm.api.userHeader":
+                apiUserHeader = value;
+                break;
+                
             default:
                 LOG.warning(() -> "Unknown configuration key " + key);
                 break;
@@ -83,6 +89,7 @@ public class LlmConfiguration {
         LOG.config(() -> "    Seed: " + (seed != null ? seed : "<not set>"));
         LOG.config(() -> "    API URL: " + apiUrl);
         LOG.config(() -> "    API token: " + (apiToken != null ? "<redacted>" : "<not set>"));
+        LOG.config(() -> "    API user header: " + apiUserHeader);
     }
     
     public String getModel() {
@@ -111,6 +118,10 @@ public class LlmConfiguration {
     
     public String getApiToken() {
         return apiToken;
+    }
+    
+    public String getApiUserHeader() {
+        return apiUserHeader;
     }
     
 }

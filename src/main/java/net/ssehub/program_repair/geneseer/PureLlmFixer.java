@@ -97,8 +97,13 @@ public class PureLlmFixer {
             LOG.warning("llm.model is set to \"dummy\"; not using a real LLM");
             chatGpt = new DummyChatGptConnection();
         } else {
-            chatGpt = new ChatGptConnection(LlmConfiguration.INSTANCE.getApiUrl(),
-                    LlmConfiguration.INSTANCE.getApiToken());
+            chatGpt = new ChatGptConnection(LlmConfiguration.INSTANCE.getApiUrl());
+            if (LlmConfiguration.INSTANCE.getApiToken() != null) {
+                ((ChatGptConnection) chatGpt).setToken(LlmConfiguration.INSTANCE.getApiToken());
+            }
+            if (LlmConfiguration.INSTANCE.getApiUserHeader() != null) {
+                ((ChatGptConnection) chatGpt).setUserHeader(LlmConfiguration.INSTANCE.getApiUserHeader());
+            }
         }
         
         AbstractLlmFixer llmFixer;

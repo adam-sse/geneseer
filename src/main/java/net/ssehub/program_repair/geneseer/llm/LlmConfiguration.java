@@ -17,11 +17,6 @@ public class LlmConfiguration {
     
     private int maxCodeContext = 100;
     
-    public enum QueryType {
-        DIFF, COMPLETE_CODE
-    }
-    private QueryType queryType = QueryType.COMPLETE_CODE;
-    
     private Double temperature = null;
     
     private Long seed = null;
@@ -47,10 +42,6 @@ public class LlmConfiguration {
                 
             case "llm.maxCodeContext":
                 maxCodeContext = Integer.parseInt(value);
-                break;
-                
-            case "llm.queryType":
-                queryType = QueryType.valueOf(value.toUpperCase());
                 break;
                 
             case "llm.temperature":
@@ -84,7 +75,6 @@ public class LlmConfiguration {
         LOG.config("LLM Configuration:");
         LOG.config(() -> "    Model: " + model);
         LOG.config(() -> "    Max code context lines: " + maxCodeContext);
-        LOG.config(() -> "    Query type: " + queryType);
         LOG.config(() -> "    Temperature: " + (temperature != null ? temperature : "<not set>"));
         LOG.config(() -> "    Seed: " + (seed != null ? seed : "<not set>"));
         LOG.config(() -> "    API URL: " + apiUrl);
@@ -98,10 +88,6 @@ public class LlmConfiguration {
     
     public int getMaxCodeContext() {
         return maxCodeContext;
-    }
-    
-    public QueryType getQueryType() {
-        return queryType;
     }
     
     public Double getTemperature() {

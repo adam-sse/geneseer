@@ -128,7 +128,7 @@ public class LlmFixer {
             double suspiciousnessSum = method.stream()
                     .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                     .mapToDouble(n -> (double) n.getMetadata(Metadata.SUSPICIOUSNESS))
-                    .sum();
+                    .max().orElse(0.0);
             if (suspiciousnessSum > 0) {
                 methodSuspiciousness.put(method, suspiciousnessSum);
             }

@@ -73,7 +73,6 @@
                 <version>3.3.0</version>
                 <configuration>
                     <configLocation>checkstyle.xml</configLocation>
-                    <encoding>UTF-8</encoding>
                     <failOnViolation>true</failOnViolation>
                     <includeResources>false</includeResources>
                     <includeTestResources>false</includeTestResources>

@@ -71,8 +71,10 @@ public class Defects4jWrapper {
     }
 
     public Project prepareProject(Bug bug) throws IOException, IllegalArgumentException {
-        checkout(bug);
         Path checkoutDirectory = bug.getDirectory().toAbsolutePath();
+        if (!Files.isDirectory(checkoutDirectory)) {
+            checkout(bug, checkoutDirectory, Version.BUGGY, true);
+        }
         
         Path sourceDirectory;
         Path binDirectory;
@@ -80,7 +82,7 @@ public class Defects4jWrapper {
         List<Path> testExecutionClassPath;
         List<String> testClassNames;
         
-        sourceDirectory = Path.of(exportProperty(checkoutDirectory, "dir.src.classes")[0]);
+        sourceDirectory = getRelativeSourceDirectory(checkoutDirectory);
         
         binDirectory = Path.of(exportProperty(checkoutDirectory, "dir.bin.classes")[0]);
         Path absoluteBinDirectory = checkoutDirectory.resolve(binDirectory);
@@ -123,42 +125,50 @@ public class Defects4jWrapper {
         return Path.of(exportProperty(bug.getDirectory(), "dir.bin.tests")[0]);
     }
     
-    private void checkout(Bug bug) throws IOException {
-        if (!Files.isDirectory(bug.getDirectory())) {
-            Files.createDirectories(bug.getDirectory());
-            
-            ProcessRunner process = new ProcessRunner.Builder(getDefects4jBinary(), "checkout", "-p", bug.project(),
-                    "-v", bug.bug() + "b", "-w", bug.getDirectory().toString())
-                    .captureOutput(true)
-                    .run();
-            if (process.getExitCode() != 0) {
-                String stdout = new String(process.getStdout());
-                String stderr = new String(process.getStderr());
-                if (!stdout.isEmpty()) {
-                    LOG.warning(() -> "defects4j stdout:\n" + stdout);
-                }
-                if (!stderr.isEmpty()) {
-                    LOG.warning(() -> "defects4j stdout:\n" + stderr);
-                }
-                throw new IOException("Failed to checkout " + bug);
-            }
-            
-            process = new ProcessRunner.Builder(getDefects4jBinary(), "compile")
-                    .workingDirectory(bug.getDirectory())
-                    .captureOutput(true)
-                    .run();
-            if (process.getExitCode() != 0) {
-                String stdout = new String(process.getStdout());
-                String stderr = new String(process.getStderr());
-                if (!stdout.isEmpty()) {
-                    LOG.warning(() -> "defects4j stdout:\n" + stdout);
-                }
-                if (!stderr.isEmpty()) {
-                    LOG.warning(() -> "defects4j stdout:\n" + stderr);
-                }
-                throw new IOException("Failed to compile " + bug);
-            }
+    public enum Version {
+        FIXED('f'), BUGGY('b');
+        private char identifier;
+        private Version(char identifier) {
+            this.identifier = identifier;
         }
+    }
+    
+    
+    public void checkout(Bug bug, Path target, Version version, boolean compile) throws IOException {
+        if (!Files.isDirectory(target)) {
+            Files.createDirectories(target);
+        }
+        ProcessRunner process = new ProcessRunner.Builder(getDefects4jBinary(), "checkout", "-p", bug.project(),
+                "-v", Integer.toString(bug.bug()) + version.identifier, "-w", target.toString())
+                .captureOutput(true)
+                .run();
+        checkForError(process, "Failed to checkout " + bug);
+        
+        if (compile) {
+            process = new ProcessRunner.Builder(getDefects4jBinary(), "compile")
+                    .workingDirectory(target)
+                    .captureOutput(true)
+                    .run();
+            checkForError(process, "Failed to compile " + bug);
+        }
+    }
+
+    private void checkForError(ProcessRunner process, String message) throws IOException {
+        if (process.getExitCode() != 0) {
+            String stdout = new String(process.getStdout());
+            String stderr = new String(process.getStderr());
+            if (!stdout.isEmpty()) {
+                LOG.warning(() -> "defects4j stdout:\n" + stdout);
+            }
+            if (!stderr.isEmpty()) {
+                LOG.warning(() -> "defects4j stdout:\n" + stderr);
+            }
+            throw new IOException(message);
+        }
+    }
+    
+    public Path getRelativeSourceDirectory(Path checkoutDirectory) throws IOException {
+        return Path.of(exportProperty(checkoutDirectory, "dir.src.classes")[0]);
     }
 
     private List<Path> getMultiplePathsProperty(Path checkoutDirectory, String propertyName)

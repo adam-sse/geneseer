@@ -74,45 +74,23 @@ public class PatchWriter {
                     Path buggySrc = buggy.resolve(defects4j.getRelativeSourceDirectory(buggy));
                     Path fixedSrc = fixed.resolve(defects4j.getRelativeSourceDirectory(fixed));
                     
-                    String diff = AstDiff.getDiff(buggySrc, fixedSrc,
-                            bug.project().equals("Lang") ? StandardCharsets.ISO_8859_1 : Charset.defaultCharset(),
-                            0);
+                    Charset encoding = bug.project().equals("Lang")
+                            ? StandardCharsets.ISO_8859_1 : Charset.defaultCharset();
+                    String diff = AstDiff.getDiff(buggySrc, fixedSrc, encoding, 0);
                     
                     LOG.fine(() -> "Diff:\n" + diff);
-                    List<ChangedArea> changedAreas = new LinkedList<>();
-                    Path currentFile = null;
-                    Pattern hunkPattern = Pattern.compile(
-                            "^@@ -(?<start>[0-9]+)(,(?<size>[0-9]+))? \\+[0-9]+(,[0-9]+)? @@");
-                    for (String line : diff.split("\n")) {
-                        if (line.startsWith("--- a/")) {
-                            currentFile = Path.of(line.substring("--- a/".length()));
-                            
-                        } else if (line.equals("--- /dev/null")) {
-                            currentFile = null;
-                            
-                        } else if (currentFile != null && line.startsWith("@@ ")) {
-                            Matcher m = hunkPattern.matcher(line);
-                            if (m.find()) {
-                                String size = m.group("size");
-                                if (size == null) {
-                                    size = "1";
-                                }
-                                
-                                changedAreas.add(new ChangedArea(currentFile.toString(),
-                                        Integer.parseInt(m.group("start")), Integer.parseInt(size)));
-                            } else {
-                                LOG.warning(() -> "Hunk header " + line + " does not match expected pattern "
-                                        + hunkPattern.pattern());
-                            }
-                        }
-                    }
                     
+                    Path diffFile = bug.getDirectory().resolve("geneseer-human-patch.diff");
+                    LOG.info(() -> "Writing diff to " + diffFile);
+                    Files.writeString(diffFile, diff, encoding);
+                    
+                    List<ChangedArea> changedAreas = getChangedAreas(diff);
                     LOG.info(() -> changedAreas.stream().map(ChangedArea::toString).collect(Collectors.joining("\n")));
                     
-                    Path outputFile = bug.getDirectory().resolve("geneseer-changed-areas.json");
-                    LOG.info(() -> "Writing " + outputFile);
+                    Path jsonFile = bug.getDirectory().resolve("geneseer-changed-areas.json");
+                    LOG.info(() -> "Writing JSON to " + jsonFile);
                     Gson gson = new Gson();
-                    Files.writeString(outputFile, gson.toJson(changedAreas), StandardCharsets.UTF_8);
+                    Files.writeString(jsonFile, gson.toJson(changedAreas), StandardCharsets.UTF_8);
                     
                     
                 } catch (IOException e) {
@@ -124,6 +102,36 @@ public class PatchWriter {
                 }
             }
         }
+    }
+
+    private List<ChangedArea> getChangedAreas(String diff) {
+        List<ChangedArea> changedAreas = new LinkedList<>();
+        Path currentFile = null;
+        Pattern hunkPattern = Pattern.compile("^@@ -(?<start>[0-9]+)(,(?<size>[0-9]+))? \\+[0-9]+(,[0-9]+)? @@");
+        for (String line : diff.split("\n")) {
+            if (line.startsWith("--- a/")) {
+                currentFile = Path.of(line.substring("--- a/".length()));
+                
+            } else if (line.equals("--- /dev/null")) {
+                currentFile = null;
+                
+            } else if (currentFile != null && line.startsWith("@@ ")) {
+                Matcher m = hunkPattern.matcher(line);
+                if (m.find()) {
+                    String size = m.group("size");
+                    if (size == null) {
+                        size = "1";
+                    }
+                    
+                    changedAreas.add(new ChangedArea(currentFile.toString(),
+                            Integer.parseInt(m.group("start")), Integer.parseInt(size)));
+                } else {
+                    LOG.warning(() -> "Hunk header " + line + " does not match expected pattern "
+                            + hunkPattern.pattern());
+                }
+            }
+        }
+        return changedAreas;
     }
 
     private void tryDelete(TemporaryDirectoryManager tempDirManager, Path temporaryDirectory) {

@@ -87,7 +87,10 @@ public class PatchWriter {
                         if (line.startsWith("--- a/")) {
                             currentFile = Path.of(line.substring("--- a/".length()));
                             
-                        } else if (line.startsWith("@@ ")) {
+                        } else if (line.equals("--- /dev/null")) {
+                            currentFile = null;
+                            
+                        } else if (currentFile != null && line.startsWith("@@ ")) {
                             Matcher m = hunkPattern.matcher(line);
                             if (m.find()) {
                                 String size = m.group("size");

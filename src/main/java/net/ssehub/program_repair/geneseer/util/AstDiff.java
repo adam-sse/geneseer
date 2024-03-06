@@ -37,7 +37,7 @@ public class AstDiff {
                 .captureOutput(true)
                 .run();
         
-        String diff = new String(diffProcess.getStdout())
+        String diff = new String(diffProcess.getStdout(), encoding)
                 .replace("a" + aDir, "a")
                 .replace("b" + bDir, "b");
         

@@ -52,9 +52,6 @@ public class PatchWriter {
         LOG.info(() -> "Running on " + bugs.size() + " specified bugs");
     }
     
-    public record ChangedArea(String file, int start, int size) {
-    }
-    
     public void run() throws IOException {
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             for (Bug bug : bugs) {

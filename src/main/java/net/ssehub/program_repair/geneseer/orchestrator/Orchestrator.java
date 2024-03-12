@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Geneseer;
+import net.ssehub.program_repair.geneseer.LlmQueryAnalysis;
 import net.ssehub.program_repair.geneseer.OnlyDelete;
 import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.PureLlmFixer;
@@ -65,7 +66,8 @@ public class Orchestrator {
         }),
         
         ONLY_DELETE(OnlyDelete.class, "geneseer.log", (orchestrator, bug, stdout) -> stdout),
-        PURE_LLM(PureLlmFixer.class, "geneseer.log", (orchestrator, bug, stdout) -> stdout);
+        PURE_LLM(PureLlmFixer.class, "geneseer.log", (orchestrator, bug, stdout) -> stdout),
+        LLM_QUERY_ANALYSIS(LlmQueryAnalysis.class, "geneseer.log", (orchestrator, bug, stdout) -> stdout);
         
         private Class<?> mainClass;
         

@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
@@ -22,6 +23,7 @@ import net.ssehub.program_repair.geneseer.evaluation.Evaluator;
 import net.ssehub.program_repair.geneseer.evaluation.TestExecutionException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.fault_localization.FaultLocalization;
+import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
@@ -43,6 +45,8 @@ public class GeneticAlgorithm {
     
     private Evaluator evaluator;
     
+    private LlmFixer llmFixer;
+    
     private TemporaryDirectoryManager tempDirManager;
     
     private Set<String> negativeTests;
@@ -53,9 +57,11 @@ public class GeneticAlgorithm {
     private double bestFitness;
     private Variant bestVariant;
     
-    public GeneticAlgorithm(Project project, Evaluator evaluator, TemporaryDirectoryManager tempDirManager) {
+    public GeneticAlgorithm(Project project, Evaluator evaluator, LlmFixer llmfixer,
+            TemporaryDirectoryManager tempDirManager) {
         this.evaluator = evaluator;
         this.project = project;
+        this.llmFixer = llmfixer;
         this.tempDirManager = tempDirManager;
     }
     
@@ -150,7 +156,7 @@ public class GeneticAlgorithm {
             LOG.fine(() -> "Negative tests (" + negativeTests.size() + "): " + negativeTests);
             LOG.fine(() -> "Positive tests (" + positiveTests.size() + "): " + positiveTests);
             
-            unmodifiedVariant.setFitness(getFitness(evaluation));
+            unmodifiedVariant.setFitness(getFitness(evaluation), evaluation.getFailures());
             LOG.info(() -> "Fitness of unmodified variant (" + unmodifiedVariant.getName() + ") and max fitness: "
                     + unmodifiedVariant.getFitness() + " / " + getMaxFitness());
             bestFitness = unmodifiedVariant.getFitness();
@@ -250,36 +256,51 @@ public class GeneticAlgorithm {
 
     private Variant newVariant() throws IOException {
         Variant variant = new Variant(unmodifiedVariant.getAst());
+        variant.setFitness(unmodifiedVariant.getFitness(), unmodifiedVariant.getFailingTests());
         LOG.fine("Creating new variant " + variant.getName());
         mutate(variant);
         measureFitness(variant);
         return variant;
     }
     
-    private boolean mutate(Variant variant) {
+    private boolean mutate(Variant variant) throws IOException {
         boolean mutated = false;
         
         Node astRoot = variant.getAst();
         
-        List<Node> suspiciousStatements = astRoot.stream()
-                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                .toList();
-        
-        double mutationProbability = Configuration.INSTANCE.getMutationProbability() / suspiciousStatements.size();
-        List<Node> ss = suspiciousStatements;
-        LOG.fine(() -> ss.size() + " suspicious statements -> mutation probability " + mutationProbability);
-        for (int i = 0; i < suspiciousStatements.size(); i++) {
-            Node suspicious = suspiciousStatements.get(i);
-            if (random.nextDouble() < mutationProbability 
-                    && random.nextDouble() < (double) suspicious.getMetadata(Metadata.SUSPICIOUSNESS)) {
-                
+        if (random.nextDouble() <= Configuration.INSTANCE.getLlmMutationProbability()) {
+            LOG.info(() -> "Using LLM to mutate variant " + variant.getName());
+            Optional<Node> result = llmFixer.createVariant(astRoot, variant.getFailingTests());
+            if (result.isPresent()) {
+                astRoot = result.get();
+                variant.setAst(astRoot);
+                variant.addMutation("LLM (TODO)");
                 mutated = true;
-                
-                astRoot = singleMutation(variant, astRoot, suspicious);
-                
-                suspiciousStatements = astRoot.stream()
-                        .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                        .toList();
+            } else {
+                LOG.fine(() -> "Got no (usable) result from LLM...");
+            }
+            
+        } else {
+            List<Node> suspiciousStatements = astRoot.stream()
+                    .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                    .toList();
+            
+            double mutationProbability = Configuration.INSTANCE.getMutationProbability() / suspiciousStatements.size();
+            List<Node> ss = suspiciousStatements;
+            LOG.fine(() -> ss.size() + " suspicious statements -> mutation probability " + mutationProbability);
+            for (int i = 0; i < suspiciousStatements.size(); i++) {
+                Node suspicious = suspiciousStatements.get(i);
+                if (random.nextDouble() < mutationProbability 
+                        && random.nextDouble() < (double) suspicious.getMetadata(Metadata.SUSPICIOUSNESS)) {
+                    
+                    mutated = true;
+                    
+                    astRoot = singleMutation(variant, astRoot, suspicious);
+                    
+                    suspiciousStatements = astRoot.stream()
+                            .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                            .toList();
+                }
             }
         }
         
@@ -502,8 +523,11 @@ public class GeneticAlgorithm {
     
     private void measureFitness(Variant variant) {
         double fitness;
+        List<TestResult> failingTests = List.of();
         try {
-            fitness = getFitness(evaluator.evaluate(variant.getAst()));
+            EvaluationResult evaluationResult = evaluator.evaluate(variant.getAst());
+            fitness = getFitness(evaluationResult);
+            failingTests = evaluationResult.getFailures();
             
         } catch (CompilationException e) {
             fitness = 0;
@@ -513,7 +537,7 @@ public class GeneticAlgorithm {
             fitness = 0;
         }
         
-        variant.setFitness(fitness);
+        variant.setFitness(fitness, failingTests);
         
         LOG.fine(() -> variant.toString());
         if (fitness > bestFitness) {

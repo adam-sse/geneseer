@@ -13,6 +13,8 @@ import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
 import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
 import net.ssehub.program_repair.geneseer.genetic.GeneticAlgorithm;
 import net.ssehub.program_repair.geneseer.genetic.Result;
+import net.ssehub.program_repair.geneseer.llm.LlmConfiguration;
+import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
 import net.ssehub.program_repair.geneseer.util.Measurement;
@@ -56,6 +58,9 @@ public class Geneseer {
         
         Configuration.INSTANCE.log();
         
+        LlmConfiguration.INSTANCE.loadFromFile(Configuration.INSTANCE.getLlmConfigFile());
+        LlmConfiguration.INSTANCE.log();
+        
         return project;
     }
     
@@ -78,7 +83,9 @@ public class Geneseer {
                     project.getTestExecutionClassPathAbsolute(), project.getEncoding());
             Evaluator evaluator = new Evaluator(project, compiler, junit, tempDirManager);
             
-            result = new GeneticAlgorithm(project, evaluator, tempDirManager).run();
+            LlmFixer llmFixer = PureLlmFixer.createLlmFixer(project, tempDirManager);
+            
+            result = new GeneticAlgorithm(project, evaluator, llmFixer, tempDirManager).run();
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);

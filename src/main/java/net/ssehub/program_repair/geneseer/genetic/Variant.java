@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
+import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 
 public class Variant {
@@ -18,6 +19,8 @@ public class Variant {
     private Node ast;
     
     private Double fitness;
+    
+    private List<TestResult> failingTests;
     
     public Variant(Node ast) {
         this.name = "V_" + String.format(Locale.ROOT, "%06d", idCounter++);
@@ -41,8 +44,13 @@ public class Variant {
         return fitness;
     }
     
-    public void setFitness(double fitness) {
+    public void setFitness(double fitness, List<TestResult> failingTests) {
         this.fitness = fitness;
+        this.failingTests = failingTests;
+    }
+    
+    public List<TestResult> getFailingTests() {
+        return Collections.unmodifiableList(failingTests);
     }
     
     public String getName() {

@@ -43,6 +43,8 @@ public class Configuration {
     
     private double mutationProbability = 4;
     
+    private double llmMutationProbability = 0.1;
+    
     public enum MutationScope {
         GLOBAL, FILE
     }
@@ -94,6 +96,9 @@ public class Configuration {
             case "genetic.mutationProbability":
                 mutationProbability = Double.parseDouble(value);
                 break;
+            case "genetic.llmMutationProbability":
+                llmMutationProbability = Double.parseDouble(value);
+                break;
             case "genetic.statementScope":
                 statementScope = MutationScope.valueOf(value.toUpperCase());
                 break;
@@ -123,6 +128,7 @@ public class Configuration {
         LOG.config(() -> "    Negative tests weight: " + negativeTestsWeight);
         LOG.config(() -> "    Positive tests weight: " + positiveTestsWeight);
         LOG.config(() -> "    Mutation probability: " + mutationProbability);
+        LOG.config(() -> "    LLM-Mutation probability: " + llmMutationProbability);
         LOG.config(() -> "    Statement Scope: " + statementScope);
         LOG.config(() -> "LLM configuration file: " + llmConfigFile);
     }
@@ -173,6 +179,10 @@ public class Configuration {
     
     public double getMutationProbability() {
         return mutationProbability;
+    }
+    
+    public double getLlmMutationProbability() {
+        return llmMutationProbability;
     }
     
     public MutationScope getStatementScope() {

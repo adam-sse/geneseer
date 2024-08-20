@@ -60,7 +60,7 @@ public class PureLlmFixer {
         
         String result;
         if (originalFailingTests != null) {
-            LlmFixer llmFixer = createLlmFixer();
+            LlmFixer llmFixer = createLlmFixer(project, tempDirManager);
             Optional<Node> modifiedAst = llmFixer.createVariant(originalAst, originalFailingTests);
             
             if (modifiedAst.isPresent()) {
@@ -89,7 +89,7 @@ public class PureLlmFixer {
         return result;
     }
     
-    private LlmFixer createLlmFixer() {
+    static LlmFixer createLlmFixer(Project project, TemporaryDirectoryManager tempDirManager) {
         IChatGptConnection chatGpt;
         if (LlmConfiguration.INSTANCE.getModel().equals("dummy")) {
             LOG.warning("llm.model is set to \"dummy\"; not using a real LLM");
@@ -201,9 +201,6 @@ public class PureLlmFixer {
         Project project = null;
         try {
             project = Geneseer.initialize(args);
-            
-            LlmConfiguration.INSTANCE.loadFromFile(Configuration.INSTANCE.getLlmConfigFile());
-            LlmConfiguration.INSTANCE.log();
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "Failed to read configuration file", e);
             System.exit(1);

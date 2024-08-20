@@ -1,6 +1,8 @@
 package net.ssehub.program_repair.geneseer.llm;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,7 +55,11 @@ public class LlmConfiguration {
                 break;
                 
             case "llm.api.url":
-                apiUrl = new URL(value);
+                try {
+                    apiUrl = new URI(value).toURL();
+                } catch (URISyntaxException e) {
+                    throw new IOException(e);
+                }
                 break;
                 
             case "llm.api.token":

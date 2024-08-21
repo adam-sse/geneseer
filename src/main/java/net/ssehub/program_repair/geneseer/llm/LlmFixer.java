@@ -303,7 +303,21 @@ public class LlmFixer {
             }
             Matcher m = pattern.matcher(answerLines[i]);
             if (!m.find()) {
-                throw new AnswerDoesNotApplyException("missing proper code snippet heading in line: " + answerLines[i]);
+                boolean fixable = false;
+                if (answerLines[i].startsWith("```") && i + 1 < answerLines.length) {
+                    m = pattern.matcher(answerLines[i + 1]);
+                    if (m.find()) {
+                        fixable = true;
+                        String tmp = answerLines[i];
+                        answerLines[i] = answerLines[i + 1];
+                        answerLines[i + 1] = tmp;
+                    }
+                }
+                
+                if (!fixable) {
+                    throw new AnswerDoesNotApplyException("missing proper code snippet heading in line: "
+                            + answerLines[i]);
+                }
             }
             int snippetNumber = Integer.parseInt(m.group("number"));
             if (snippetNumber <= 0 || snippetNumber > snippets.size()) {

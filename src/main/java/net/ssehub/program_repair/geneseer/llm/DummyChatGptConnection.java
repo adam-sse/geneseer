@@ -13,6 +13,8 @@ public class DummyChatGptConnection implements IChatGptConnection {
 
     private static final Logger LOG = Logger.getLogger(ChatGptConnection.class.getName());
     
+    private static final String TEXT = "dummy answer";
+    
     private static int id = 0;
     
     @Override
@@ -22,7 +24,7 @@ public class DummyChatGptConnection implements IChatGptConnection {
         return new ChatGptResponse(
                 String.format("dummy-%04d", id++),
                 List.of(new ChatGptResponse.Choice(
-                        FinishReason.STOP, 0, new ChatGptMessage("dummy message", Role.ASSISTANT), null)),
+                        FinishReason.STOP, 0, new ChatGptMessage(TEXT, Role.ASSISTANT), null)),
                 ZonedDateTime.now().toEpochSecond(),
                 request.getModel(),
                 "dummy",

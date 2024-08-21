@@ -241,13 +241,7 @@ public class GeneticAlgorithm {
         }
         
         for (Variant variant : population) {
-            boolean mutated = mutate(variant);
-            
-            if (mutated || !variant.hasFitness()) {
-                measureFitness(variant);
-            } else {
-                LOG.fine(() -> "Skipping fitness evaluation because variant was not mutated: " + variant);
-            }
+            mutate(variant);
         }
         LOG.fine(() -> "Population fitness: " + population.stream()
                 .map(v -> v.getName() + "(" + v.getFitness() + ")")
@@ -259,23 +253,28 @@ public class GeneticAlgorithm {
         variant.setFitness(unmodifiedVariant.getFitness(), unmodifiedVariant.getFailingTests());
         LOG.fine("Creating new variant " + variant.getName());
         mutate(variant);
-        measureFitness(variant);
         return variant;
     }
     
-    private boolean mutate(Variant variant) throws IOException {
-        boolean mutated = false;
+    private void mutate(Variant variant) throws IOException {
+        boolean needsFitnessReevaluation = false;
+        boolean needsFaultLocalization = false;
         
         Node astRoot = variant.getAst();
         
         if (random.nextDouble() <= Configuration.INSTANCE.getLlmMutationProbability()) {
             LOG.info(() -> "Using LLM to mutate variant " + variant.getName());
+            if (!variant.hasFitness()) {
+                LOG.fine(() -> "Running tests on variant as it has no fitness and thus no failing tests yet");
+                measureFitness(variant, false);
+            }
             Optional<Node> result = llmFixer.createVariant(astRoot, variant.getFailingTests());
             if (result.isPresent()) {
                 astRoot = result.get();
                 variant.setAst(astRoot);
-                variant.addMutation("LLM (TODO)");
-                mutated = true;
+                variant.addMutation("LLM");
+                needsFitnessReevaluation = true;
+                needsFaultLocalization = true;
             } else {
                 LOG.fine(() -> "Got no (usable) result from LLM...");
             }
@@ -293,22 +292,25 @@ public class GeneticAlgorithm {
                 if (random.nextDouble() < mutationProbability 
                         && random.nextDouble() < (double) suspicious.getMetadata(Metadata.SUSPICIOUSNESS)) {
                     
-                    mutated = true;
-                    
                     astRoot = singleMutation(variant, astRoot, suspicious);
                     
                     suspiciousStatements = astRoot.stream()
                             .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                             .toList();
+                    
+                    needsFitnessReevaluation = true;
                 }
             }
         }
         
-        if (!mutated) {
+        if (!needsFitnessReevaluation && !needsFaultLocalization) {
             LOG.fine(() -> "No new mutations added to " + variant.getName());
         }
         
-        return mutated;
+        if (needsFitnessReevaluation || !variant.hasFitness()) {
+            LOG.fine(() -> "Evaluating fitness after mutation");
+            measureFitness(variant, needsFaultLocalization);
+        }
     }
 
     private Node singleMutation(Variant variant, Node astRoot, Node suspicious) {
@@ -521,13 +523,30 @@ public class GeneticAlgorithm {
         LOG.info(() -> "Best variant " + bestVariant + ":\n" + diff);
     }
     
-    private void measureFitness(Variant variant) {
+    private void measureFitness(Variant variant, boolean withFaultLocalization) {
         double fitness;
         List<TestResult> failingTests = List.of();
         try {
+            if (withFaultLocalization) {
+                evaluator.setKeepBinDirectory(true);
+            }
+            
             EvaluationResult evaluationResult = evaluator.evaluate(variant.getAst());
             fitness = getFitness(evaluationResult);
             failingTests = evaluationResult.getFailures();
+            
+            if (withFaultLocalization) {
+                FaultLocalization faultLocalization = new FaultLocalization(project.getProjectDirectory(),
+                        project.getTestExecutionClassPathAbsolute(), project.getEncoding());
+                faultLocalization.measureAndAnnotateSuspiciousness(variant.getAst(), evaluator.getLastBinDirectory(),
+                        evaluationResult.getExecutedTests());
+                
+                try {
+                    tempDirManager.deleteTemporaryDirectory(evaluator.getLastBinDirectory());
+                } catch (IOException e) {
+                    // ignore, will be cleaned up later when tempDirManager is closed
+                }
+            }
             
         } catch (CompilationException e) {
             fitness = 0;
@@ -535,6 +554,9 @@ public class GeneticAlgorithm {
         } catch (TestExecutionException e) {
             LOG.log(Level.WARNING, "Failed running tests on variant", e);
             fitness = 0;
+            
+        } finally {
+            evaluator.setKeepBinDirectory(false);
         }
         
         variant.setFitness(fitness, failingTests);

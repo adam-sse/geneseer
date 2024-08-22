@@ -39,7 +39,7 @@ public class DiffAnalysis implements AnalysisEntity {
                 String l = difflines[i];
                 if (l.startsWith("+") && !l.substring(1).isBlank()) {
                     countAdd++;
-                } else if (l.startsWith("+") && !l.substring(1).isBlank()) {
+                } else if (l.startsWith("-") && !l.substring(1).isBlank()) {
                     countRemove++;
                 } else if (l.startsWith("diff --git ")) {
                     for (; i < difflines.length; i++) {
@@ -52,9 +52,9 @@ public class DiffAnalysis implements AnalysisEntity {
             
             if (countAdd == 0) {
                 if (countRemove == 0) {
-                    result = "ONLY_DELETE";
-                } else {
                     result = "NO_MODIFICATION";
+                } else {
+                    result = "ONLY_DELETE";
                 }
             } else {
                 result = "ADDED";

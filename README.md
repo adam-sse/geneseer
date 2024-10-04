@@ -109,35 +109,34 @@ meaning, and the default values:
 
 ## Output
 
-Geneseer outputs a single line to stdout, with semicolon-separated values. The first value specifies the type of result:
+Geneseer outputs a JSON object to stdout (or just prints `null` if an unexpected exception occurred during the
+execution). It has the following keys:
 
-* `FOUND_FIX`: Found a full fix (i.e., all test cases succeed with the found patch).
-* `GENERATION_LIMIT_REACHED`: The generation limit was reached, without a full fix being found (a variant with improved
-fitness may have been found, but some test cases are still failing).
-* `ORIGINAL_UNFIT`: The original source code could not be parsed or compiled.
-* `IO_EXCEPTION`: An IOException occurred during the execution.
-* `OUT_OF_MEMORY`: The JVM threw an OutOfMemoryError. No further values are present.
-* `null`: An unexpected exception occurred during the execution. No further values are present.
-
-Except for the last two types, the following values are (in this order):
-
-2. The generation where geneseer stopped. `0` for `ORIGINAL_UNFIT`. May be blank for `IO_EXCEPTION`. For
-`GENERATION_LIMIT_REACHED` this is always the generation limit.
-3. The fitness of the original, unmodified variant (only for `FOUND_FIX` and `GENERATION_LIMIT_REACHED`).
-4. The maximum fitness that can be achieved (only for `FOUND_FIX` and `GENERATION_LIMIT_REACHED`). A variant with this
-fitness represents a full fix.
-5. The best fitness seen in any variant (only for `FOUND_FIX` and `GENERATION_LIMIT_REACHED`). For `FOUND_FIX` this is
-thus equal to the previous value (maximum fitness).
-6. Only for `IO_EXCEPTION`: The exception message.
+* `type`: one of:
+    * `FOUND_FIX`: Found a full fix (i.e., all test cases succeed with the found patch).
+    * `GENERATION_LIMIT_REACHED`: The generation limit was reached, without a full fix being found (a
+    variant with improved fitness may have been found, but some test cases are still failing).
+    * `ORIGINAL_UNFIT`: The original source code could not be parsed or compiled.
+    * `IO_EXCEPTION`: An IOException occurred during the execution.
+    * `OUT_OF_MEMORY`: The JVM threw an OutOfMemoryError. No further values are present.
+* `exception`: the message string of the exception (only for type `IO_EXCEPTION`, otherwise `null`).
+* `originalFitness`: the fitness of the original, unmodified variant (only for types `FOUND_FIX` and
+`GENERATION_LIMIT_REACHED`, otherwise `null`)
+* `maxFitness`: the maximum fitness that can be achieved (only for types `FOUND_FIX` an
+ `GENERATION_LIMIT_REACHED`, otherwise `null`). A variant with this fitness represents a full fix.
+* `bestFitness`: the best fitness seen in any variant (only for types `FOUND_FIX` and `GENERATION_LIMIT_REACHED`,
+otherwise `null`). For `FOUND_FIX` this is thus equal to the `maxFitness` value.
+* `generation`: The generation where geneseer stopped. `0` for type `ORIGINAL_UNFIT`. May be `null` for type
+`IO_EXCEPTION`. For type `GENERATION_LIMIT_REACHED` this is always the generation limit.
 
 For example, the output may look like this:
+```json
+{"type":"GENERATION_LIMIT_REACHED","exception":null,"originalFitness":484.0,"maxFitness":504.0,"bestFitness":501.0,"generation":10}
 ```
-GENERATION_LIMIT_REACHED;10;484.0;504.0;501.0;
-```
-Here, geneseer ran for 10 generations (2nd value), but could not find a full fix (1st value). The original code had a
-fitness of 484 (3rd value). A full fix would have a fitness of 504 (4th value). The best variant that was found during
-the 10 generations had a fitness of 501 (5th value); this is an improvement over the initial fitness, but not yet a full
-fix that passes all test cases. 
+Here, geneseer ran for 10 generations, but could not find a full fix (type is `GENERATION_LIMIT_REACHED`). The
+original code had a fitness of 484. A full fix would have a fitness of 504. The best variant that was found during the
+10 generations had a fitness of 501; this is an improvement over the initial fitness, but not yet a full fix that passes
+all test cases. 
 
 Geneseer outputs logging information to stderr. This contains much more detailed information on the execution. For
 example, it contains the best found variant and it's modifications compared to the original code. It may also hint at

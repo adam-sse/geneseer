@@ -93,7 +93,7 @@ public class Geneseer {
             result = Result.ioException(e);
             
         } catch (OutOfMemoryError e) {
-            System.out.println("\"OUT_OF_MEMORY\"");
+            System.out.println("{\"type\":\"OUT_OF_MEMORY\"}");
             oom = true;
             throw e;
             

@@ -56,7 +56,7 @@ public class OnlyDelete {
             result = new Result(Type.IO_EXCEPTION, null, null, e.getMessage());
             
         } catch (OutOfMemoryError e) {
-            System.out.println("OUT_OF_MEMORY");
+            System.out.println("{\"type\":\"OUT_OF_MEMORY\"}");
             oom = true;
             throw e;
             

@@ -15,6 +15,7 @@ import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.Writer;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
+import net.ssehub.program_repair.geneseer.util.JsonUtils;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
 public class SetupTest {
@@ -54,23 +55,36 @@ public class SetupTest {
             EvaluationResult evaluationResult = evaluation.runTests(binDirectory, project.getTestClassNames());
 
             LOG.info(() -> evaluationResult.getFailures().size() + " failing tests:");
-            System.out.println("failing tests:");
+            System.out.println("{");
+            System.out.print("    \"failingTests\": [");
+            boolean first = true;
             for (TestResult failure : evaluationResult.getFailures()) {
+                if (!first) {
+                    System.out.print(",\n");
+                } else {
+                    System.out.print("\n");
+                    first = false;
+                }
+                
                 LOG.info(() -> "    " + failure + " " + failure.failureMessage());
-                System.out.println(failure.toString());
+                System.out.printf("        {\"class\": %s, \"method\": %s, \"message\": %s}",
+                        JsonUtils.toJsonString(failure.testClass()), JsonUtils.toJsonString(failure.testMethod()),
+                        JsonUtils.toJsonString(failure.failureMessage()));
             }
+            System.out.println("\n    ]");
+            System.out.println("}");
             
         } catch (CompilationException e) {
             LOG.severe("Failed compilation");
-            System.out.println("failed compilation");
+            System.out.println(JsonUtils.toJsonString("failed compilation"));
             
         } catch (TestExecutionException e) {
             LOG.log(Level.SEVERE, "Failed test execution", e);
-            System.out.println("failed test execution");
+            System.out.println(JsonUtils.toJsonString("failed test execution"));
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IOException", e);
-            System.out.println("IOException: " + e.getMessage());
+            System.out.println(JsonUtils.toJsonString("IOException: " + e.getMessage()));
         }
     }
     

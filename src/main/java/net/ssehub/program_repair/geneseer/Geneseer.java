@@ -17,6 +17,7 @@ import net.ssehub.program_repair.geneseer.llm.LlmConfiguration;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
+import net.ssehub.program_repair.geneseer.util.JsonUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
@@ -92,13 +93,13 @@ public class Geneseer {
             result = Result.ioException(e);
             
         } catch (OutOfMemoryError e) {
-            System.out.println("OUT_OF_MEMORY");
+            System.out.println("\"OUT_OF_MEMORY\"");
             oom = true;
             throw e;
             
         } finally {
             if (!oom) {
-                System.out.println(result != null ? result.toCsv() : "null");
+                System.out.println(JsonUtils.GSON.toJson(result));
             }
             LOG.info("Timing measurements:");
             StreamSupport.stream(Measurement.INSTANCE.finishedProbes().spliterator(), false)

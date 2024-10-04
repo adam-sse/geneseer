@@ -1,8 +1,6 @@
 package net.ssehub.program_repair.geneseer.genetic;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.stream.Collectors;
 
 public record Result(Type type, IOException exception, double originalFitness, double maxFitness, double bestFitness,
             int generation) {
@@ -58,37 +56,4 @@ public record Result(Type type, IOException exception, double originalFitness, d
         return new Result(Type.IO_EXCEPTION, excpetion, 0, 0, 0, generation);
     }
     
-    public String toCsv() {
-        String[] parts = {
-            type.name(),
-            generation != -1 ? Integer.toString(generation) : "",
-            "",
-            "",
-            "",
-            ""
-        };
-        
-        switch (type) {
-        
-        case FOUND_FIX:
-        case GENERATION_LIMIT_REACHED:
-            parts[2] = Double.toString(originalFitness);
-            parts[3] = Double.toString(maxFitness);
-            parts[4] = Double.toString(bestFitness);
-            break;
-            
-        case ORIGINAL_UNFIT:
-            break;
-            
-        case IO_EXCEPTION:
-            parts[5] = exception.getMessage();
-            break;
-            
-        default:
-            break;
-        }
-        
-        return Arrays.stream(parts).collect(Collectors.joining(";"));
-    }
-
 }

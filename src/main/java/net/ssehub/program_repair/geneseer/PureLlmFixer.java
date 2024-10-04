@@ -27,6 +27,7 @@ import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
+import net.ssehub.program_repair.geneseer.util.JsonUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
@@ -51,14 +52,14 @@ public class PureLlmFixer {
         this.tempDirManager = tempDirManager;
     }
     
-    public String run() throws IOException {
+    public Result run() throws IOException {
         Node originalAst = Parser.parse(project.getSourceDirectoryAbsolute(), project.getEncoding());
         originalAst.lock();
         LOG.fine(() -> originalAst.stream().count() + " nodes in AST");
         
         List<TestResult> originalFailingTests = evaluateAndMeasureSuspiciousness(originalAst);
         
-        String result;
+        Result result;
         if (originalFailingTests != null) {
             LlmFixer llmFixer = createLlmFixer(project, tempDirManager);
             Optional<Node> modifiedAst = llmFixer.createVariant(originalAst, originalFailingTests);
@@ -67,26 +68,42 @@ public class PureLlmFixer {
                 int modifiedFailingTests = evaluate(modifiedAst.get());
                 
                 if (modifiedFailingTests == -1) {
-                    result = "VARIANT_UNFIT;" + originalFailingTests.size() + ";" + modifiedFailingTests;
+                    result = new Result(Type.VARIANT_UNFIT, originalFailingTests.size(), null, null);
                 } else if (modifiedFailingTests == 0) {
-                    result = "FOUND_FIX;" + originalFailingTests.size() + ";" + modifiedFailingTests;
+                    result = new Result(Type.FOUND_FIX, originalFailingTests.size(), modifiedFailingTests, null);
                 } else if (modifiedFailingTests < originalFailingTests.size()) {
-                    result = "IMPROVED;" + originalFailingTests.size() + ";" + modifiedFailingTests;
+                    result = new Result(Type.IMPROVED, originalFailingTests.size(), modifiedFailingTests, null);
                 } else if (modifiedFailingTests == originalFailingTests.size()) {
-                    result = "NO_CHANGE;" + originalFailingTests.size() + ";" + modifiedFailingTests;
+                    result = new Result(Type.NO_CHANGE, originalFailingTests.size(), modifiedFailingTests, null);
                 } else {
-                    result = "WORSENED;" + originalFailingTests.size() + ";" + modifiedFailingTests;
+                    result = new Result(Type.WORSENED, originalFailingTests.size(), modifiedFailingTests, null);
                 }
                 
             } else {
-                result = "VARIANT_CREATION_FAILED;" + originalFailingTests.size();
+                result = new Result(Type.VARIANT_CREATION_FAILED, originalFailingTests.size(), null, null);
             }
             
         } else {
-            result = "ORIGINAL_UNFIT";
+            result = new Result(Type.ORIGINAL_UNFIT, null, null, null);
         }
         
         return result;
+    }
+    
+    private enum Type {
+        VARIANT_UNFIT,
+        FOUND_FIX,
+        IMPROVED,
+        NO_CHANGE,
+        WORSENED,
+        VARIANT_CREATION_FAILED,
+        ORIGINAL_UNFIT,
+        IO_EXCEPTION,
+    }
+    
+    private static record Result(Type type, Integer originalFailingTests, Integer modifiedFailingTests,
+            String ioException) {
+        
     }
     
     static LlmFixer createLlmFixer(Project project, TemporaryDirectoryManager tempDirManager) {
@@ -206,7 +223,7 @@ public class PureLlmFixer {
             System.exit(1);
         }
         
-        String result = null;
+        Result result = null;
         boolean oom = false;
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
@@ -220,16 +237,16 @@ public class PureLlmFixer {
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);
-            result = "IO_EXCEPTION";
+            result = new Result(Type.IO_EXCEPTION, null, null, e.getMessage());
             
         } catch (OutOfMemoryError e) {
-            System.out.println("OUT_OF_MEMORY");
+            System.out.println("\"OUT_OF_MEMORY\"");
             oom = true;
             throw e;
             
         } finally {
             if (!oom) {
-                System.out.println(result);
+                System.out.println(JsonUtils.GSON.toJson(result));
             }
             LOG.info("Timing measurements:");
             StreamSupport.stream(Measurement.INSTANCE.finishedProbes().spliterator(), false)

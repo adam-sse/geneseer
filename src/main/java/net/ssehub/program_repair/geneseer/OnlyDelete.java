@@ -18,6 +18,7 @@ import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
+import net.ssehub.program_repair.geneseer.util.JsonUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
@@ -38,7 +39,7 @@ public class OnlyDelete {
             System.exit(1);
         }
         
-        String result = null;
+        Result result = null;
         boolean oom = false;
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
@@ -52,7 +53,7 @@ public class OnlyDelete {
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);
-            result = "IO_EXCEPTION;" + e.getMessage();
+            result = new Result(Type.IO_EXCEPTION, null, null, e.getMessage());
             
         } catch (OutOfMemoryError e) {
             System.out.println("OUT_OF_MEMORY");
@@ -61,7 +62,7 @@ public class OnlyDelete {
             
         } finally {
             if (!oom) {
-                System.out.println(result != null ? result : "null");
+                System.out.println(JsonUtils.GSON.toJson(result));
             }
             LOG.info("Timing measurements:");
             StreamSupport.stream(Measurement.INSTANCE.finishedProbes().spliterator(), false)
@@ -70,8 +71,8 @@ public class OnlyDelete {
         }
     }
     
-    private static String run(Project project, Evaluator evaluator, TemporaryDirectoryManager tempDirManager) {
-        String result;
+    private static Result run(Project project, Evaluator evaluator, TemporaryDirectoryManager tempDirManager) {
+        Result result;
         
         try {
             Node original = Parser.parse(project.getSourceDirectoryAbsolute(), project.getEncoding());
@@ -95,21 +96,21 @@ public class OnlyDelete {
             
         } catch (CompilationException e) {
             LOG.log(Level.SEVERE, "Failed compilation of original", e);
-            result = "ORIGINAL_UNFIT";
+            result = new Result(Type.ORIGINAL_UNFIT, null, null, null);
             
         } catch (TestExecutionException e) {
             LOG.log(Level.SEVERE, "Failed running tests on original", e);
-            result = "ORIGINAL_UNFIT";
+            result = new Result(Type.ORIGINAL_UNFIT, null, null, null);
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "Failed parsing original code", e);
-            result = "ORIGINAL_UNFIT";
+            result = new Result(Type.ORIGINAL_UNFIT, null, null, null);
         }
         
         return result;
     }
     
-    private static String runThroughSuspicious(Node original, int originalFailingTests, Evaluator evaluator) {
+    private static Result runThroughSuspicious(Node original, int originalFailingTests, Evaluator evaluator) {
         List<Node> suspicious = original.stream()
                 .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                 .sorted((n1, n2) -> Double.compare((double) n2.getMetadata(Metadata.SUSPICIOUSNESS),
@@ -147,19 +148,32 @@ public class OnlyDelete {
             }
         }
         
-        String result;
+        Type resultType;
         if (best == 0) {
             LOG.info(() -> "Result: Found full fix");
-            result = "FULL_FIX;" + originalFailingTests + ";" + best;
+            resultType = Type.FULL_FIX;
         } else if (best < originalFailingTests) {
             int b = best;
             LOG.info(() -> "Result: Improved from " + originalFailingTests + " to " + b + " failing tests");
-            result = "IMPROVED;" + originalFailingTests + ";" + best;
+            resultType = Type.IMPROVED;
         } else {
             LOG.info(() -> "Result: No improvement");
-            result = "NO_CHANGE;" + originalFailingTests + ";" + best;
+            resultType = Type.NO_CHANGE;
         }
-        return result;
+        return new Result(resultType, originalFailingTests, best, null);
+    }
+    
+    private enum Type {
+        FULL_FIX,
+        IMPROVED,
+        NO_CHANGE,
+        ORIGINAL_UNFIT,
+        IO_EXCEPTION,
+    }
+    
+    private static record Result(Type type, Integer originalFailingTests, Integer bestFailingtests,
+            String ioException) {
+        
     }
     
 }

@@ -122,6 +122,11 @@ if applicable):
     "best": 119.0 // the fitness of the best variant
   },
   "patch": {
+    "mutations": [
+      "textual description of first mutation",
+      "textual description of second mutation"
+      // ...
+    ],
     "diff": "the diff as a output by `git diff` for the best variant", // empty string if unmodified variant is best
     "addedLines": 5, // the number of line additions in the diff
     "removedLines": 3 // the of line removals in the diff

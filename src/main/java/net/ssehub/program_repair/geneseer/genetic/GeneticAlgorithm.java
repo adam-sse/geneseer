@@ -534,6 +534,9 @@ public class GeneticAlgorithm {
     
     private void analyzeDiffOfBestVariant(Map<String, Object> result) throws IOException {
         Map<String, Object> diffResult = new HashMap<>();
+        result.put("patch", diffResult);
+        
+        diffResult.put("mutations", bestVariant.getMutations());
         
         String diff = AstDiff.getDiff(unmodifiedVariant.getAst(), bestVariant.getAst(), tempDirManager,
                 project.getEncoding());
@@ -567,8 +570,6 @@ public class GeneticAlgorithm {
         }
         diffResult.put("addedLines", countAdd);
         diffResult.put("removedLines", countRemove);
-        
-        result.put("patch", diffResult);
     }
     
     private void measureFitness(Variant variant, boolean withFaultLocalization) {

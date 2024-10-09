@@ -2,7 +2,9 @@ package net.ssehub.program_repair.geneseer;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -12,7 +14,6 @@ import net.ssehub.program_repair.geneseer.evaluation.Evaluator;
 import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
 import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
 import net.ssehub.program_repair.geneseer.genetic.GeneticAlgorithm;
-import net.ssehub.program_repair.geneseer.genetic.Result;
 import net.ssehub.program_repair.geneseer.llm.LlmConfiguration;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
@@ -74,7 +75,7 @@ public class Geneseer {
             System.exit(1);
         }
         
-        Result result = null;
+        Map<String, Object> result = new HashMap<>();
         boolean oom = false;
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
@@ -84,27 +85,36 @@ public class Geneseer {
                     project.getTestExecutionClassPathAbsolute(), project.getEncoding());
             Evaluator evaluator = new Evaluator(project, compiler, junit, tempDirManager);
             
-            LlmFixer llmFixer = PureLlmFixer.createLlmFixer(project, tempDirManager);
+            LlmFixer llmFixer = null;
+            if (Configuration.INSTANCE.getLlmMutationProbability() > 0.0) {
+                llmFixer = PureLlmFixer.createLlmFixer(project, tempDirManager);
+            }
             
-            result = new GeneticAlgorithm(project, evaluator, llmFixer, tempDirManager).run();
+            new GeneticAlgorithm(project, evaluator, llmFixer, tempDirManager).run(result);
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);
-            result = Result.ioException(e);
+            result.put("result", "IO_EXCEPTION");
+            result.put("exception", e.getMessage());
             
         } catch (OutOfMemoryError e) {
-            System.out.println("{\"type\":\"OUT_OF_MEMORY\"}");
+            System.out.println("{\"result\":\"OUT_OF_MEMORY\"}");
             oom = true;
             throw e;
             
         } finally {
             if (!oom) {
+                LOG.info("Timing measurements:");
+                Map<String, Object> timings = new HashMap<>();
+                StreamSupport.stream(Measurement.INSTANCE.finishedProbes().spliterator(), false)
+                        .sorted((e1, e2) -> e1.getKey().compareTo(e2.getKey()))
+                        .forEach(e -> {
+                            LOG.info(() -> "    " + e.getKey() + ": " + e.getValue() + " ms");
+                            timings.put(e.getKey(), e.getValue());
+                        });
+                result.put("timings", timings);
                 System.out.println(JsonUtils.GSON.toJson(result));
             }
-            LOG.info("Timing measurements:");
-            StreamSupport.stream(Measurement.INSTANCE.finishedProbes().spliterator(), false)
-                    .sorted((e1, e2) -> e1.getKey().compareTo(e2.getKey()))
-                    .forEach(e -> LOG.info(() -> "    " + e.getKey() + ": " + e.getValue() + " ms"));
         }
     }
     

@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -46,6 +48,7 @@ public class GeneticAlgorithm {
     private Evaluator evaluator;
     
     private LlmFixer llmFixer;
+    private int numLlmCalls;
     
     private TemporaryDirectoryManager tempDirManager;
     
@@ -65,29 +68,37 @@ public class GeneticAlgorithm {
         this.tempDirManager = tempDirManager;
     }
     
-    public Result run() {
-        Result result;
+    public void run(Map<String, Object> result) throws IOException {
         try (Probe measure = Measurement.INSTANCE.start("genetic-algorithm")) {
-            result = runInternal();
+            runInternal(result);
         } catch (IOException e) {
-            result = Result.ioException(e, generation);
+            result.put("generation", generation);
+            throw e;
         }
-        return result;
     }
     
     void setRandom(Random random) {
         this.random = random;
     }
     
-    private Result runInternal() throws IOException {
+    private void runInternal(Map<String, Object> result) throws IOException {
         LOG.info("Parsing code");
         createUnmodifiedVariant();
+        Map<String, Object> astStats = new HashMap<>();
+        result.put("ast", astStats);
+        astStats.put("nodes", unmodifiedVariant.getAst().stream().count());
         
         LOG.info("Evaluating unmodified variant");
         boolean originalIsFit = evaluateUnmodifiedOriginal();
         
-        Result result;
         if (originalIsFit) {
+            Map<String, Object> fitnessResult = new HashMap<>();
+            result.put("fitness", fitnessResult);
+            fitnessResult.put("original", unmodifiedVariant.getFitness());
+            fitnessResult.put("max", getMaxFitness());
+            astStats.put("suspicious", unmodifiedVariant.getAst().stream()
+                    .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                    .count());
             
             LOG.info("Creating initial population");
             List<Variant> population = createInitialPopulation();
@@ -96,27 +107,28 @@ public class GeneticAlgorithm {
                 singleGeneration(population);
             }
             
+            result.put("llmCalls", numLlmCalls);
+            result.put("generation", generation);
+            fitnessResult.put("best", bestFitness);
+            
             int index = indexWithMaxFitness(population);
             if (index >= 0) {
                 LOG.info(() -> "Variant with max fitness: " + population.get(index));
-                result = Result.foundFix(unmodifiedVariant.getFitness(), getMaxFitness(), generation);
+                result.put("result", "FOUND_FIX");
             } else {
                 LOG.info(() -> "Stopping because limit of " + Configuration.INSTANCE.getGenerationLimit()
                         + " generations reached");
-                result = Result.generationLimitReached(Configuration.INSTANCE.getGenerationLimit(),
-                        unmodifiedVariant.getFitness(), getMaxFitness(), bestFitness);
+                result.put("result", "GENERATION_LIMIT_REACHED");
             }
             
             try {
-                logDiffOfBestVariant();
+                analyzeDiffOfBestVariant(result);
             } catch (IOException e) {
                 LOG.log(Level.WARNING, "Failed to compute diff of best variant", e);
             }
         } else {
-            result = Result.originalUnfit();
+            result.put("result", "ORIGINAL_UNFIT");
         }
-        
-        return result;
     }
 
     private void createUnmodifiedVariant() throws IOException {
@@ -262,21 +274,25 @@ public class GeneticAlgorithm {
         
         Node astRoot = variant.getAst();
         
-        if (random.nextDouble() <= Configuration.INSTANCE.getLlmMutationProbability()) {
+        if (random.nextDouble() < Configuration.INSTANCE.getLlmMutationProbability()) {
             LOG.info(() -> "Using LLM to mutate variant " + variant.getName());
             if (!variant.hasFitness()) {
                 LOG.fine(() -> "Running tests on variant as it has no fitness and thus no failing tests yet");
                 measureFitness(variant, false);
             }
-            Optional<Node> result = llmFixer.createVariant(astRoot, variant.getFailingTests());
-            if (result.isPresent()) {
-                astRoot = result.get();
-                variant.setAst(astRoot);
-                variant.addMutation("LLM");
-                needsFitnessReevaluation = true;
-                needsFaultLocalization = true;
-            } else {
-                LOG.fine(() -> "Got no (usable) result from LLM...");
+            
+            try (Probe measure = Measurement.INSTANCE.start("llm-mutation")) {
+                numLlmCalls++;
+                Optional<Node> result = llmFixer.createVariant(astRoot, variant.getFailingTests());
+                if (result.isPresent()) {
+                    astRoot = result.get();
+                    variant.setAst(astRoot);
+                    variant.addMutation("LLM");
+                    needsFitnessReevaluation = true;
+                    needsFaultLocalization = true;
+                } else {
+                    LOG.fine(() -> "Got no (usable) result from LLM...");
+                }
             }
             
         } else {
@@ -516,11 +532,43 @@ public class GeneticAlgorithm {
         return result;
     }
     
-    private void logDiffOfBestVariant() throws IOException {
+    private void analyzeDiffOfBestVariant(Map<String, Object> result) throws IOException {
+        Map<String, Object> diffResult = new HashMap<>();
+        
         String diff = AstDiff.getDiff(unmodifiedVariant.getAst(), bestVariant.getAst(), tempDirManager,
                 project.getEncoding());
         
         LOG.info(() -> "Best variant " + bestVariant + ":\n" + diff);
+        diffResult.put("diff", diff);
+        
+        String[] difflines = diff.split("\n");
+        int i;
+        for (i = 0; i < difflines.length; i++) {
+            if (difflines[i].startsWith("@@")) {
+                break;
+            }
+        }
+        
+        int countAdd = 0;
+        int countRemove = 0;
+        for (; i < difflines.length; i++) {
+            String l = difflines[i];
+            if (l.startsWith("+") && !l.substring(1).isBlank()) {
+                countAdd++;
+            } else if (l.startsWith("-") && !l.substring(1).isBlank()) {
+                countRemove++;
+            } else if (l.startsWith("diff --git ")) {
+                for (; i < difflines.length; i++) {
+                    if (difflines[i].startsWith("@@")) {
+                        break;
+                    }
+                }
+            }
+        }
+        diffResult.put("addedLines", countAdd);
+        diffResult.put("removedLines", countRemove);
+        
+        result.put("patch", diffResult);
     }
     
     private void measureFitness(Variant variant, boolean withFaultLocalization) {

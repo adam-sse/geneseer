@@ -56,7 +56,7 @@ public class OnlyDelete {
             result = new Result(Type.IO_EXCEPTION, null, null, e.getMessage());
             
         } catch (OutOfMemoryError e) {
-            System.out.println("{\"type\":\"OUT_OF_MEMORY\"}");
+            System.out.println("{\"result\":\"OUT_OF_MEMORY\"}");
             oom = true;
             throw e;
             
@@ -171,7 +171,7 @@ public class OnlyDelete {
         IO_EXCEPTION,
     }
     
-    private static record Result(Type type, Integer originalFailingTests, Integer bestFailingtests,
+    private static record Result(Type result, Integer originalFailingTests, Integer bestFailingtests,
             String ioException) {
         
     }

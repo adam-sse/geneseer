@@ -101,7 +101,7 @@ public class PureLlmFixer {
         IO_EXCEPTION,
     }
     
-    private static record Result(Type type, Integer originalFailingTests, Integer modifiedFailingTests,
+    private static record Result(Type result, Integer originalFailingTests, Integer modifiedFailingTests,
             String ioException) {
         
     }
@@ -240,7 +240,7 @@ public class PureLlmFixer {
             result = new Result(Type.IO_EXCEPTION, null, null, e.getMessage());
             
         } catch (OutOfMemoryError e) {
-            System.out.println("{\"type\":\"OUT_OF_MEMORY\"}");
+            System.out.println("{\"result\":\"OUT_OF_MEMORY\"}");
             oom = true;
             throw e;
             

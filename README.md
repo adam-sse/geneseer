@@ -42,18 +42,17 @@ As an example, a full execution of geneseer may look like this:
 java -Djava.util.logging.config.file=logging.properties -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.Geneseer --project-directory /path/to/project-to-fix --source-directory src/main/java --encoding ISO-8859-1 --compile-classpath lib/some-lib.jar:lib/other-lib.jar --test-classpath target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar --test-classes com.example.TestClass1:com.example.TestClass2
 ```
 
-### Orchestrator
+### Defects4j
 
-The main class `net.ssehub.program_repair.geneseer.orchestrator.Orchestrator` can be used to run geneseer automatically
-on all (or a subset of) [defects4j](https://github.com/rjust/defects4j) bugs. It will check out, compile, and prepare
-the defects4j bugs in the current working directory (sub-directories for each project, and then sub-sub directories for
-each bug).
+The main class `net.ssehub.program_repair.geneseer.defects4j.Defects4jRunner` can be used to run geneseer on a
+bug from the [Defects4j](https://github.com/rjust/defects4j) database. It will check out, compile, and prepare
+the Defects4j bug in the current working directory (a sub-directory for the project, and then a sub-sub directory for
+the bug). It then proceeds with a normal execution of geneseer, with the correct parameters as required for the
+Defects4j bug. The output is also identical to a normal geneseer execution after the Defects4j setup is done.
 
 The following command line arguments are mandatory (each with a following value):
 
-* `--jvm`: The JVM binary to run the geneseer processes with. This may absolute or on the path.
-* `--geneseer-jar`: The path to the jar-with-dependencies of geneseer.
-* `--defects4j`: The path to the defects4j root directory. defects4j must be properly set up there (check that
+* `--defects4j`: The path to the Defects4j root directory. Defects4j must be properly set up there (check that
 `framework/bin/defects4j` exists in it and is executable), but does not need to be on the path.
 
 The following optional command line arguments can be specified (each with a following value):
@@ -63,26 +62,23 @@ The following optional command line arguments can be specified (each with a foll
     * `SETUP_TEST` will only parse, compile, and evaluate (run tests) on the projects, to check if everything is set up
 properly.
     * `ONLY_DELETE` will go through each suspicious statement one by one and try to delete it individually.
-* `--threads`: How many instances of genseer to run in parallel. Default is 1.
-* `--config`: A path to the configuration file to use. See below. This is passed to each geneseer execution.
+    * `PURE_LLM` will just query an LLM once to try to fix the bug.
+* `--config`: A path to the configuration file to use. See below.
 
-After the command line arguments, you can specify on which defects4j bugs geneseer should be run. Specify nothing to run
-on all bugs in all projects. Specify `<project name>/*` (be careful that your shell doesn't expand the `*` here!) to run
-on all bugs of the given project (e.g. `Closure/*`). Specify `<project name>/<bug number>` to run on a single bug (e.g.
-`Closure/1`). The latter two can be given multiple times, in which case geneseer is run on all of the specified bugs.  
+After the command line arguments, you must specify on which Defects4j bug geneseer should be run. This is in the format
+`<project name>/<bug number>` (e.g. `Closure/1`).  
 
-For example, an execution of the orchestrator may look like this:
+For example, an execution of the Defects4j runner may look like this:
 
 ```
-java -Djava.util.logging.config.file=logging.properties -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.orchestrator.Orchestrator --jvm java --geneseer-jar geneseer-jar-with-dependencies.jar --defects4j ../defects4j --config geneseer.properties --threads 8
+java -Djava.util.logging.config.file=logging.properties -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.defects4j.Defects4jRunner --defects4j ../defects4j --config geneseer.properties Cli/11
 ```
 
-Note that defects4j typically requires a specific Java version on the path (for defects4j 2.0.0, this is Java 1.8). Due
+Note that Defects4j typically requires a specific Java version on the path (for Defects4j 2.0.0, this is Java 1.8). Due
 to this, make sure that the `PATH` environment variable is set up in a way that the proper version of JDK is used.
-geneseer (and the orchestrator) itself requires a JRE of version 17 or later, which of course conflicts with the
-environment requirements of defects4j. Thus you may need to specify the full path to the JRE 17 `java` executable when
-launching the orchestrator and also pass it via the `--jvm` argument (e.g. on Ubuntu, this is
-`/usr/lib/jvm/java-1.17.0-openjdk-amd64/bin/java`).
+geneseer itself requires a JRE of version 17 or later, which of course conflicts with the environment requirements of
+Defects4j. Thus you may need to specify the full path to the JRE 17 `java` executable when launching the Defects4j
+runner (e.g. on Ubuntu, this is `/usr/lib/jvm/java-1.17.0-openjdk-amd64/bin/java`).
 
 ### Configuration file
 
@@ -98,7 +94,7 @@ meaning, and the default values:
 | `setup.testExecutionTimeoutMs`   | `120000` (2 minutes) | The amount of milliseconds before considering a test execution timed-out. The test process will be killed and the tests count as failures. |
 | `setup.coverageMatrixSimplified` | `true`               | Whether to aggregate the coverage per-class instead of running each test method individually when measuring the suspiciousness. If this is `true`, then the execution is (much) faster, but the suspiciousness values will be less accurate. |
 | `setup.debugTestDriver`          | `false`              | Whether to print debug output of the test driver process to stderr. |
-| `setup.testsToRun`               | `ALL_TESTS`          | Relevant only for the orchestrator: Whether to run all tests or only the tests that defects4j marked as relevant. Possible values are `ALL_TESTS` and `RELEVANT_TESTS`. |
+| `setup.testsToRun`               | `ALL_TESTS`          | Relevant only for the Defects4j runner: Whether to run all tests or only the tests that Defects4j marked as relevant. Possible values are `ALL_TESTS` and `RELEVANT_TESTS`. |
 | `genetic.randomSeed`             | `0`                  | The seed to initialize the random source with. If this is the same (and the test cases are deterministic), then the same result is produced. |
 | `genetic.populationSize`         | `40`                 | The number of variants in a generation. |
 | `genetic.generationLimit`        | `10`                 | The maximum number of generations to run for (inclusive). |

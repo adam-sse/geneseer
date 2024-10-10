@@ -17,7 +17,6 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
-import net.ssehub.program_repair.geneseer.orchestrator.ChangedArea;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;

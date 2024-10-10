@@ -1,8 +1,8 @@
-package net.ssehub.program_repair.geneseer.orchestrator;
+package net.ssehub.program_repair.geneseer.defects4j;
 
 import java.nio.file.Path;
 
-public record Bug(String project, int bug) {
+record Bug(String project, int bug) {
 
     public Path getDirectory() {
         return Path.of(project, Integer.toString(bug));

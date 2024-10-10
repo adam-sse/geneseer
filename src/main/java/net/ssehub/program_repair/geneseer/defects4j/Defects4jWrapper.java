@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer.orchestrator;
+package net.ssehub.program_repair.geneseer.defects4j;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,7 +19,7 @@ import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.util.FileUtils;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
 
-public class Defects4jWrapper {
+class Defects4jWrapper {
     
     private static final Logger LOG = Logger.getLogger(Defects4jWrapper.class.getName());
     

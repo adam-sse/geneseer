@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer.orchestrator;
+package net.ssehub.program_repair.geneseer.defects4j;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -16,8 +16,9 @@ import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
 
+import net.ssehub.program_repair.geneseer.defects4j.Defects4jWrapper.Version;
+import net.ssehub.program_repair.geneseer.llm.ChangedArea;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
-import net.ssehub.program_repair.geneseer.orchestrator.Defects4jWrapper.Version;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;

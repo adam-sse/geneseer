@@ -44,24 +44,27 @@ public class Defects4jRunner {
             
             String result = stdout;
             try {
-                Map<Object, Object> parsed = gson.fromJson(stdout, Map.class);
-                
-                List<Map<Object, Object>> failingTests = (List<Map<Object, Object>>) parsed.get("failingTests");
-                
-                Set<String> actualFailingTests = new HashSet<>(failingTests.size());
-                for (Map<Object, Object> failingTest : failingTests) {
-                    actualFailingTests.add(failingTest.get("class") + "::" + failingTest.get("method"));
+                Map<Object, Object> json = gson.fromJson(stdout, Map.class);
+                String jsonResult = (String) json.get("result");
+                if (jsonResult != null
+                        && (jsonResult.equals("FOUND_FAILING_TESTS") || jsonResult.equals("NO_FAILING_TESTS"))) {
+                    
+                    List<Map<Object, Object>> failingTests = (List<Map<Object, Object>>) json.get("failingTests");
+                    
+                    Set<String> actualFailingTests = new HashSet<>(failingTests.size());
+                    for (Map<Object, Object> failingTest : failingTests) {
+                        actualFailingTests.add(failingTest.get("class") + "::" + failingTest.get("method"));
+                    }
+                    
+                    Set<String> expectedFailingTests = runner.defects4j.getFailingTests(runner.bug);
+                    
+                    if (expectedFailingTests.equals(actualFailingTests)) {
+                        json.put("result", "MATCHING_DEFECTS4J");
+                    } else {
+                        json.put("result", "NOT_MATCHING_DEFECTS4J");
+                    }
+                    result = gson.toJson(json);
                 }
-                
-                Set<String> expectedFailingTests = runner.defects4j.getFailingTests(runner.bug);
-                
-                if (expectedFailingTests.equals(actualFailingTests)) {
-                    parsed.put("matchingDefects4j", true);
-                } else {
-                    parsed.put("matchingDefects4j", false);
-                }
-                
-                result = gson.toJson(parsed);
             } catch (JsonParseException | NullPointerException | IOException e) {
                 LOG.log(Level.WARNING, "Could not determine if failing tests were correct", e);
             }

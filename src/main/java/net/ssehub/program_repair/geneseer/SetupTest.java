@@ -2,6 +2,10 @@ package net.ssehub.program_repair.geneseer;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -35,6 +39,8 @@ public class SetupTest {
             System.exit(1);
         }
         
+        Map<String, Object> result = new HashMap<>();
+        
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             Node ast = Parser.parse(project.getSourceDirectoryAbsolute(), project.getEncoding());
             ast.lock();
@@ -55,37 +61,39 @@ public class SetupTest {
             EvaluationResult evaluationResult = evaluation.runTests(binDirectory, project.getTestClassNames());
 
             LOG.info(() -> evaluationResult.getFailures().size() + " failing tests:");
-            System.out.println("{");
-            System.out.print("    \"failingTests\": [");
-            boolean first = true;
+            List<Map<String, String>> failingTests = new LinkedList<>();
             for (TestResult failure : evaluationResult.getFailures()) {
-                if (!first) {
-                    System.out.print(",\n");
-                } else {
-                    System.out.print("\n");
-                    first = false;
-                }
-                
                 LOG.info(() -> "    " + failure + " " + failure.failureMessage());
-                System.out.printf("        {\"class\": %s, \"method\": %s, \"message\": %s}",
-                        JsonUtils.toJsonString(failure.testClass()), JsonUtils.toJsonString(failure.testMethod()),
-                        JsonUtils.toJsonString(failure.failureMessage()));
+                
+                Map<String, String> failingTest = new HashMap<>();
+                failingTest.put("class", failure.testClass());
+                failingTest.put("method", failure.testMethod());
+                failingTest.put("message", failure.failureMessage());
+                failingTests.add(failingTest);
             }
-            System.out.println("\n    ]");
-            System.out.println("}");
+            result.put("failingTests", failingTests);
+            if (failingTests.isEmpty()) {
+                result.put("result", "NO_FAILING_TESTS");
+            } else {
+                result.put("result", "FOUND_FAILING_TESTS");
+            }
             
         } catch (CompilationException e) {
             LOG.severe("Failed compilation");
-            System.out.println(JsonUtils.toJsonString("failed compilation"));
+            result.put("result", "FAILED_COMPILATION");
             
         } catch (TestExecutionException e) {
             LOG.log(Level.SEVERE, "Failed test execution", e);
-            System.out.println(JsonUtils.toJsonString("failed test execution"));
+            result.put("result", "FAILED_TEST_EXECUTION");
+            result.put("exception", e.getMessage());
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IOException", e);
-            System.out.println(JsonUtils.toJsonString("IOException: " + e.getMessage()));
+            result.put("result", "IO_EXCEPTION");
+            result.put("exception", e.getMessage());
         }
+        
+        System.out.println(JsonUtils.GSON.toJson(result));
     }
     
 }

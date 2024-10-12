@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Configuration;
-import net.ssehub.program_repair.geneseer.Configuration.TestsToRun;
+import net.ssehub.program_repair.geneseer.Configuration.SetupConfiguration.TestsToRun;
 import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.util.FileUtils;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
@@ -97,7 +97,7 @@ class Defects4jWrapper {
         testExecutionClassPath = removeJunit(testExecutionClassPath);
         
         testClassNames = new LinkedList<>(List.of(exportProperty(checkoutDirectory,
-                Configuration.INSTANCE.getTestsToRun() == TestsToRun.ALL_TESTS ? "tests.all" : "tests.relevant")));
+                Configuration.INSTANCE.setup().testsToRun() == TestsToRun.ALL_TESTS ? "tests.all" : "tests.relevant")));
 
         applyProjectSpecificFixes(bug, checkoutDirectory, compilationClasspath, testExecutionClassPath, testClassNames);
         

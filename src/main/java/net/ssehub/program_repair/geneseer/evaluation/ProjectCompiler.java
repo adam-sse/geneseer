@@ -83,7 +83,7 @@ public class ProjectCompiler {
     private List<String> buildCommand(Path sourceDirectory, Path outputDirectory, List<Path> classpath)
             throws IOException {
         List<String> command = new LinkedList<>();
-        command.add(Configuration.INSTANCE.getJavaCompilerBinaryPath());
+        command.add(Configuration.INSTANCE.setup().javaCompilerBinaryPath());
         
         command.add("-nowarn");
         

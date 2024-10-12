@@ -34,7 +34,7 @@ public class JunitEvaluation {
             
             List<TestResult> executedTests = new LinkedList<>();
             try (TestExecution testExec = new TestExecution(workingDirectory, fullClasspath, encoding, false)) {
-                testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
+                testExec.setTimeout(Configuration.INSTANCE.setup().testExecutionTimeoutMs());
                 for (String className : testClasses) {
                     runTestCatchingTimeout(workingDirectory, fullClasspath, executedTests, testExec, className);
                 }

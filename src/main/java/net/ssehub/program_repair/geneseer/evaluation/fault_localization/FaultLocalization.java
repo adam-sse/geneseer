@@ -172,9 +172,9 @@ public class FaultLocalization {
         
         try (Probe probe = Measurement.INSTANCE.start("junit-coverage-matrix");
                 TestExecution testExec = new TestExecution(workingDirectory, classpath, encoding, true)) {
-            testExec.setTimeout(Configuration.INSTANCE.getTestExecutionTimeoutMs());
+            testExec.setTimeout(Configuration.INSTANCE.setup().testExecutionTimeoutMs());
          
-            if (Configuration.INSTANCE.getCoverageMatrixSimplified()) {
+            if (Configuration.INSTANCE.setup().coverageMatrixSimplified()) {
                 measureCoverageWithClassAggregation(tests, classesDirectory, testExec, result);
             } else {
                 LOG.info(() -> "Running coverage on " + tests.size() + " test methods individually");

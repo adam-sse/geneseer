@@ -1,13 +1,19 @@
 package net.ssehub.program_repair.geneseer;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.logging.Logger;
-
-import net.ssehub.program_repair.geneseer.util.TimeUtils;
 
 public class Configuration {
 
@@ -15,42 +21,290 @@ public class Configuration {
     
     private static final Logger LOG = Logger.getLogger(Configuration.class.getName());
     
-    private String jvmBinaryPath = "java";
-    
-    private String javaCompilerBinaryPath = "javac";
-    
-    private int testExecutionTimeoutMs = (int) TimeUnit.MINUTES.toMillis(2);
-    
-    private boolean coverageMatrixSimplified = true;
-    
-    public enum TestsToRun {
-        ALL_TESTS, RELEVANT_TESTS
+    public static class Section {
+        
+        private String key;
+        
+        private String name;
+        
+        private List<Option<?>> options;
+        
+        public Section(String key, String name, List<Option<?>> options) {
+            this.key = key;
+            this.name = name;
+            this.options = options;
+        }
+        
+        public Option<?> getOption(String key) {
+            return options.stream().filter(o -> o.key.equals(key)).findFirst().orElse(null);
+        }
+        
     }
+    
+    public static class Option<T> {
+        
+        private String key;
+        
+        private T value;
+        
+        private boolean changed;
+        
+        private Function<String, T> valueParser;
+        
+        private String name;
+        
+        public Option(String key, String name, T defaultValue, Function<String, T> valueParser) {
+            this.key = key;
+            this.name = name;
+            this.value = defaultValue;
+            this.valueParser = valueParser;
+        }
+        
+        public Option(String key, String name, Function<String, T> valueParser) {
+            this.key = key;
+            this.name = name;
+            this.valueParser = valueParser;
+        }
+        
+        public void setValue(T value) {
+            this.changed = true;
+            this.value = value;
+        }
+        
+        public void setValueFromString(String value) {
+            setValue(valueParser.apply(value));
+        }
+        
+        public T getValue() {
+            return value;
+        }
+        
+        protected String valueAsString() {
+            return value.toString();
+        }
+        
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append(name);
+            if (changed) {
+                sb.append("*");
+            }
+            sb.append(": ");
+            if (value == null) {
+                sb.append("<not set>");
+            } else {
+                sb.append(valueAsString());
+            }
+            return sb.toString();
+        }
+        
+    }
+    
+    public static class SetupConfiguration extends Section {
+        
+        private Option<String> jvmBinaryPath = new Option<>("jvmBinaryPath",
+                "JVM binary path", "java", Function.identity());
+        private Option<String> javaCompilerBinaryPath = new Option<>("javaCompilerBinaryPath",
+                "Java compiler binary path", "javac", Function.identity());
+        private Option<Integer> testExecutionTimeoutMs = new Option<>("testExecutionTimeoutMs",
+                "Test execution timeout", (int) TimeUnit.MINUTES.toMillis(2), Integer::parseInt);
+        private Option<Boolean> coverageMatrixSimplified = new Option<>("coverageMatrixSimplified",
+                "Simplified coverage matrix", true, Boolean::parseBoolean);
+        private Option<TestsToRun> testsToRun = new Option<>("testsToRun",
+                "Tests to run", TestsToRun.ALL_TESTS, v -> TestsToRun.valueOf(v.toUpperCase()));
+        private Option<Boolean> debugTestDriver = new Option<>("debugTestDriver",
+                "Debug test driver", false, Boolean::parseBoolean);
+        
+        public enum TestsToRun {
+            ALL_TESTS, RELEVANT_TESTS
+        }
+        
+        public SetupConfiguration() {
+            super("setup", "Setup Configuration", new LinkedList<>());
+            super.options.add(jvmBinaryPath);
+            super.options.add(javaCompilerBinaryPath);
+            super.options.add(testExecutionTimeoutMs);
+            super.options.add(coverageMatrixSimplified);
+            super.options.add(testsToRun);
+            super.options.add(debugTestDriver);
+        }
+        
+        public String jvmBinaryPath() {
+            return jvmBinaryPath.getValue();
+        }
+        
+        public String javaCompilerBinaryPath() {
+            return javaCompilerBinaryPath.getValue();
+        }
+        
+        public int testExecutionTimeoutMs() {
+            return testExecutionTimeoutMs.getValue();
+        }
+        
+        public boolean coverageMatrixSimplified() {
+            return coverageMatrixSimplified.getValue();
+        }
+        
+        public TestsToRun testsToRun() {
+            return testsToRun.getValue();
+        }
+        
+        public boolean debugTestDriver() {
+            return debugTestDriver.getValue();
+        }
+        
+    }
+    
+    public static class GeneticConfiguration extends Section {
 
-    private TestsToRun testsToRun = TestsToRun.ALL_TESTS;
-    
-    private boolean debugTestDriver = false;
-    
-    private long randomSeed = 0;
-    
-    private int populationSize = 40;
-    
-    private int generationLimit = 10;
-    
-    private double negativeTestsWeight = 10;
-    
-    private double positiveTestsWeight = 1;
-    
-    private double mutationProbability = 4;
-    
-    private double llmMutationProbability = 0.1;
-    
-    public enum MutationScope {
-        GLOBAL, FILE
+        private Option<Long> randomSeed = new Option<>("randomSeed",
+                "Random seed", 0L, Long::parseLong);
+        private Option<Integer> populationSize = new Option<>("populationSize",
+                "Population size", 40, Integer::parseInt);
+        private Option<Integer> generationLimit = new Option<>("generationLimit",
+                "Generation limit", 10, Integer::parseInt);
+        private Option<Double> negativeTestsWeight = new Option<>("negativeTestsWeight",
+                "Negative tests weight", 10.0, Double::parseDouble);
+        private Option<Double> positiveTestsWeight = new Option<>("positiveTestsWeight",
+                "Positive tests weight", 1.0, Double::parseDouble);
+        private Option<Double> mutationProbability = new Option<>("mutationProbability",
+                "Mutation probability", 4.0, Double::parseDouble);
+        private Option<Double> llmMutationProbability = new Option<>("llmMutationProbability",
+                "LLM-mutation probability", 0.1, Double::parseDouble);
+        private Option<MutationScope> statementScope = new Option<>("statementScope",
+                "Statement Scope", MutationScope.GLOBAL, v -> MutationScope.valueOf(v.toUpperCase()));
+        
+        public enum MutationScope {
+            GLOBAL, FILE
+        }
+        
+        public GeneticConfiguration() {
+            super("genetic", "Genetic Configuration", new LinkedList<>());
+            super.options.add(randomSeed);
+            super.options.add(populationSize);
+            super.options.add(generationLimit);
+            super.options.add(negativeTestsWeight);
+            super.options.add(positiveTestsWeight);
+            super.options.add(mutationProbability);
+            super.options.add(llmMutationProbability);
+            super.options.add(statementScope);
+        }
+        
+        public long randomSeed() {
+            return randomSeed.getValue();
+        }
+        
+        public int populationSize() {
+            return populationSize.getValue();
+        }
+        
+        public int generationLimit() {
+            return generationLimit.getValue();
+        }
+        
+        public double negativeTestsWeight() {
+            return negativeTestsWeight.getValue();
+        }
+        
+        public double positiveTestsWeight() {
+            return positiveTestsWeight.getValue();
+        }
+        
+        public double mutationProbability() {
+            return mutationProbability.getValue();
+        }
+        
+        public double llmMutationProbability() {
+            return llmMutationProbability.getValue();
+        }
+        
+        public MutationScope statementScope() {
+            return statementScope.getValue();
+        }
+        
     }
-    private MutationScope statementScope = MutationScope.GLOBAL;
     
-    private Path llmConfigFile = Path.of("llm.properties");
+    public static class LlmConfiguration extends Section {
+        
+        private Option<String> model = new Option<>("model",
+                "Model", "dummy", Function.identity());
+        private Option<Integer> maxCodeContext = new Option<>("maxCodeContext",
+                "Max code context lines", 100, Integer::parseInt);
+        private Option<Double> temperature = new Option<>("temperature",
+                "Temperature", Double::parseDouble);
+        private Option<Long> seed = new Option<>("seed",
+                "Seed", Long::parseLong);
+        private Option<URL> apiUrl = new Option<URL>("api-url",
+                "API URL", v -> {
+                    try {
+                        return new URI(v).toURL();
+                    } catch (URISyntaxException | MalformedURLException e) {
+                        throw new UncheckedIOException(new IOException(e));
+                    }
+                });
+        private Option<String> apiToken = new Option<>("api-token",
+                "API Token", Function.identity()) {
+            
+            @Override
+            protected String valueAsString() {
+                return "<redacted>";
+            };
+            
+        };
+        private Option<String> apiUserHeader = new Option<>("api-user-header",
+                "API user header", Function.identity());
+        
+        public LlmConfiguration() {
+            super("llm", "LLM Configuration", new LinkedList<>());
+            super.options.add(model);
+            super.options.add(maxCodeContext);
+            super.options.add(temperature);
+            super.options.add(seed);
+            super.options.add(apiUrl);
+            super.options.add(apiToken);
+            super.options.add(apiUserHeader);
+        }
+        
+        public String model() {
+            return model.getValue();
+        }
+        
+        public int maxCodeContext() {
+            return maxCodeContext.getValue();
+        }
+        
+        public Double temperature() {
+            return temperature.getValue();
+        }
+        
+        public Long seed() {
+            return seed.getValue();
+        }
+        
+        public URL apiUrl() {
+            return apiUrl.getValue();
+        }
+        
+        public String apiToken() {
+            return apiToken.getValue();
+        }
+        
+        public String apiUserHeader() {
+            return apiUserHeader.getValue();
+        }
+        
+    }
+    
+    private SetupConfiguration setup = new SetupConfiguration();
+    private GeneticConfiguration genetic = new GeneticConfiguration();
+    private LlmConfiguration llm = new LlmConfiguration();
+    
+    private List<Section> sections = List.of(setup, genetic, llm);
+    
+    private Section getSection(String key) {
+        return sections.stream().filter(s -> s.key.equals(key)).findFirst().orElse(null);
+    }
     
     public void loadFromFile(Path file) throws IOException {
         LOG.info(() -> "Loading configuration file " + file.toAbsolutePath());
@@ -59,138 +313,47 @@ public class Configuration {
         
         for (Object key : properties.keySet()) {
             String value = properties.getProperty((String) key);
-            switch ((String) key) {
-            case "setup.jvmBinaryPath":
-                jvmBinaryPath = value;
-                break;
-            case "setup.javaCompilerBinaryPath":
-                javaCompilerBinaryPath = value;
-                break;
-            case "setup.testExecutionTimeoutMs":
-                testExecutionTimeoutMs = Integer.parseInt(value);
-                break;
-            case "setup.coverageMatrixSimplified":
-                coverageMatrixSimplified = Boolean.parseBoolean(value);
-                break;
-            case "setup.testsToRun":
-                testsToRun = TestsToRun.valueOf(value.toUpperCase());
-                break;
-            case "setup.debugTestDriver":
-                debugTestDriver = Boolean.parseBoolean(value);
-                break;
-            case "genetic.randomSeed":
-                randomSeed = Long.parseLong(value);
-                break;
-            case "genetic.populationSize":
-                populationSize = Integer.parseInt(value);
-                break;
-            case "genetic.generationLimit":
-                generationLimit = Integer.parseInt(value);
-                break;
-            case "genetic.negativeTestsWeight":
-                negativeTestsWeight = Double.parseDouble(value);
-                break;
-            case "genetic.positiveTestsWeight":
-                positiveTestsWeight = Double.parseDouble(value);
-                break;
-            case "genetic.mutationProbability":
-                mutationProbability = Double.parseDouble(value);
-                break;
-            case "genetic.llmMutationProbability":
-                llmMutationProbability = Double.parseDouble(value);
-                break;
-            case "genetic.statementScope":
-                statementScope = MutationScope.valueOf(value.toUpperCase());
-                break;
-            case "llm.configFile":
-                llmConfigFile = Path.of(value);
-                break;
+            String[] splitKey = ((String) key).split("\\.");
             
-            default:
+            Option<?> option = null;
+            if (splitKey.length == 2) {
+                Section section = getSection(splitKey[0]);
+                if (section != null) {
+                    option = section.getOption(splitKey[1]);
+                }
+            }
+            
+            if (option != null) {
+                try {
+                    option.setValueFromString(value);
+                } catch (UncheckedIOException e) {
+                    throw e.getCause();
+                }
+            } else {
                 LOG.warning(() -> "Unknown configuration key " + key);
-                break;
             }
         }
     }
     
     public void log() {
-        LOG.config("Setup Configuration:");
-        LOG.config(() -> "    JVM binary path: " + jvmBinaryPath);
-        LOG.config(() -> "    Java compiler binary path: " + javaCompilerBinaryPath);
-        LOG.config(() -> "    Test execution timeout: " + TimeUtils.formatMilliseconds(testExecutionTimeoutMs));
-        LOG.config(() -> "    Simplified coverage matrix: " + coverageMatrixSimplified);
-        LOG.config(() -> "    Tests to run: " + testsToRun);
-        LOG.config(() -> "    Debug test driver: " + debugTestDriver);
-        LOG.config("Genetic Configuration:");
-        LOG.config(() -> "    Random seed: " + randomSeed);
-        LOG.config(() -> "    Population size: " + populationSize);
-        LOG.config(() -> "    Generation limit: " + generationLimit);
-        LOG.config(() -> "    Negative tests weight: " + negativeTestsWeight);
-        LOG.config(() -> "    Positive tests weight: " + positiveTestsWeight);
-        LOG.config(() -> "    Mutation probability: " + mutationProbability);
-        LOG.config(() -> "    LLM-Mutation probability: " + llmMutationProbability);
-        LOG.config(() -> "    Statement Scope: " + statementScope);
-        LOG.config(() -> "LLM configuration file: " + llmConfigFile);
+        for (Section section : sections) {
+            LOG.config(() -> section.name + ":");
+            for (Option<?> option : section.options) {
+                LOG.config(() -> "    " + option.toString());
+            }
+        }
     }
     
-    public String getJvmBinaryPath() {
-        return  jvmBinaryPath;
+    public SetupConfiguration setup() {
+        return setup;
     }
     
-    public String getJavaCompilerBinaryPath() {
-        return javaCompilerBinaryPath;
+    public GeneticConfiguration genetic() {
+        return genetic;
     }
     
-    public int getTestExecutionTimeoutMs() {
-        return testExecutionTimeoutMs;
-    }
-    
-    public boolean getCoverageMatrixSimplified() {
-        return coverageMatrixSimplified;
-    }
-    
-    public TestsToRun getTestsToRun() {
-        return testsToRun;
-    }
-    
-    public boolean getDebugTestDriver() {
-        return debugTestDriver;
-    }
-
-    public long getRandomSeed() {
-        return randomSeed;
-    }
-    
-    public int getPopulationSize() {
-        return populationSize;
-    }
-    
-    public int getGenerationLimit() {
-        return generationLimit;
-    }
-    
-    public double getNegativeTestsWeight() {
-        return negativeTestsWeight;
-    }
-    
-    public double getPositiveTestsWeight() {
-        return positiveTestsWeight;
-    }
-    
-    public double getMutationProbability() {
-        return mutationProbability;
-    }
-    
-    public double getLlmMutationProbability() {
-        return llmMutationProbability;
-    }
-    
-    public MutationScope getStatementScope() {
-        return statementScope;
-    }
-    
-    public Path getLlmConfigFile() {
-        return llmConfigFile;
+    public LlmConfiguration llm() {
+        return llm;
     }
     
 }

@@ -16,6 +16,7 @@ import java.util.logging.Logger;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
@@ -87,7 +88,7 @@ public class LlmQueryAnalysis {
             Node method = entry.getKey();
             LineRange range = getRange(method);
             
-            if (selectedMethods.isEmpty() || codeSize + range.size() < LlmConfiguration.INSTANCE.getMaxCodeContext()) {
+            if (selectedMethods.isEmpty() || codeSize + range.size() < Configuration.INSTANCE.llm().maxCodeContext()) {
                 selectedMethods.add(getSnippetForMethod(original, method));
                 codeSize += range.size();
             }

@@ -17,7 +17,7 @@ import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
-import net.ssehub.program_repair.geneseer.Configuration.MutationScope;
+import net.ssehub.program_repair.geneseer.Configuration.GeneticConfiguration.MutationScope;
 import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationResult;
@@ -41,7 +41,7 @@ public class GeneticAlgorithm {
 
     private static final Logger LOG = Logger.getLogger(GeneticAlgorithm.class.getName());
     
-    private Random random = new Random(Configuration.INSTANCE.getRandomSeed());
+    private Random random = new Random(Configuration.INSTANCE.genetic().randomSeed());
     
     private Project project;
     
@@ -103,7 +103,8 @@ public class GeneticAlgorithm {
             LOG.info("Creating initial population");
             List<Variant> population = createInitialPopulation();
             
-            while (indexWithMaxFitness(population) < 0 && ++generation <= Configuration.INSTANCE.getGenerationLimit()) {
+            while (indexWithMaxFitness(population) < 0
+                    && ++generation <= Configuration.INSTANCE.genetic().generationLimit()) {
                 singleGeneration(population);
             }
             
@@ -116,7 +117,7 @@ public class GeneticAlgorithm {
                 LOG.info(() -> "Variant with max fitness: " + population.get(index));
                 result.put("result", "FOUND_FIX");
             } else {
-                LOG.info(() -> "Stopping because limit of " + Configuration.INSTANCE.getGenerationLimit()
+                LOG.info(() -> "Stopping because limit of " + Configuration.INSTANCE.genetic().generationLimit()
                         + " generations reached");
                 result.put("result", "GENERATION_LIMIT_REACHED");
             }
@@ -199,8 +200,8 @@ public class GeneticAlgorithm {
     }
 
     private List<Variant> createInitialPopulation() throws IOException {
-        List<Variant> population = new ArrayList<>(Configuration.INSTANCE.getPopulationSize());
-        for (int i = 0; i < Configuration.INSTANCE.getPopulationSize(); i++) {
+        List<Variant> population = new ArrayList<>(Configuration.INSTANCE.genetic().populationSize());
+        for (int i = 0; i < Configuration.INSTANCE.genetic().populationSize(); i++) {
             population.add(newVariant());
         }
         LOG.fine(() -> "Population fitness: " + population.stream()
@@ -224,9 +225,9 @@ public class GeneticAlgorithm {
         List<Double> cummulativeProbabilityDistribution = calculateCummulativeProbabilityDistribution(viable);
         
         List<Integer> selected;
-        if (viable.size() > Configuration.INSTANCE.getPopulationSize() / 2) {
+        if (viable.size() > Configuration.INSTANCE.genetic().populationSize() / 2) {
             selected = stochasticUniversalSampling(cummulativeProbabilityDistribution,
-                    Configuration.INSTANCE.getPopulationSize() / 2);
+                    Configuration.INSTANCE.genetic().populationSize() / 2);
         } else {
             selected = IntStream.range(0, viable.size()).mapToObj(Integer::valueOf).toList();
         }
@@ -248,7 +249,7 @@ public class GeneticAlgorithm {
             }
         }
         
-        while (population.size() < Configuration.INSTANCE.getPopulationSize()) {
+        while (population.size() < Configuration.INSTANCE.genetic().populationSize()) {
             population.add(newVariant());
         }
         
@@ -274,7 +275,7 @@ public class GeneticAlgorithm {
         
         Node astRoot = variant.getAst();
         
-        if (random.nextDouble() < Configuration.INSTANCE.getLlmMutationProbability()) {
+        if (random.nextDouble() < Configuration.INSTANCE.genetic().llmMutationProbability()) {
             LOG.info(() -> "Using LLM to mutate variant " + variant.getName());
             if (!variant.hasFitness()) {
                 LOG.fine(() -> "Running tests on variant as it has no fitness and thus no failing tests yet");
@@ -300,7 +301,8 @@ public class GeneticAlgorithm {
                     .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                     .toList();
             
-            double mutationProbability = Configuration.INSTANCE.getMutationProbability() / suspiciousStatements.size();
+            double mutationProbability =
+                    Configuration.INSTANCE.genetic().mutationProbability() / suspiciousStatements.size();
             List<Node> ss = suspiciousStatements;
             LOG.fine(() -> ss.size() + " suspicious statements -> mutation probability " + mutationProbability);
             for (int i = 0; i < suspiciousStatements.size(); i++) {
@@ -390,7 +392,7 @@ public class GeneticAlgorithm {
     }
     
     private Node selectOtherStatement(Node astRoot, Node suspiciousStatement) {
-        if (Configuration.INSTANCE.getStatementScope() == MutationScope.FILE) {
+        if (Configuration.INSTANCE.genetic().statementScope() == MutationScope.FILE) {
             astRoot = findFileNode(astRoot, suspiciousStatement);
         }
         
@@ -633,13 +635,13 @@ public class GeneticAlgorithm {
             }
         }
         
-        return Configuration.INSTANCE.getNegativeTestsWeight() * numPassingNegative
-                + Configuration.INSTANCE.getPositiveTestsWeight() * numPassingPositive;
+        return Configuration.INSTANCE.genetic().negativeTestsWeight() * numPassingNegative
+                + Configuration.INSTANCE.genetic().positiveTestsWeight() * numPassingPositive;
     }
     
     private double getMaxFitness() {
-        return negativeTests.size() * Configuration.INSTANCE.getNegativeTestsWeight()
-                + positiveTests.size() * Configuration.INSTANCE.getPositiveTestsWeight();
+        return negativeTests.size() * Configuration.INSTANCE.genetic().negativeTestsWeight()
+                + positiveTests.size() * Configuration.INSTANCE.genetic().positiveTestsWeight();
     }
     
     private int indexWithMaxFitness(List<Variant> population) {

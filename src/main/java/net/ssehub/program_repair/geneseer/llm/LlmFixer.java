@@ -17,6 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.llm.ChatGptMessage.Role;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
@@ -113,7 +114,7 @@ public class LlmFixer {
             Node method = entry.getKey();
             LineRange range = getRange(method);
             
-            if (selectedMethods.isEmpty() || codeSize + range.size() < LlmConfiguration.INSTANCE.getMaxCodeContext()) {
+            if (selectedMethods.isEmpty() || codeSize + range.size() < Configuration.INSTANCE.llm().maxCodeContext()) {
                 selectedMethods.add(getSnippetForMethod(original, method, sourceDir));
                 codeSize += range.size();
             }
@@ -246,7 +247,7 @@ public class LlmFixer {
 
     private String query(List<String> failureMessages, List<List<String>> testMethodContexts,
             List<CodeSnippet> codeSnippets) throws IOException {
-        ChatGptRequest request = new ChatGptRequest(LlmConfiguration.INSTANCE.getModel());
+        ChatGptRequest request = new ChatGptRequest(Configuration.INSTANCE.llm().model());
         request.addMessage(new ChatGptMessage(SYSTEM_MESSAGE, Role.SYSTEM));
         
         StringBuilder query = new StringBuilder();
@@ -282,11 +283,11 @@ public class LlmFixer {
         
         LOG.fine(() -> "Query:\n" + query);
         request.addMessage(new ChatGptMessage(query.toString(), Role.USER));
-        if (LlmConfiguration.INSTANCE.getTemperature() != null) {
-            request.setTemperature(LlmConfiguration.INSTANCE.getTemperature());
+        if (Configuration.INSTANCE.llm().temperature() != null) {
+            request.setTemperature(Configuration.INSTANCE.llm().temperature());
         }
-        if (LlmConfiguration.INSTANCE.getSeed() != null) {
-            request.setSeed(LlmConfiguration.INSTANCE.getSeed());
+        if (Configuration.INSTANCE.llm().seed() != null) {
+            request.setSeed(Configuration.INSTANCE.llm().seed());
         }
         
         ChatGptResponse response = llm.send(request);

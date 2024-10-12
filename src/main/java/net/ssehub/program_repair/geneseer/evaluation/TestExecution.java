@@ -132,7 +132,7 @@ public class TestExecution implements AutoCloseable {
             ProcessBuilder builder = new ProcessBuilder(command);
             builder.directory(workingDirectory.toFile());
             builder.environment().put("TZ", "America/Los_Angeles");
-            if (Configuration.INSTANCE.getDebugTestDriver()) {
+            if (Configuration.INSTANCE.setup().debugTestDriver()) {
                 builder.redirectError(Redirect.INHERIT);
             } else {
                 builder.redirectError(Redirect.PIPE);
@@ -143,7 +143,7 @@ public class TestExecution implements AutoCloseable {
             rawIn = process.getInputStream();
             in = new ObjectInputStream(rawIn);
             
-            if (!Configuration.INSTANCE.getDebugTestDriver()) {
+            if (!Configuration.INSTANCE.setup().debugTestDriver()) {
                 stderrCapture = new CaptureThread(process.getErrorStream(), "test-driver stderr");
                 stderrCapture.start();
             }
@@ -352,7 +352,7 @@ public class TestExecution implements AutoCloseable {
             throws IOException {
         
         List<String> command = new LinkedList<>();
-        command.add(Configuration.INSTANCE.getJvmBinaryPath());
+        command.add(Configuration.INSTANCE.setup().jvmBinaryPath());
         
         if (withCoverage) {
             command.add("-javaagent:" + JACOCO_AGENT.toAbsolutePath() + "=output=tcpserver,port=" + jacocoPort);
@@ -371,7 +371,7 @@ public class TestExecution implements AutoCloseable {
         command.add(cp.toString());
 
         command.add("net.ssehub.program_repair.geneseer.evaluation.TestDriver");
-        if (Configuration.INSTANCE.getDebugTestDriver()) {
+        if (Configuration.INSTANCE.setup().debugTestDriver()) {
             command.add("DEBUG");
         }
         return command;

@@ -22,7 +22,6 @@ import net.ssehub.program_repair.geneseer.evaluation.fault_localization.FaultLoc
 import net.ssehub.program_repair.geneseer.llm.ChatGptConnection;
 import net.ssehub.program_repair.geneseer.llm.DummyChatGptConnection;
 import net.ssehub.program_repair.geneseer.llm.IChatGptConnection;
-import net.ssehub.program_repair.geneseer.llm.LlmConfiguration;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
@@ -108,16 +107,16 @@ public class PureLlmFixer {
     
     static LlmFixer createLlmFixer(Project project, TemporaryDirectoryManager tempDirManager) {
         IChatGptConnection chatGpt;
-        if (LlmConfiguration.INSTANCE.getModel().equals("dummy")) {
+        if (Configuration.INSTANCE.llm().model().equals("dummy")) {
             LOG.warning("llm.model is set to \"dummy\"; not using a real LLM");
             chatGpt = new DummyChatGptConnection();
         } else {
-            chatGpt = new ChatGptConnection(LlmConfiguration.INSTANCE.getApiUrl());
-            if (LlmConfiguration.INSTANCE.getApiToken() != null) {
-                ((ChatGptConnection) chatGpt).setToken(LlmConfiguration.INSTANCE.getApiToken());
+            chatGpt = new ChatGptConnection(Configuration.INSTANCE.llm().apiUrl());
+            if (Configuration.INSTANCE.llm().apiToken() != null) {
+                ((ChatGptConnection) chatGpt).setToken(Configuration.INSTANCE.llm().apiToken());
             }
-            if (LlmConfiguration.INSTANCE.getApiUserHeader() != null) {
-                ((ChatGptConnection) chatGpt).setUserHeader(LlmConfiguration.INSTANCE.getApiUserHeader());
+            if (Configuration.INSTANCE.llm().apiUserHeader() != null) {
+                ((ChatGptConnection) chatGpt).setUserHeader(Configuration.INSTANCE.llm().apiUserHeader());
             }
         }
         

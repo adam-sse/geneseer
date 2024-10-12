@@ -6,14 +6,15 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Logger;
+
+import net.ssehub.program_repair.geneseer.util.CliArguments;
 
 public class Configuration {
 
@@ -235,7 +236,7 @@ public class Configuration {
                 "Temperature", Double::parseDouble);
         private Option<Long> seed = new Option<>("seed",
                 "Seed", Long::parseLong);
-        private Option<URL> apiUrl = new Option<URL>("api-url",
+        private Option<URL> apiUrl = new Option<URL>("apiUrl",
                 "API URL", v -> {
                     try {
                         return new URI(v).toURL();
@@ -243,7 +244,7 @@ public class Configuration {
                         throw new UncheckedIOException(new IOException(e));
                     }
                 });
-        private Option<String> apiToken = new Option<>("api-token",
+        private Option<String> apiToken = new Option<>("apiToken",
                 "API Token", Function.identity()) {
             
             @Override
@@ -252,7 +253,7 @@ public class Configuration {
             };
             
         };
-        private Option<String> apiUserHeader = new Option<>("api-user-header",
+        private Option<String> apiUserHeader = new Option<>("apiUserHeader",
                 "API user header", Function.identity());
         
         public LlmConfiguration() {
@@ -306,33 +307,31 @@ public class Configuration {
         return sections.stream().filter(s -> s.key.equals(key)).findFirst().orElse(null);
     }
     
-    public void loadFromFile(Path file) throws IOException {
-        LOG.info(() -> "Loading configuration file " + file.toAbsolutePath());
-        Properties properties = new Properties();
-        properties.load(Files.newBufferedReader(file));
-        
-        for (Object key : properties.keySet()) {
-            String value = properties.getProperty((String) key);
-            String[] splitKey = ((String) key).split("\\.");
-            
-            Option<?> option = null;
-            if (splitKey.length == 2) {
-                Section section = getSection(splitKey[0]);
+    public void loadFromCli(CliArguments args) throws IOException {
+        for (String cliOption : getCliOptions()) {
+            if (args.hasOption(cliOption)) {
+                String[] parts = cliOption.split("\\.");
+                if (parts.length != 3) {
+                    throw new IOException("Invalid CLI config key: " + cliOption);
+                }
+                
+                Option<?> option = null;
+                Section section = getSection(parts[1]);
                 if (section != null) {
-                    option = section.getOption(splitKey[1]);
+                    option = section.getOption(parts[2]);
                 }
-            }
-            
-            if (option != null) {
-                try {
-                    option.setValueFromString(value);
-                } catch (UncheckedIOException e) {
-                    throw e.getCause();
+                if (option != null) {
+                    try {
+                        option.setValueFromString(args.getOption(cliOption));
+                    } catch (UncheckedIOException e) {
+                        throw e.getCause();
+                    }
+                } else {
+                    LOG.warning(() -> "Unknown configuration key " + cliOption);
                 }
-            } else {
-                LOG.warning(() -> "Unknown configuration key " + key);
             }
         }
+        
     }
     
     public void log() {
@@ -342,6 +341,16 @@ public class Configuration {
                 LOG.config(() -> "    " + option.toString());
             }
         }
+    }
+    
+    public Set<String> getCliOptions() {
+        Set<String> options = new HashSet<>();
+        for (Section section : sections) {
+            for (Option<?> option : section.options) {
+                options.add("--config." + section.key + "." + option.key);
+            }
+        }
+        return options;
     }
     
     public SetupConfiguration setup() {

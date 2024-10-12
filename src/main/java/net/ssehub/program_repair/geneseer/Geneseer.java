@@ -1,7 +1,6 @@
 package net.ssehub.program_repair.geneseer;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -32,7 +31,7 @@ public class Geneseer {
     static Project initialize(String[] args) throws IOException {
         Set<String> options = new HashSet<>();
         options.addAll(Project.getCliOptions());
-        options.add("--config");
+        options.addAll(Configuration.INSTANCE.getCliOptions());
         CliArguments cli = new CliArguments(args, options);
         
         Project project = null;
@@ -52,11 +51,8 @@ public class Geneseer {
         LOG.config("    test classes (" + project.getTestClassNames().size() + "): " + project.getTestClassNames());
         LOG.config("    encoding: " + project.getEncoding());
         
-        if (cli.hasOption("--config")) {
-            Path configFile = Path.of(cli.getOption("--config"));
-            Configuration.INSTANCE.loadFromFile(configFile);
-        }
         
+        Configuration.INSTANCE.loadFromCli(cli);
         Configuration.INSTANCE.log();
         
         return project;

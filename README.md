@@ -63,7 +63,7 @@ The following optional command line arguments can be specified (each with a foll
 properly.
     * `ONLY_DELETE` will go through each suspicious statement one by one and try to delete it individually.
     * `PURE_LLM` will just query an LLM once to try to fix the bug.
-* `--config`: A path to the configuration file to use. See below.
+* `--config.*`: All configuration options are passed the geneseer execution, see below.
 
 After the command line arguments, you must specify on which Defects4j bug geneseer should be run. This is in the format
 `<project name>/<bug number>` (e.g. `Closure/1`).  
@@ -71,7 +71,7 @@ After the command line arguments, you must specify on which Defects4j bug genese
 For example, an execution of the Defects4j runner may look like this:
 
 ```
-java -Djava.util.logging.config.file=logging.properties -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.defects4j.Defects4jRunner --defects4j ../defects4j --config geneseer.properties Cli/11
+java -Djava.util.logging.config.file=logging.properties -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.defects4j.Defects4jRunner --defects4j ../defects4j --config.geneseer.llmMutationProbability 0 Cli/11
 ```
 
 Note that Defects4j typically requires a specific Java version on the path (for Defects4j 2.0.0, this is Java 1.8). Due

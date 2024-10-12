@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 
+import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Geneseer;
 import net.ssehub.program_repair.geneseer.LlmQueryAnalysis;
 import net.ssehub.program_repair.geneseer.OnlyDelete;
@@ -110,9 +111,9 @@ public class Defects4jRunner {
     
     private Defects4jWrapper defects4j;
     
-    private Path configurationFile;
-    
     private Bug bug;
+    
+    private CliArguments cliArguments;
     
     private List<String> buildArgs(Path checkoutDirectory, Project config) {
         List<String> command = new LinkedList<>();
@@ -140,9 +141,11 @@ public class Defects4jRunner {
         command.add(config.getTestClassNames().stream()
                 .collect(Collectors.joining(":")));
         
-        if (configurationFile != null) {
-            command.add("--config");
-            command.add(configurationFile.toString());
+        for (String configOption : Configuration.INSTANCE.getCliOptions()) {
+            if (cliArguments.hasOption(configOption)) {
+                command.add(configOption);
+                command.add(cliArguments.getOption(configOption));
+            }
         }
         
         return command;
@@ -164,10 +167,10 @@ public class Defects4jRunner {
         this.bug = bug;
     }
     
-    public void setConfigurationFile(Path configurationFile) {
-        this.configurationFile = configurationFile;
+    public void setCliArguments(CliArguments cliArguments) {
+        this.cliArguments = cliArguments;
     }
-
+    
     public void run() throws IOException {
         LOG.info(() -> "Running on bug " + bug);
         LOG.info("Preparing project...");
@@ -179,15 +182,16 @@ public class Defects4jRunner {
     }
     
     public static void main(String[] args) throws IOException {
-        CliArguments cli = new CliArguments(args, Set.of(
-                "--defects4j", "--target", "--config"));
+        Set<String> cliOptions = new HashSet<>();
+        cliOptions.add("--defects4j");
+        cliOptions.add("--target");
+        cliOptions.addAll(Configuration.INSTANCE.getCliOptions());
+        CliArguments cli = new CliArguments(args, cliOptions);
         
         Defects4jRunner runner = new Defects4jRunner();
         runner.setDefects4jPath(Path.of(cli.getOptionOrThrow("--defects4j")));
         runner.setTarget(Target.valueOf(cli.getOption("--target", Target.GENESEER.name())));
-        if (cli.hasOption("--config")) {
-            runner.setConfigurationFile(Path.of(cli.getOption("--config")));
-        }
+        runner.setCliArguments(cli);
         
         if (cli.getRemaining().size() == 1) {
             String[] parts = cli.getRemaining().get(0).split("/");

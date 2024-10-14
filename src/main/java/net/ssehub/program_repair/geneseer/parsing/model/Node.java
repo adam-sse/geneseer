@@ -26,6 +26,7 @@ public abstract class Node implements Cloneable {
         METHOD_NAME,
         CONSTRUCTOR_NAME,
         SUSPICIOUSNESS,
+        COVERED_BY
     }
     
     protected boolean locked;

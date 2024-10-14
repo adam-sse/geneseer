@@ -54,16 +54,9 @@ public class FaultLocalization {
             throws TestExecutionException {
         
         LOG.info("Measuring suspiciousness");
-        LinkedHashMap<Location, Double> suspiciousness = measureSuspiciousness(tests, variantBinDir);
+        LinkedHashMap<Location, Double> suspiciousness = measureSuspiciousness(tests, variantBinDir, ast);
         
-        Map<String, Node> classes = new HashMap<>(ast.childCount());
-        for (Node file : ast.childIterator()) {
-            String className = file.getMetadata(Metadata.FILE_NAME).toString().replaceAll("[/\\\\]", ".");
-            if (className.endsWith(".java")) {
-                className = className.substring(0, className.length() - ".java".length());
-            }
-            classes.put(className, file);
-        }
+        Map<String, Node> classes = getFileNodesByClassName(ast);
         
         AtomicInteger suspiciousStatementCount = new AtomicInteger();
         for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
@@ -113,12 +106,25 @@ public class FaultLocalization {
         }
         LOG.info(() -> suspiciousStatementCount.get() + " suspicious statements");
     }
+
+    private Map<String, Node> getFileNodesByClassName(Node ast) {
+        Map<String, Node> classes = new HashMap<>(ast.childCount());
+        for (Node file : ast.childIterator()) {
+            String className = file.getMetadata(Metadata.FILE_NAME).toString().replaceAll("[/\\\\]", ".");
+            if (className.endsWith(".java")) {
+                className = className.substring(0, className.length() - ".java".length());
+            }
+            classes.put(className, file);
+        }
+        return classes;
+    }
     
-    public LinkedHashMap<Location, Double> measureSuspiciousness(List<TestResult> tests, Path classesDirectory)
-            throws TestExecutionException {
+    public LinkedHashMap<Location, Double> measureSuspiciousness(List<TestResult> tests, Path classesDirectory,
+            Node ast) throws TestExecutionException {
         
         try (Probe probe = Measurement.INSTANCE.start("fault-localization")) {
             Map<Location, Set<TestResult>> coverage = measureCoverage(tests, classesDirectory);
+            annotateClassBasedCoverageOnAstNodes(coverage, ast);
             
             Map<Location, Double> suspiciousness = new HashMap<>(coverage.size());
             for (Map.Entry<Location, Set<TestResult>> coverageEntry : coverage.entrySet()) {
@@ -161,10 +167,36 @@ public class FaultLocalization {
         }
     }
     
+    private void annotateClassBasedCoverageOnAstNodes(Map<Location, Set<TestResult>> coverage, Node ast) {
+        Map<String, Node> classes = getFileNodesByClassName(ast);
+        
+        for (Map.Entry<Location, Set<TestResult>> entry : coverage.entrySet()) {
+            String className = entry.getKey().className();
+            int dollarIndex = className.indexOf('$');
+            if (dollarIndex != -1) {
+                className = className.substring(0, dollarIndex);
+            }
+            
+            Node classNode = classes.get(className);
+            if (classNode != null) {
+                @SuppressWarnings("unchecked")
+                Set<String> coveredBy = (Set<String>) classNode.getMetadata(Metadata.COVERED_BY);
+                if (coveredBy == null) {
+                    coveredBy = new HashSet<>();
+                    classNode.setMetadata(Metadata.COVERED_BY, coveredBy);
+                }
+                for (TestResult testResult : entry.getValue()) {
+                    coveredBy.add(testResult.testClass());
+                }
+            }
+        }
+        
+    }
+    
     private Map<Location, Set<TestResult>> measureCoverage(List<TestResult> tests, Path classesDirectory)
             throws TestExecutionException {
         
-        Map<Location, Set<TestResult>> result = new HashMap<>();
+        Map<Location, Set<TestResult>> coverage = new HashMap<>();
         
         List<Path> classpath = new ArrayList<>(this.classpath.size() + 1);
         classpath.add(classesDirectory);
@@ -175,16 +207,16 @@ public class FaultLocalization {
             testExec.setTimeout(Configuration.INSTANCE.setup().testExecutionTimeoutMs());
          
             if (Configuration.INSTANCE.setup().coverageMatrixSimplified()) {
-                measureCoverageWithClassAggregation(tests, classesDirectory, testExec, result);
+                measureCoverageWithClassAggregation(tests, classesDirectory, testExec, coverage);
             } else {
                 LOG.info(() -> "Running coverage on " + tests.size() + " test methods individually");
                 for (TestResult test : tests) {
-                    measureCoverageForSingleTest(test, result, testExec, classesDirectory);
+                    measureCoverageForSingleTest(test, coverage, testExec, classesDirectory);
                 }
             }
         }
         
-        return result;
+        return coverage;
     }
     
     private void measureCoverageWithClassAggregation(List<TestResult> tests, Path classesDirectory,

@@ -9,11 +9,13 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
@@ -384,7 +386,7 @@ public class GeneticAlgorithm {
         astRoot.lock();
         return astRoot;
     }
-
+    
     private Node findFileNode(Node astRoot, Node node) {
         List<Node> path = astRoot.getPath(node);
 
@@ -579,6 +581,40 @@ public class GeneticAlgorithm {
         diffResult.put("removedLines", countRemove);
     }
     
+    private static Map<Path, Node> getFileNodesByPath(Node astRoot) {
+        Map<Path, Node> fileNodes = new HashMap<>();
+        
+        for (Node child : astRoot.childIterator()) {
+            fileNodes.put((Path) child.getMetadata(Metadata.FILE_NAME), child);
+        }
+        
+        return fileNodes;
+    }
+    
+    private static Set<Node> computeModifiedFiles(Node oldAst, Node newAst) {
+        Map<Path, Node> oldAstFiles = getFileNodesByPath(oldAst);
+        Map<Path, Node> newAstFiles = getFileNodesByPath(newAst);
+        
+        if (!oldAstFiles.keySet().equals(newAstFiles.keySet())) {
+            LOG.warning("Files have changed between old and new AST");
+        }
+        
+        Set<Node> modifiedFiles = new HashSet<>();
+        for (Path file : newAstFiles.keySet()) {
+            Node newFile = newAstFiles.get(file);
+            Node oldFile = oldAstFiles.get(file);
+            if (oldFile != null) {
+                if (!oldFile.equals(newFile)) {
+                    modifiedFiles.add(newFile);
+                }
+            } else {
+                modifiedFiles.add(newFile);
+            }
+        }
+        
+        return modifiedFiles;
+    }
+    
     private void measureFitness(Variant variant, boolean withFaultLocalization) {
         double fitness;
         List<TestResult> failingTests = List.of();
@@ -587,7 +623,16 @@ public class GeneticAlgorithm {
                 evaluator.setKeepBinDirectory(true);
             }
             
-            EvaluationResult evaluationResult = evaluator.evaluate(variant.getAst());
+            Set<Node> modifiedFiles = computeModifiedFiles(unmodifiedVariant.getAst(), variant.getAst());
+            @SuppressWarnings("unchecked")
+            Set<String> relevantTests = modifiedFiles.stream()
+                    .map(n -> (Set<String>) n.getMetadata(Metadata.COVERED_BY))
+                    .filter(Objects::nonNull)
+                    .flatMap(Set::stream)
+                    .collect(Collectors.toSet());
+            LOG.fine(() -> "Only running " + relevantTests.size() + " relevant tests: " + relevantTests);
+            
+            EvaluationResult evaluationResult = evaluator.evaluate(variant.getAst(), new ArrayList<>(relevantTests));
             fitness = getFitness(evaluationResult);
             failingTests = evaluationResult.getFailures();
             
@@ -628,17 +673,24 @@ public class GeneticAlgorithm {
     private double getFitness(EvaluationResult evaluation) {
         int numPassingNegative = 0;
         int numPassingPositive = 0;
+        Set<String> missingPositiveTests = new HashSet<>(positiveTests);
+        
         for (TestResult test : evaluation.getExecutedTests()) {
             if (!test.isFailure()) {
                 if (negativeTests.contains(test.toString())) {
                     numPassingNegative++;
                 } else if (positiveTests.contains(test.toString())) {
+                    missingPositiveTests.remove(test.toString());
                     numPassingPositive++;
                 } else {
                     LOG.warning(() -> test.toString() + " is neither in positive nor negative test cases");
                 }
             }
         }
+        
+        // assume that positive tests that weren't run are still positive
+        // this works because we only execute the relevant tests that cover the modified file(s)
+        numPassingPositive += missingPositiveTests.size();
         
         return Configuration.INSTANCE.genetic().negativeTestsWeight() * numPassingNegative
                 + Configuration.INSTANCE.genetic().positiveTestsWeight() * numPassingPositive;

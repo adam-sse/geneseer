@@ -22,7 +22,7 @@ public class Evaluator {
     
     private Charset encoding;
     
-    private List<String> testClassNames;
+    private List<String> allTestClassNames;
     
     private boolean keepBinDirectory;
     
@@ -39,7 +39,7 @@ public class Evaluator {
         this.junit = junit;
         this.originalSourceDirectory = project.getSourceDirectoryAbsolute();
         this.encoding = project.getEncoding();
-        this.testClassNames = project.getTestClassNames();
+        this.allTestClassNames = project.getTestClassNames();
     }
     
     public void setKeepBinDirectory(boolean keepBinDirectory) {
@@ -63,6 +63,11 @@ public class Evaluator {
     }
 
     public EvaluationResult evaluate(Node ast) throws CompilationException, TestExecutionException {
+        return evaluate(ast, this.allTestClassNames);
+    }
+    
+    public EvaluationResult evaluate(Node ast, List<String> testClassNames)
+            throws CompilationException, TestExecutionException {
         
         Path sourceDirectory = null;
         Path binDirectory = null;

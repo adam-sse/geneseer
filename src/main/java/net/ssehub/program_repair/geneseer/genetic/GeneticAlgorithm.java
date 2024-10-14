@@ -108,6 +108,11 @@ public class GeneticAlgorithm {
                 singleGeneration(population);
             }
             
+            Map<String, Integer> evaluationStats = new HashMap<>();
+            evaluationStats.put("compilations", evaluator.getNumCompilations());
+            evaluationStats.put("testSuiteRuns", evaluator.getNumTestSuiteRuns());
+            
+            result.put("evaluations", evaluationStats);
             result.put("llmCalls", numLlmCalls);
             result.put("generation", generation);
             fitnessResult.put("best", bestFitness);

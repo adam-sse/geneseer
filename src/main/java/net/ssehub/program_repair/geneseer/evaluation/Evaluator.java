@@ -28,6 +28,10 @@ public class Evaluator {
     
     private Path lastBinDirectory;
     
+    private int numCompilations;
+    
+    private int numTestSuiteRuns;
+    
     public Evaluator(Project project, ProjectCompiler compiler, JunitEvaluation junit,
             TemporaryDirectoryManager tempDirManager) {
         this.tempDirManager = tempDirManager;
@@ -49,8 +53,17 @@ public class Evaluator {
     public void setLogCompilerOutput(boolean logOutput) {
         compiler.setLogOutput(logOutput);
     }
+    
+    public int getNumCompilations() {
+        return numCompilations;
+    }
+    
+    public int getNumTestSuiteRuns() {
+        return numTestSuiteRuns;
+    }
 
     public EvaluationResult evaluate(Node ast) throws CompilationException, TestExecutionException {
+        
         Path sourceDirectory = null;
         Path binDirectory = null;
         try {
@@ -60,8 +73,11 @@ public class Evaluator {
                 lastBinDirectory = binDirectory;
             }
             Writer.write(ast, originalSourceDirectory, sourceDirectory, encoding);
-            
+
+            numCompilations++;
             compiler.compile(sourceDirectory, binDirectory);
+            
+            numTestSuiteRuns++;
             return junit.runTests(binDirectory, testClassNames);
             
         } catch (IOException e) {

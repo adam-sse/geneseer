@@ -676,11 +676,11 @@ public class GeneticAlgorithm {
         Set<String> missingPositiveTests = new HashSet<>(positiveTests);
         
         for (TestResult test : evaluation.getExecutedTests()) {
+            missingPositiveTests.remove(test.toString());
             if (!test.isFailure()) {
                 if (negativeTests.contains(test.toString())) {
                     numPassingNegative++;
                 } else if (positiveTests.contains(test.toString())) {
-                    missingPositiveTests.remove(test.toString());
                     numPassingPositive++;
                 } else {
                     LOG.warning(() -> test.toString() + " is neither in positive nor negative test cases");

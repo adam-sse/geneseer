@@ -665,7 +665,7 @@ public class GeneticAlgorithm {
         LOG.fine(() -> variant.toString());
         if (fitness > bestFitness) {
             bestFitness = fitness;
-            bestVariant = variant;
+            bestVariant = variant.copy();
             LOG.info(() -> "New best variant: " + variant.getName());
         }
     }

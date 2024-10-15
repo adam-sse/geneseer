@@ -1,5 +1,6 @@
 package net.ssehub.program_repair.geneseer.genetic;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -25,6 +26,14 @@ public class Variant {
     public Variant(Node ast) {
         this.name = "V_" + String.format(Locale.ROOT, "%06d", idCounter++);
         this.ast = ast;
+    }
+    
+    private Variant(Variant copy) {
+        this.name = copy.name;
+        this.mutations.addAll(copy.mutations);
+        this.ast = copy.ast;
+        this.fitness = copy.fitness;
+        this.failingTests = new ArrayList<>(copy.failingTests);
     }
 
     public Node getAst() {
@@ -63,6 +72,10 @@ public class Variant {
     
     public List<String> getMutations() {
         return Collections.unmodifiableList(mutations);
+    }
+    
+    public Variant copy() {
+        return new Variant(this);
     }
     
     @Override

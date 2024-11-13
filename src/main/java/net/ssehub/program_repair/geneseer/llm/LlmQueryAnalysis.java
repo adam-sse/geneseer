@@ -37,7 +37,8 @@ public class LlmQueryAnalysis {
         this.projectRoot = projectRoot;
     }
 
-    public String analyzeQueryForProject(Node original, List<TestResult> failingTests) throws IOException {
+    public void analyzeQueryForProject(Node original, List<TestResult> failingTests, Map<String, Object> result)
+            throws IOException {
         List<CodeSnippet> codeSnippets = selectMostSuspiciousMethods(original);
         
         Path changedAreasFile = projectRoot.resolve("geneseer-changed-areas.json");
@@ -69,15 +70,20 @@ public class LlmQueryAnalysis {
         LOG.info(() -> "Contained in query: " + in);
         LOG.info(() -> "Not contained in query: " + out);
         LOG.info(() -> "Irrelevant query parts: " + irrelevant);
+        result.put("patchParts", Map.of("inQuery", in.size(), "notInQuery", out.size()));
+        if (out.size() == 0) {
+            result.put("result", "GOOD");
+        } else if (in.size() == 0) {
+            result.put("result", "BAD");
+        } else {
+            result.put("result", "MIXED");
+        }
         
         int relevantLines = codeSnippets.stream()
                 .filter(s -> !irrelevant.contains(s))
                 .mapToInt(s -> s.lineRange.size()).sum();
         int irrelevantLines = irrelevant.stream().mapToInt(s -> s.lineRange.size()).sum();
-        
-        String result = in.size() + ";" + out.size() + ";" + irrelevant.size()
-                + ";" + relevantLines + ";" + irrelevantLines;
-        return result;
+        result.put("queryLines", Map.of("relevant", relevantLines, "irrelevant", irrelevantLines));
     }
 
     private List<CodeSnippet> selectMostSuspiciousMethods(Node original) throws IOException {

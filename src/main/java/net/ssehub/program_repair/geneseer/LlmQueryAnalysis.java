@@ -2,9 +2,11 @@ package net.ssehub.program_repair.geneseer;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,6 +23,7 @@ import net.ssehub.program_repair.geneseer.evaluation.fault_localization.FaultLoc
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
+import net.ssehub.program_repair.geneseer.util.JsonUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
@@ -45,25 +48,22 @@ public class LlmQueryAnalysis {
         this.tempDirManager = tempDirManager;
     }
     
-    public String run() throws IOException {
+    public void run(Map<String, Object> result) throws IOException {
         Node originalAst = Parser.parse(project.getSourceDirectoryAbsolute(), project.getEncoding());
         originalAst.lock();
         LOG.fine(() -> originalAst.stream().count() + " nodes in AST");
         
         List<TestResult> originalFailingTests = evaluateAndMeasureSuspiciousness(originalAst);
         
-        String result;
         if (originalFailingTests != null) {
             net.ssehub.program_repair.geneseer.llm.LlmQueryAnalysis analysis =
                     new net.ssehub.program_repair.geneseer.llm.LlmQueryAnalysis(
                     project.getEncoding(), project.getProjectDirectory());
             
-            result = analysis.analyzeQueryForProject(originalAst, originalFailingTests);
+            analysis.analyzeQueryForProject(originalAst, originalFailingTests, result);
         } else {
-            result = "ORIGINAL_UNFIT";
+            result.put("result", "ORIGINAL_UNFIT");
         }
-        
-        return result;
     }
     
     private List<TestResult> evaluateAndMeasureSuspiciousness(Node ast) {
@@ -125,8 +125,8 @@ public class LlmQueryAnalysis {
             LOG.log(Level.SEVERE, "Failed to read configuration file", e);
             System.exit(1);
         }
-        
-        String result = null;
+
+        Map<String, Object> result = new HashMap<>();
         boolean oom = false;
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
@@ -136,25 +136,31 @@ public class LlmQueryAnalysis {
                     project.getTestExecutionClassPathAbsolute(), project.getEncoding());
             Evaluator evaluator = new Evaluator(project, compiler, junit, tempDirManager);
             
-            result = new LlmQueryAnalysis(project, evaluator, tempDirManager).run();
+            new LlmQueryAnalysis(project, evaluator, tempDirManager).run(result);
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);
-            result = "IO_EXCEPTION";
+            result.put("result", "IO_EXCEPTION");
+            result.put("exception", e.getMessage());
             
         } catch (OutOfMemoryError e) {
-            System.out.println("OUT_OF_MEMORY");
+            System.out.println("{\"result\":\"OUT_OF_MEMORY\"}");
             oom = true;
             throw e;
             
         } finally {
             if (!oom) {
-                System.out.println(result);
+                LOG.info("Timing measurements:");
+                Map<String, Object> timings = new HashMap<>();
+                StreamSupport.stream(Measurement.INSTANCE.finishedProbes().spliterator(), false)
+                        .sorted((e1, e2) -> e1.getKey().compareTo(e2.getKey()))
+                        .forEach(e -> {
+                            LOG.info(() -> "    " + e.getKey() + ": " + e.getValue() + " ms");
+                            timings.put(e.getKey(), e.getValue());
+                        });
+                result.put("timings", timings);
+                System.out.println(JsonUtils.GSON.toJson(result));
             }
-            LOG.info("Timing measurements:");
-            StreamSupport.stream(Measurement.INSTANCE.finishedProbes().spliterator(), false)
-                    .sorted((e1, e2) -> e1.getKey().compareTo(e2.getKey()))
-                    .forEach(e -> LOG.info(() -> "    " + e.getKey() + ": " + e.getValue() + " ms"));
         }
     }
 

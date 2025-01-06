@@ -108,6 +108,7 @@ public class ProcessRunner {
         }
         
         Process process = builder.start();
+        ProcessManager.INSTANCE.trackProcess(process);
         
         CaptureThread stdoutCapture;
         CaptureThread stderrCapture;

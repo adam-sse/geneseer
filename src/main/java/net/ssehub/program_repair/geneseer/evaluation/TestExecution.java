@@ -22,6 +22,7 @@ import org.jacoco.core.tools.ExecDumpClient;
 import org.jacoco.core.tools.ExecFileLoader;
 
 import net.ssehub.program_repair.geneseer.Configuration;
+import net.ssehub.program_repair.geneseer.util.ProcessManager;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner.CaptureThread;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
@@ -139,6 +140,7 @@ public class TestExecution implements AutoCloseable {
             }
             
             process = builder.start();
+            ProcessManager.INSTANCE.trackProcess(process);
             out = new ObjectOutputStream(process.getOutputStream());
             rawIn = process.getInputStream();
             in = new ObjectInputStream(rawIn);

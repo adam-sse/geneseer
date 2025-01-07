@@ -50,7 +50,6 @@ public class GeneticAlgorithm {
     private Evaluator evaluator;
     
     private LlmFixer llmFixer;
-    private int numLlmCalls;
     
     private TemporaryDirectoryManager tempDirManager;
     
@@ -66,6 +65,9 @@ public class GeneticAlgorithm {
     private int numDeletions;
     private int numSuccessfulCrossovers;
     private int numFailedCrossovers;
+    private int numLlmCalls;
+    private int numLlmCallsOnUnmodified;
+    private int numLlmCallsWithPreviousModifications;
     
     public GeneticAlgorithm(Project project, Evaluator evaluator, LlmFixer llmfixer,
             TemporaryDirectoryManager tempDirManager) {
@@ -122,11 +124,13 @@ public class GeneticAlgorithm {
             result.put("evaluations", evaluationStats);
             
             Map<String, Integer> mutationStats = new HashMap<>();
+            mutationStats.put("insertions", numInsertions);
+            mutationStats.put("deletions", numDeletions);
             mutationStats.put("successfulCrossovers", numSuccessfulCrossovers);
             mutationStats.put("failedCrossovers", numFailedCrossovers);
             mutationStats.put("llmCalls", numLlmCalls);
-            mutationStats.put("insertions", numInsertions);
-            mutationStats.put("deletions", numDeletions);
+            mutationStats.put("llmCallsOnUnmodified", numLlmCallsOnUnmodified);
+            mutationStats.put("llmCallsWithPreviousModifications", numLlmCallsWithPreviousModifications);
             
             result.put("mutationStats", mutationStats);
             result.put("generation", generation);
@@ -304,6 +308,11 @@ public class GeneticAlgorithm {
             
             try (Probe measure = Measurement.INSTANCE.start("llm-mutation")) {
                 numLlmCalls++;
+                if (variant.getMutations().isEmpty()) {
+                    numLlmCallsOnUnmodified++;
+                } else {
+                    numLlmCallsWithPreviousModifications++;
+                }
                 Optional<Node> result = llmFixer.createVariant(astRoot, variant.getFailingTests());
                 if (result.isPresent()) {
                     astRoot = result.get();

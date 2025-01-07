@@ -28,6 +28,7 @@ import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
 import net.ssehub.program_repair.geneseer.parsing.model.Position;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
+import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
 public class LlmFixer {
@@ -195,6 +196,7 @@ public class LlmFixer {
         Position start = ((LeafNode) firstLeaf).getOriginalPosition();
         Position end = ((LeafNode) lastLeaf).getOriginalPosition();
         
+        // TODO: end can be null here?
         return new LineRange(start.line(), end.line());
     }
 
@@ -290,8 +292,10 @@ public class LlmFixer {
             request.setSeed(Configuration.INSTANCE.llm().seed());
         }
         
-        ChatGptResponse response = llm.send(request);
-        return response.getContent();
+        try (Measurement.Probe m = Measurement.INSTANCE.start("llm-query")) {
+            ChatGptResponse response = llm.send(request);
+            return response.getContent();
+        }
     }
     
     private void parseAnswerSnippets(String answer, List<CodeSnippet> snippets) throws AnswerDoesNotApplyException {

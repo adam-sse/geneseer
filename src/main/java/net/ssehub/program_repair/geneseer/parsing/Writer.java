@@ -10,8 +10,6 @@ import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.util.FileUtils;
-import net.ssehub.program_repair.geneseer.util.Measurement;
-import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
 public class Writer {
 
@@ -20,18 +18,15 @@ public class Writer {
     
     public static void write(Node parseTree, Path sourceDirectory, Path outputDirectory, Charset encoding)
             throws IOException {
-        try (Probe probe = Measurement.INSTANCE.start("code-writing")) {
+        for (Node compilationUnit : parseTree.childIterator()) {
+            Path file = outputDirectory.resolve((Path) compilationUnit.getMetadata(Metadata.FILE_NAME));
+            Files.createDirectories(file.getParent());
             
-            for (Node compilationUnit : parseTree.childIterator()) {
-                Path file = outputDirectory.resolve((Path) compilationUnit.getMetadata(Metadata.FILE_NAME));
-                Files.createDirectories(file.getParent());
-                
-                Files.writeString(file, toText(compilationUnit), encoding);
-            }
-            
-            if (sourceDirectory != null) {
-                FileUtils.copyAllNonJavaSourceFiles(sourceDirectory, outputDirectory);
-            }
+            Files.writeString(file, toText(compilationUnit), encoding);
+        }
+        
+        if (sourceDirectory != null) {
+            FileUtils.copyAllNonJavaSourceFiles(sourceDirectory, outputDirectory);
         }
     }
     

@@ -27,8 +27,6 @@ import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
 import net.ssehub.program_repair.geneseer.parsing.model.Position;
-import net.ssehub.program_repair.geneseer.util.Measurement;
-import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
 public class Parser {
     
@@ -38,26 +36,23 @@ public class Parser {
     }
     
     public static Node parse(Path sourceDirectory, Charset encoding) throws IOException {
-        try (Probe probe = Measurement.INSTANCE.start("parsing")) {
-            
-            Node parseTree = new InnerNode(Type.OTHER);
-            
-            try {
-                Files.walk(sourceDirectory)
-                        .filter(f -> f.getFileName().toString().endsWith(".java"))
-                        .sorted()
-                        .forEach(f -> {
-                            Node file = parseFile(f, encoding);
-                            fix(file);
-                            file.setMetadata(Metadata.FILE_NAME, sourceDirectory.relativize(f));
-                            parseTree.add(file);
-                        });
-            } catch (UncheckedIOException e) {
-                throw e.getCause();
-            }
-            
-            return parseTree;
+        Node parseTree = new InnerNode(Type.OTHER);
+        
+        try {
+            Files.walk(sourceDirectory)
+                    .filter(f -> f.getFileName().toString().endsWith(".java"))
+                    .sorted()
+                    .forEach(f -> {
+                        Node file = parseFile(f, encoding);
+                        fix(file);
+                        file.setMetadata(Metadata.FILE_NAME, sourceDirectory.relativize(f));
+                        parseTree.add(file);
+                    });
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
         }
+        
+        return parseTree;
     }
     
     public static Node parseSingleFile(Path sourceFile, Charset encoding) throws IOException {

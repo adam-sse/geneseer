@@ -37,7 +37,7 @@ public class ProjectCompiler {
         try (Probe probe = Measurement.INSTANCE.start("compilation")) {
             List<String> command = buildCommand(sourceDirectory, outputDirectory, classpath);
             
-            LOG.fine(() -> {
+            LOG.finer(() -> {
                 String log;
                 if (command.size() <= 10) {
                     log = "Running " + command;
@@ -52,7 +52,7 @@ public class ProjectCompiler {
                         .run();
             
             
-            LOG.info(() -> "Compilation " + (process.getExitCode() == 0 ? "" : "not ") + "successful");
+            LOG.fine(() -> "Compilation " + (process.getExitCode() == 0 ? "" : "not ") + "successful");
             if (logOutput) {
                 String stdout = new String(process.getStdout());
                 String stderr = new String(process.getStderr());

@@ -125,7 +125,7 @@ public class TestExecution implements AutoCloseable {
             }
             
             List<String> command = createCommand(classpath, withCoverage);
-            LOG.fine(() -> {
+            LOG.finer(() -> {
                 List<String> shortened = new LinkedList<>(command);
                 shortened.set(shortened.indexOf("-cp") + 1, "<...>");
                 return "Starting test driver process: " + shortened + " in " + workingDirectory;
@@ -171,11 +171,11 @@ public class TestExecution implements AutoCloseable {
             throw new TestExecutionException("Test driver process does not reply with alive");
         }
         
-        LOG.fine("Heartbeat of test driver process is alive");
+        LOG.finer("Heartbeat of test driver process is alive");
     }
     
     private void stopProcess() {
-        LOG.fine("Stopping test driver process"); 
+        LOG.finer("Stopping test driver process"); 
         
         process.destroy();
         boolean terminated = ProcessRunner.untilNoInterruptedException(

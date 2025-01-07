@@ -238,7 +238,7 @@ public class GeneticAlgorithm {
                 .sorted(Comparator.comparingDouble(Variant::getFitness).reversed())
                 .toList();
         population.clear();
-        LOG.fine(() -> "Viable: " + viable.stream()
+        LOG.info(() -> "Viable: " + viable.stream()
                 .map(v -> v.getName() + "(" + v.getFitness() + ")")
                 .toList());
         
@@ -276,7 +276,7 @@ public class GeneticAlgorithm {
         for (Variant variant : population) {
             mutate(variant);
         }
-        LOG.fine(() -> "Population fitness: " + population.stream()
+        LOG.info(() -> "Population fitness: " + population.stream()
                 .map(v -> v.getName() + "(" + v.getFitness() + ")")
                 .toList());
     }
@@ -324,7 +324,7 @@ public class GeneticAlgorithm {
             double mutationProbability =
                     Configuration.INSTANCE.genetic().mutationProbability() / suspiciousStatements.size();
             List<Node> ss = suspiciousStatements;
-            LOG.fine(() -> ss.size() + " suspicious statements -> mutation probability " + mutationProbability);
+            LOG.finer(() -> ss.size() + " suspicious statements -> mutation probability " + mutationProbability);
             for (int i = 0; i < suspiciousStatements.size(); i++) {
                 Node suspicious = suspiciousStatements.get(i);
                 if (random.nextDouble() < mutationProbability 

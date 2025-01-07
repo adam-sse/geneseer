@@ -62,6 +62,11 @@ public class GeneticAlgorithm {
     private double bestFitness;
     private Variant bestVariant;
     
+    private int numInsertions;
+    private int numDeletions;
+    private int numSuccessfulCrossovers;
+    private int numFailedCrossovers;
+    
     public GeneticAlgorithm(Project project, Evaluator evaluator, LlmFixer llmfixer,
             TemporaryDirectoryManager tempDirManager) {
         this.evaluator = evaluator;
@@ -115,7 +120,15 @@ public class GeneticAlgorithm {
             evaluationStats.put("testSuiteRuns", evaluator.getNumTestSuiteRuns());
             
             result.put("evaluations", evaluationStats);
-            result.put("llmCalls", numLlmCalls);
+            
+            Map<String, Integer> mutationStats = new HashMap<>();
+            mutationStats.put("successfulCrossovers", numSuccessfulCrossovers);
+            mutationStats.put("failedCrossovers", numFailedCrossovers);
+            mutationStats.put("llmCalls", numLlmCalls);
+            mutationStats.put("insertions", numInsertions);
+            mutationStats.put("deletions", numDeletions);
+            
+            result.put("mutationStats", mutationStats);
             result.put("generation", generation);
             fitnessResult.put("best", bestFitness);
             
@@ -356,6 +369,7 @@ public class GeneticAlgorithm {
                 LOG.warning(() -> "Failed to delete statement " + s.toString());
             } else {
                 variant.addMutation("del " + s.toString());
+                numDeletions++;
             }
             
         } else {
@@ -375,7 +389,7 @@ public class GeneticAlgorithm {
                 int index = parent.indexOf(suspicious);
                 parent.add(index, otherStatement);
                 variant.addMutation("ins " + otherStatement.toString() + " before " + s.toString());
-                
+                numInsertions++;
                 
             } else {
                 // swap
@@ -416,6 +430,20 @@ public class GeneticAlgorithm {
         List<Node> p1Parents = new LinkedList<>();
         List<Node> p2Parents = new LinkedList<>();
         findMatchingModifiedBlocks(p1.getAst(), p2.getAst(), p1Parents, p2Parents);
+        
+        List<Variant> result;
+        if (p1Parents.size() == 0) {
+            LOG.fine(() -> "Parents don't differ, crossover not possible");
+            numFailedCrossovers++;
+            result = List.of();
+        } else {
+            numSuccessfulCrossovers++;
+            result = applyCrossover(p1, p2, p1Parents, p2Parents);
+        }
+        return result;
+    }
+
+    private List<Variant> applyCrossover(Variant p1, Variant p2, List<Node> p1Parents, List<Node> p2Parents) {
         LOG.fine(() -> "Found " + p1Parents.size() + " blocks with different content");
         
         Node c1 = p1.getAst();

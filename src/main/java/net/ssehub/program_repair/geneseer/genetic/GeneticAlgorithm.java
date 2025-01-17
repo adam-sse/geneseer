@@ -656,20 +656,26 @@ public class GeneticAlgorithm {
         double fitness;
         List<TestResult> failingTests = List.of();
         try {
+            
+            EvaluationResult evaluationResult;
+            
             if (withFaultLocalization) {
                 evaluator.setKeepBinDirectory(true);
+                LOG.fine(() -> "Running all tests because fault localization is required");
+                evaluationResult = evaluator.evaluate(variant.getAst());
+                
+            } else {
+                Set<Node> modifiedFiles = computeModifiedFiles(unmodifiedVariant.getAst(), variant.getAst());
+                @SuppressWarnings("unchecked")
+                Set<String> relevantTests = modifiedFiles.stream()
+                        .map(n -> (Set<String>) n.getMetadata(Metadata.COVERED_BY))
+                        .filter(Objects::nonNull)
+                        .flatMap(Set::stream)
+                        .collect(Collectors.toSet());
+                LOG.fine(() -> "Only running " + relevantTests.size() + " relevant tests: " + relevantTests);
+                evaluationResult = evaluator.evaluate(variant.getAst(), new ArrayList<>(relevantTests));
             }
             
-            Set<Node> modifiedFiles = computeModifiedFiles(unmodifiedVariant.getAst(), variant.getAst());
-            @SuppressWarnings("unchecked")
-            Set<String> relevantTests = modifiedFiles.stream()
-                    .map(n -> (Set<String>) n.getMetadata(Metadata.COVERED_BY))
-                    .filter(Objects::nonNull)
-                    .flatMap(Set::stream)
-                    .collect(Collectors.toSet());
-            LOG.fine(() -> "Only running " + relevantTests.size() + " relevant tests: " + relevantTests);
-            
-            EvaluationResult evaluationResult = evaluator.evaluate(variant.getAst(), new ArrayList<>(relevantTests));
             fitness = getFitness(evaluationResult);
             failingTests = evaluationResult.getFailures();
             

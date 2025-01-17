@@ -8,9 +8,19 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
 
 public class TemporaryDirectoryManager implements Closeable {
 
+    private static List<TemporaryDirectoryManager> openInstancens = new LinkedList<>();
+
+    private static final Logger LOG = Logger.getLogger(TemporaryDirectoryManager.class.getName());
+    
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(TemporaryDirectoryManager::closeAllOpenInstances));
+        LOG.fine("Registered shutdown hook for TemporaryDirectoryManager");
+    }
+    
     private Set<Path> temporaryDirectories = new HashSet<>();
     
     private String name;
@@ -21,6 +31,9 @@ public class TemporaryDirectoryManager implements Closeable {
     
     public TemporaryDirectoryManager(String name) {
         this.name = name;
+        synchronized (openInstancens) {
+            openInstancens.add(this);
+        }
     }
     
     public Path createTemporaryDirectory() throws IOException {
@@ -47,6 +60,11 @@ public class TemporaryDirectoryManager implements Closeable {
                 exceptions.add(e);
             }
         }
+        temporaryDirectories.clear();
+        
+        synchronized (openInstancens) {
+            openInstancens.remove(this);
+        }
         
         if (!exceptions.isEmpty()) {
             if (exceptions.size() == 1) {
@@ -57,6 +75,23 @@ public class TemporaryDirectoryManager implements Closeable {
                     combined.addSuppressed(exc);
                 }
                 throw combined;
+            }
+        }
+    }
+    
+    private static void logInShutdownHook(String message) {
+        System.err.println("[TemporaryDirectoryManager ShutdownHook] " + message);
+    }
+    
+    private static void closeAllOpenInstances() {
+        synchronized (openInstancens) {
+            logInShutdownHook("Closing " + openInstancens.size() + " open instances");
+            while (!openInstancens.isEmpty()) {
+                try {
+                    openInstancens.get(0).close();
+                } catch (IOException e) {
+                    logInShutdownHook("Exception while closing instance: " + e.getMessage());
+                }
             }
         }
     }

@@ -37,15 +37,8 @@ public class TestExecution implements AutoCloseable {
 
     static {
         try {
+            @SuppressWarnings("resource") // closed in shutdown hook of TemporaryDirectoryManager
             TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager();
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                try {
-                    tempDirManager.close();
-                } catch (IOException e) {
-                    LOG.log(Level.SEVERE, "Failed to delete temporary directory", e);
-                }
-            }));
-
             Path tempDir = tempDirManager.createTemporaryDirectory();
 
             GENESEER_TEST_DRIVER = tempDir.resolve("geneseer-test-driver.jar");

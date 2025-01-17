@@ -9,7 +9,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -669,7 +668,6 @@ public class GeneticAlgorithm {
                 @SuppressWarnings("unchecked")
                 Set<String> relevantTests = modifiedFiles.stream()
                         .map(n -> (Set<String>) n.getMetadata(Metadata.COVERED_BY))
-                        .filter(Objects::nonNull)
                         .flatMap(Set::stream)
                         .collect(Collectors.toSet());
                 LOG.fine(() -> "Only running " + relevantTests.size() + " relevant tests: " + relevantTests);

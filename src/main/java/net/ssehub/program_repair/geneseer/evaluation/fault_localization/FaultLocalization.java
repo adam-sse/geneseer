@@ -169,6 +169,11 @@ public class FaultLocalization {
     
     private void annotateClassBasedCoverageOnAstNodes(Map<Location, Set<TestResult>> coverage, Node ast) {
         Map<String, Node> classes = getFileNodesByClassName(ast);
+        for (Node clazz : classes.values()) {
+            if (clazz.getMetadata(Metadata.COVERED_BY) == null) {
+                clazz.setMetadata(Metadata.COVERED_BY, new HashSet<>());
+            }
+        }
         
         for (Map.Entry<Location, Set<TestResult>> entry : coverage.entrySet()) {
             String className = entry.getKey().className();
@@ -181,10 +186,6 @@ public class FaultLocalization {
             if (classNode != null) {
                 @SuppressWarnings("unchecked")
                 Set<String> coveredBy = (Set<String>) classNode.getMetadata(Metadata.COVERED_BY);
-                if (coveredBy == null) {
-                    coveredBy = new HashSet<>();
-                    classNode.setMetadata(Metadata.COVERED_BY, coveredBy);
-                }
                 for (TestResult testResult : entry.getValue()) {
                     coveredBy.add(testResult.testClass());
                 }

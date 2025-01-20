@@ -654,6 +654,16 @@ public class GeneticAlgorithm {
     }
     
     private void measureFitness(Variant variant, boolean withFaultLocalization) {
+        if (!withFaultLocalization) {
+            for (Node classNode : variant.getAst().childIterator()) {
+                if (classNode.getMetadata(Metadata.COVERED_BY) == null) {
+                    withFaultLocalization = true;
+                    LOG.warning(() -> "Evaluating variant without coverage information; forcing fault localization");
+                    break;
+                }
+            }
+        }
+        
         double fitness;
         List<TestResult> failingTests = List.of();
         try {

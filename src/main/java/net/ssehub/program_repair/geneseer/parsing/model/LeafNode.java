@@ -1,7 +1,6 @@
 package net.ssehub.program_repair.geneseer.parsing.model;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 
 public final class LeafNode extends Node {
@@ -52,7 +51,7 @@ public final class LeafNode extends Node {
     @Override
     public Node clone() {
         Node clone = new LeafNode(text, originalPosition);
-        clone.setMetadata(new HashMap<>(getMetadata() != null ? getMetadata() : Collections.emptyMap()));
+        clone.copyMetadataFromNode(this);
         return clone;
     }
 

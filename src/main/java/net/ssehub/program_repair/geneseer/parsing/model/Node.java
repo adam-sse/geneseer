@@ -67,12 +67,10 @@ public abstract class Node implements Cloneable {
         return metadata != null ? metadata.get(key) : null;
     }
     
-    protected Map<Metadata, Object> getMetadata() {
-        return metadata;
-    }
-    
-    protected void setMetadata(Map<Metadata, Object> metadata) {
-        this.metadata = metadata;
+    public void copyMetadataFromNode(Node other) {
+        if (other.metadata != null) {
+            this.metadata = new HashMap<>(other.metadata);
+        }
     }
     
     public final void lock() {

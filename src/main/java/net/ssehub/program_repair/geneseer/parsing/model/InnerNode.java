@@ -1,7 +1,5 @@
 package net.ssehub.program_repair.geneseer.parsing.model;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -48,7 +46,7 @@ public final class InnerNode extends Node {
         for (Node child : children) {
             clone.children.add(child.clone());
         }
-        clone.setMetadata(new HashMap<>(getMetadata() != null ? getMetadata() : Collections.emptyMap()));
+        clone.copyMetadataFromNode(this);
         return clone;
     }
 
@@ -56,7 +54,7 @@ public final class InnerNode extends Node {
     protected Node cloneWithGivenChildren(List<Node> clonedChildren) {
         InnerNode clone = new InnerNode(getType());
         clone.children.addAll(clonedChildren);
-        clone.setMetadata(new HashMap<>(getMetadata() != null ? getMetadata() : Collections.emptyMap()));
+        clone.copyMetadataFromNode(this);
         return clone;
     }
     

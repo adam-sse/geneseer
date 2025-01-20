@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -84,7 +85,7 @@ public class Defects4jRunner {
             this.postProcessor = postProcessor;
         }
 
-        public void run(Defects4jRunner runner, String[] args) {
+        public void run(Defects4jRunner runner, String[] args) throws Throwable {
             ByteArrayOutputStream capturedStdout = new ByteArrayOutputStream();
             PrintStream sysout = System.out;
             if (postProcessor != null) {
@@ -100,6 +101,9 @@ public class Defects4jRunner {
                     sysout.print(postProcessor.apply(runner, caputured));
                 }
                 
+            } catch (InvocationTargetException e) {
+                LOG.log(Level.SEVERE, "main method of target threw exception", e);
+                throw e.getCause();
             } catch (ReflectiveOperationException e) {
                 LOG.log(Level.SEVERE, "Cannot execute main method of target", e);
             }
@@ -171,7 +175,7 @@ public class Defects4jRunner {
         this.cliArguments = cliArguments;
     }
     
-    public void run() throws IOException {
+    public void run() throws Throwable {
         LOG.info(() -> "Running on bug " + bug);
         LOG.info("Preparing project...");
         Project config = defects4j.prepareProject(bug);
@@ -181,7 +185,7 @@ public class Defects4jRunner {
         target.run(this, args.toArray(String[]::new));
     }
     
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Throwable {
         Set<String> cliOptions = new HashSet<>();
         cliOptions.add("--defects4j");
         cliOptions.add("--target");

@@ -33,6 +33,7 @@ import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
+import net.ssehub.program_repair.geneseer.parsing.model.Position;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
@@ -358,6 +359,18 @@ public class GeneticAlgorithm {
             measureFitness(variant, needsFaultLocalization);
         }
     }
+    
+    private void setSamePosition(Node from, Node to) {
+        Node firstLeaf = from;
+        while (firstLeaf.getType() != Type.LEAF) {
+            firstLeaf = firstLeaf.get(0);
+        }
+        
+        Position position = ((LeafNode) firstLeaf).getPosition();
+        to.stream()
+                .filter(n -> n.getType() == Type.LEAF)
+                .forEach(n -> ((LeafNode) n).setPosition(position));
+    }
 
     private Node singleMutation(Variant variant, Node astRoot, Node suspicious) {
         Node oldAstRoot = astRoot;
@@ -382,9 +395,7 @@ public class GeneticAlgorithm {
             
         } else {
             Node otherStatement = selectOtherStatement(astRoot, suspicious).clone();
-            otherStatement.stream()
-                    .filter(n -> n.getType() == Type.LEAF)
-                    .forEach(n -> ((LeafNode) n).clearOriginalPosition());
+            setSamePosition(suspicious, otherStatement);
             otherStatement.setMetadata(Metadata.SUSPICIOUSNESS,
                     suspicious.getMetadata(Metadata.SUSPICIOUSNESS));
             

@@ -61,13 +61,11 @@ public class ParseAndWrite {
                 int minLine = -1;
                 int maxLine = -1;
                 for (LeafNode leaf : leafNodes) {
-                    if (leaf.getOriginalPosition() != null) {
-                        if (leaf.getOriginalPosition().line() < minLine || minLine == -1) {
-                            minLine = leaf.getOriginalPosition().line();
-                        }
-                        if (leaf.getOriginalPosition().line() > maxLine || maxLine == -1) {
-                            maxLine = leaf.getOriginalPosition().line();
-                        }
+                    if (leaf.getPosition().line() < minLine || minLine == -1) {
+                        minLine = leaf.getPosition().line();
+                    }
+                    if (leaf.getPosition().line() > maxLine || maxLine == -1) {
+                        maxLine = leaf.getPosition().line();
                     }
                 }
                 

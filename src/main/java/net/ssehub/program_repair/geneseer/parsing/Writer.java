@@ -43,20 +43,16 @@ public class Writer {
             Node currentNode = nodes.pop();
             
             if (currentNode instanceof LeafNode leaf) {
-                if (leaf.getOriginalPosition() != null) {
-                    while (leaf.getOriginalPosition().line() > currentLine) {
-                        str.append('\n');
-                        currentLine++;
-                        currentColumn = 0;
-                    }
-                    while (leaf.getOriginalPosition().column() > currentColumn) {
-                        str.append(' ');
-                        currentColumn++;
-                    }
-                    
-                } else {
-                    str.append(' ');
+                while (leaf.getPosition().line() > currentLine) {
+                    str.append('\n');
+                    currentLine++;
+                    currentColumn = 0;
                 }
+                while (leaf.getPosition().column() > currentColumn) {
+                    str.append(' ');
+                    currentColumn++;
+                }
+                    
                 
                 String text = leaf.getText();
                 currentColumn += text.length();

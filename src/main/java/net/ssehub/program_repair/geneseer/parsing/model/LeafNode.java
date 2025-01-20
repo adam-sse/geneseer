@@ -7,30 +7,23 @@ public final class LeafNode extends Node {
 
     private final String text;
     
-    private Position originalPosition;
+    private Position position;
     
-    public LeafNode(String text, Position originalPosition) {
+    public LeafNode(String text, Position position) {
         super(Type.LEAF);
         this.text = text;
-        this.originalPosition = originalPosition;
+        this.position = position;
     }
     
-    public Position getOriginalPosition() {
-        return originalPosition;
+    public Position getPosition() {
+        return position;
     }
     
-    public void clearOriginalPosition() {
+    public void setPosition(Position position) {
         if (locked) {
             throw new IllegalStateException("Node is locked");
         }
-        this.originalPosition = null;
-    }
-    
-    public void setOriginalPosition(Position originalPosition) {
-        if (locked) {
-            throw new IllegalStateException("Node is locked");
-        }
-        this.originalPosition = originalPosition;
+        this.position = position;
     }
 
     @Override
@@ -50,7 +43,7 @@ public final class LeafNode extends Node {
 
     @Override
     public Node clone() {
-        Node clone = new LeafNode(text, originalPosition);
+        Node clone = new LeafNode(text, position);
         clone.copyMetadataFromNode(this);
         return clone;
     }
@@ -62,7 +55,7 @@ public final class LeafNode extends Node {
     
     @Override
     public boolean hasLine(int lineNumber) {
-        return originalPosition != null ? originalPosition.line() == lineNumber : false;
+        return position != null ? position.line() == lineNumber : false;
     }
 
 }

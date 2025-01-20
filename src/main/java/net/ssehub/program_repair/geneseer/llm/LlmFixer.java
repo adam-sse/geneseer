@@ -193,8 +193,8 @@ public class LlmFixer {
             lastLeaf = lastLeaf.get(lastLeaf.childCount() - 1);
         }
         
-        Position start = ((LeafNode) firstLeaf).getOriginalPosition();
-        Position end = ((LeafNode) lastLeaf).getOriginalPosition();
+        Position start = ((LeafNode) firstLeaf).getPosition();
+        Position end = ((LeafNode) lastLeaf).getPosition();
         
         // TODO: end can be null here?
         return new LineRange(start.line(), end.line());

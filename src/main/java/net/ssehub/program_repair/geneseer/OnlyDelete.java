@@ -53,7 +53,7 @@ public class OnlyDelete {
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);
-            result = new Result(Type.IO_EXCEPTION, null, null, null, e.getMessage());
+            result = new Result(Type.IO_EXCEPTION, null, null, null, null, null, e.getMessage());
             
         } catch (OutOfMemoryError e) {
             System.out.println("{\"result\":\"OUT_OF_MEMORY\"}");
@@ -96,15 +96,15 @@ public class OnlyDelete {
             
         } catch (CompilationException e) {
             LOG.log(Level.SEVERE, "Failed compilation of original", e);
-            result = new Result(Type.ORIGINAL_UNFIT, null, null, null, null);
+            result = new Result(Type.ORIGINAL_UNFIT, null, null, null, null, null, null);
             
         } catch (TestExecutionException e) {
             LOG.log(Level.SEVERE, "Failed running tests on original", e);
-            result = new Result(Type.ORIGINAL_UNFIT, null, null, null, null);
+            result = new Result(Type.ORIGINAL_UNFIT, null, null, null, null, null, null);
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "Failed parsing original code", e);
-            result = new Result(Type.ORIGINAL_UNFIT, null, null, null, null);
+            result = new Result(Type.ORIGINAL_UNFIT, null, null, null, null, null, null);
         }
         
         return result;
@@ -120,8 +120,10 @@ public class OnlyDelete {
         int best = originalFailingTests;
         Double bestSuspiciousness = null;
         
+        int tested = 0;
         for (Node toDelete : suspicious) {
             LOG.info("Deleting " + toDelete);
+            tested++;
             
             Node clone = original.cheapClone(toDelete);
             toDelete = clone.findEquivalentPath(original, toDelete);
@@ -162,7 +164,7 @@ public class OnlyDelete {
             LOG.info(() -> "Result: No improvement");
             resultType = Type.NO_CHANGE;
         }
-        return new Result(resultType, originalFailingTests, best, bestSuspiciousness, null);
+        return new Result(resultType, originalFailingTests, best, bestSuspiciousness, suspicious.size(), tested, null);
     }
     
     private enum Type {
@@ -174,7 +176,7 @@ public class OnlyDelete {
     }
     
     private static record Result(Type result, Integer originalFailingTests, Integer bestFailingtests,
-            Double bestSuspiciousness, String ioException) {
+            Double bestSuspiciousness, Integer suspicious, Integer tested, String ioException) {
         
     }
     

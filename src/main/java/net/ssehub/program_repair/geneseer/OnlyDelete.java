@@ -53,7 +53,7 @@ public class OnlyDelete {
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);
-            result = new Result(Type.IO_EXCEPTION, null, null, e.getMessage());
+            result = new Result(Type.IO_EXCEPTION, null, null, null, e.getMessage());
             
         } catch (OutOfMemoryError e) {
             System.out.println("{\"result\":\"OUT_OF_MEMORY\"}");
@@ -96,15 +96,15 @@ public class OnlyDelete {
             
         } catch (CompilationException e) {
             LOG.log(Level.SEVERE, "Failed compilation of original", e);
-            result = new Result(Type.ORIGINAL_UNFIT, null, null, null);
+            result = new Result(Type.ORIGINAL_UNFIT, null, null, null, null);
             
         } catch (TestExecutionException e) {
             LOG.log(Level.SEVERE, "Failed running tests on original", e);
-            result = new Result(Type.ORIGINAL_UNFIT, null, null, null);
+            result = new Result(Type.ORIGINAL_UNFIT, null, null, null, null);
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "Failed parsing original code", e);
-            result = new Result(Type.ORIGINAL_UNFIT, null, null, null);
+            result = new Result(Type.ORIGINAL_UNFIT, null, null, null, null);
         }
         
         return result;
@@ -118,6 +118,7 @@ public class OnlyDelete {
                 .toList();
         
         int best = originalFailingTests;
+        Double bestSuspiciousness = null;
         
         for (Node toDelete : suspicious) {
             LOG.info("Deleting " + toDelete);
@@ -136,6 +137,7 @@ public class OnlyDelete {
                 LOG.info(() -> numFailingTests + " failing tests");
                 if (numFailingTests < originalFailingTests) {
                     best = numFailingTests;
+                    bestSuspiciousness = (Double) toDelete.getMetadata(Metadata.SUSPICIOUSNESS);
                 }
                 if (numFailingTests == 0) {
                     break;
@@ -160,7 +162,7 @@ public class OnlyDelete {
             LOG.info(() -> "Result: No improvement");
             resultType = Type.NO_CHANGE;
         }
-        return new Result(resultType, originalFailingTests, best, null);
+        return new Result(resultType, originalFailingTests, best, bestSuspiciousness, null);
     }
     
     private enum Type {
@@ -172,7 +174,7 @@ public class OnlyDelete {
     }
     
     private static record Result(Type result, Integer originalFailingTests, Integer bestFailingtests,
-            String ioException) {
+            Double bestSuspiciousness, String ioException) {
         
     }
     

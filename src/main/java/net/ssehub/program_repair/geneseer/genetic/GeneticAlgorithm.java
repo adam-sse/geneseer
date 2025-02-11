@@ -189,6 +189,10 @@ public class GeneticAlgorithm {
                     positiveTests.add(test.toString());
                 }
             }
+            if (positiveTests.size() + negativeTests.size() != evaluation.getExecutedTests().size()) {
+                LOG.severe("Found duplicate test names in evaluation result");
+                throw new IllegalStateException("Duplicate test names reported");
+            }
             
             LOG.fine(() -> "Negative tests (" + negativeTests.size() + "): " + negativeTests);
             LOG.fine(() -> "Positive tests (" + positiveTests.size() + "): " + positiveTests);
@@ -747,7 +751,8 @@ public class GeneticAlgorithm {
                 } else if (positiveTests.contains(test.toString())) {
                     numPassingPositive++;
                 } else {
-                    LOG.warning(() -> test.toString() + " is neither in positive nor negative test cases");
+                    LOG.severe(() -> test.toString() + " is neither in positive nor negative test cases");
+                    throw new IllegalArgumentException(test.toString() + " is not in known test cases");
                 }
             }
         }
@@ -756,8 +761,14 @@ public class GeneticAlgorithm {
         // this works because we only execute the relevant tests that cover the modified file(s)
         numPassingPositive += missingPositiveTests.size();
         
-        return Configuration.INSTANCE.genetic().negativeTestsWeight() * numPassingNegative
+        double fitness = Configuration.INSTANCE.genetic().negativeTestsWeight() * numPassingNegative
                 + Configuration.INSTANCE.genetic().positiveTestsWeight() * numPassingPositive;
+        if (fitness > getMaxFitness()) {
+            LOG.severe(() -> "Calculated invalid (too high) fitness for evaluation result");
+            throw new IllegalArgumentException("Fitness " + fitness + " is greater than max fitness "
+                    + getMaxFitness());
+        }
+        return fitness;
     }
     
     private double getMaxFitness() {

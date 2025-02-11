@@ -235,6 +235,16 @@ public class TestExecution implements AutoCloseable {
         }
     }
 
+    private static void fixExpectedClassName(List<TestResult> result, String className) {
+        for (int i = 0; i < result.size(); i++) {
+            TestResult tr = result.get(i);
+            if (!tr.testClass().equals(className)) {
+                result.set(i, new TestResult(className, tr.testMethod(), tr.failureMessage(),
+                        tr.failureStacktrace()));
+            }
+        }
+    }
+
     public List<TestResult> executeTestClass(String className) throws TestExecutionException {
         try {
             out.writeObject("CLASS");
@@ -242,6 +252,7 @@ public class TestExecution implements AutoCloseable {
             out.flush();
             
             List<TestResult> result = readResult();
+            fixExpectedClassName(result, className);
             
             LOG.fine(() -> result.size() + " tests run in test class " + className + ", "
                     + result.stream().filter(TestResult::isFailure).count() + " failures");
@@ -256,7 +267,7 @@ public class TestExecution implements AutoCloseable {
             throw e;
         }
     }
-    
+
     public class TestResultWithCoverage {
         
         private TestResult testResult;
@@ -291,6 +302,7 @@ public class TestExecution implements AutoCloseable {
             out.flush();
             
             List<TestResult> result = readResult();
+            fixExpectedClassName(result, className);
             
             LOG.fine(() -> result.size() + " tests run in test class " + className + ", "
                     + result.stream().filter(TestResult::isFailure).count() + " failures");
@@ -328,6 +340,10 @@ public class TestExecution implements AutoCloseable {
             out.flush();
             
             TestResult result = readResult();
+            if (!result.testClass().equals(className)) {
+                result = new TestResult(className, result.testMethod(), result.failureMessage(),
+                        result.failureStacktrace());
+            }
             
             jacocoClient.setDump(true);
             ExecFileLoader loader = jacocoClient.dump("localhost", jacocoPort);

@@ -1,30 +1,23 @@
 package net.ssehub.program_repair.geneseer.genetic;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Configuration.GeneticConfiguration.MutationScope;
 import net.ssehub.program_repair.geneseer.Project;
-import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
-import net.ssehub.program_repair.geneseer.evaluation.EvaluationResult;
+import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.Evaluator;
-import net.ssehub.program_repair.geneseer.evaluation.TestExecutionException;
-import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.fault_localization.FaultLocalization;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
@@ -48,18 +41,14 @@ public class GeneticAlgorithm {
     private Project project;
     
     private Evaluator evaluator;
+    private FitnessEvaluator fitnessEvaluator;
     
     private LlmFixer llmFixer;
     
     private TemporaryDirectoryManager tempDirManager;
     
-    private Set<String> negativeTests;
-    private Set<String> positiveTests;
-    
     private int generation;
     private Variant unmodifiedVariant;
-    private double bestFitness;
-    private Variant bestVariant;
     
     private int numInsertions;
     private int numDeletions;
@@ -97,14 +86,15 @@ public class GeneticAlgorithm {
         result.put("ast", astStats);
         astStats.put("nodes", unmodifiedVariant.getAst().stream().count());
         
-        LOG.info("Evaluating unmodified variant");
-        boolean originalIsFit = evaluateUnmodifiedOriginal();
-        
-        if (originalIsFit) {
+        try {
+            fitnessEvaluator = new FitnessEvaluator(unmodifiedVariant, evaluator,
+                    new FaultLocalization(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute(),
+                            project.getEncoding()), tempDirManager);
+            
             Map<String, Object> fitnessResult = new HashMap<>();
             result.put("fitness", fitnessResult);
             fitnessResult.put("original", unmodifiedVariant.getFitness());
-            fitnessResult.put("max", getMaxFitness());
+            fitnessResult.put("max", fitnessEvaluator.getMaxFitness());
             astStats.put("suspicious", unmodifiedVariant.getAst().stream()
                     .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                     .count());
@@ -112,7 +102,7 @@ public class GeneticAlgorithm {
             LOG.info("Creating initial population");
             List<Variant> population = createInitialPopulation();
             
-            while (indexWithMaxFitness(population) < 0
+            while (!fitnessEvaluator.hasFoundMaxFitness()
                     && ++generation <= Configuration.INSTANCE.genetic().generationLimit()) {
                 singleGeneration(population);
             }
@@ -134,11 +124,10 @@ public class GeneticAlgorithm {
             
             result.put("mutationStats", mutationStats);
             result.put("generation", generation);
-            fitnessResult.put("best", bestFitness);
+            fitnessResult.put("best", fitnessEvaluator.getBestVariant().getFitness());
             
-            int index = indexWithMaxFitness(population);
-            if (index >= 0) {
-                LOG.info(() -> "Variant with max fitness: " + population.get(index));
+            if (fitnessEvaluator.hasFoundMaxFitness()) {
+                LOG.info(() -> "Variant with max fitness: " + fitnessEvaluator.getBestVariant());
                 result.put("result", "FOUND_FIX");
             } else {
                 LOG.info(() -> "Stopping because limit of " + Configuration.INSTANCE.genetic().generationLimit()
@@ -147,13 +136,15 @@ public class GeneticAlgorithm {
             }
             
             try {
-                analyzeDiffOfBestVariant(result);
+                analyzeDiffOfBestVariant(result, fitnessEvaluator.getBestVariant());
             } catch (IOException e) {
                 LOG.log(Level.WARNING, "Failed to compute diff of best variant", e);
             }
-        } else {
+        } catch (EvaluationException e) {
+            LOG.log(Level.SEVERE, "Failed evaluation of unmodified original", e);
             result.put("result", "ORIGINAL_UNFIT");
         }
+        
     }
 
     private void createUnmodifiedVariant() throws IOException {
@@ -162,69 +153,6 @@ public class GeneticAlgorithm {
         LOG.fine(() -> ast.stream().count() + " nodes in AST");
         
         this.unmodifiedVariant = new Variant(ast);
-    }
-
-    private boolean evaluateUnmodifiedOriginal() {
-        boolean originalIsFit;
-        Path binDirectory = null;
-        
-        try {
-            evaluator.setLogCompilerOutput(true);
-            evaluator.setKeepBinDirectory(true);
-            
-            EvaluationResult evaluation = evaluator.evaluate(unmodifiedVariant.getAst());
-            binDirectory = evaluator.getLastBinDirectory();
-            
-            evaluator.setKeepBinDirectory(false);
-            evaluator.setLogCompilerOutput(false); // only log compiler output for unmodified original
-            
-            originalIsFit = true;
-            
-            negativeTests = new HashSet<>();
-            positiveTests = new HashSet<>();
-            for (TestResult test : evaluation.getExecutedTests()) {
-                if (test.isFailure()) {
-                    negativeTests.add(test.toString());
-                } else {
-                    positiveTests.add(test.toString());
-                }
-            }
-            if (positiveTests.size() + negativeTests.size() != evaluation.getExecutedTests().size()) {
-                LOG.severe("Found duplicate test names in evaluation result");
-                throw new IllegalStateException("Duplicate test names reported");
-            }
-            
-            LOG.fine(() -> "Negative tests (" + negativeTests.size() + "): " + negativeTests);
-            LOG.fine(() -> "Positive tests (" + positiveTests.size() + "): " + positiveTests);
-            
-            unmodifiedVariant.setFitness(getFitness(evaluation), evaluation.getFailures());
-            LOG.info(() -> "Fitness of unmodified variant (" + unmodifiedVariant.getName() + ") and max fitness: "
-                    + unmodifiedVariant.getFitness() + " / " + getMaxFitness());
-            bestFitness = unmodifiedVariant.getFitness();
-            bestVariant = unmodifiedVariant;
-            
-            FaultLocalization faultLocalization = new FaultLocalization(project.getProjectDirectory(),
-                    project.getTestExecutionClassPathAbsolute(), project.getEncoding());
-            faultLocalization.measureAndAnnotateSuspiciousness(unmodifiedVariant.getAst(), binDirectory,
-                    evaluation.getExecutedTests());
-            
-        } catch (CompilationException e) {
-            LOG.log(Level.SEVERE, "Failed compilation of unmodified original", e);
-            originalIsFit = false;
-            
-        } catch (TestExecutionException e) {
-            LOG.log(Level.SEVERE, "Failed running tests on unmodified original", e);
-            originalIsFit = false;
-        }
-        
-        try {
-            if (binDirectory != null) {
-                tempDirManager.deleteTemporaryDirectory(binDirectory);
-            }
-        } catch (IOException e) {
-            // ignore, will be cleaned up later when tempDirManager is closed
-        }
-        return originalIsFit;
     }
 
     private List<Variant> createInitialPopulation() throws IOException {
@@ -307,7 +235,7 @@ public class GeneticAlgorithm {
             LOG.info(() -> "Using LLM to mutate variant " + variant.getName());
             if (!variant.hasFitness()) {
                 LOG.fine(() -> "Running tests on variant as it has no fitness and thus no failing tests yet");
-                measureFitness(variant, false);
+                fitnessEvaluator.measureFitness(variant, false);
             }
             
             try (Probe measure = Measurement.INSTANCE.start("llm-mutation")) {
@@ -360,11 +288,11 @@ public class GeneticAlgorithm {
         
         if (needsFitnessReevaluation || !variant.hasFitness()) {
             LOG.fine(() -> "Evaluating fitness after mutation");
-            measureFitness(variant, needsFaultLocalization);
+            fitnessEvaluator.measureFitness(variant, needsFaultLocalization);
         }
     }
     
-    private void setSamePosition(Node from, Node to) {
+    private static void setSamePosition(Node from, Node to) {
         Node firstLeaf = from;
         while (firstLeaf.getType() != Type.LEAF) {
             firstLeaf = firstLeaf.get(0);
@@ -594,7 +522,7 @@ public class GeneticAlgorithm {
         return result;
     }
     
-    private void analyzeDiffOfBestVariant(Map<String, Object> result) throws IOException {
+    private void analyzeDiffOfBestVariant(Map<String, Object> result, Variant bestVariant) throws IOException {
         Map<String, Object> diffResult = new HashMap<>();
         result.put("patch", diffResult);
         
@@ -632,159 +560,6 @@ public class GeneticAlgorithm {
         }
         diffResult.put("addedLines", countAdd);
         diffResult.put("removedLines", countRemove);
-    }
-    
-    private static Map<Path, Node> getFileNodesByPath(Node astRoot) {
-        Map<Path, Node> fileNodes = new HashMap<>();
-        
-        for (Node child : astRoot.childIterator()) {
-            fileNodes.put((Path) child.getMetadata(Metadata.FILE_NAME), child);
-        }
-        
-        return fileNodes;
-    }
-    
-    private static Set<Node> computeModifiedFiles(Node oldAst, Node newAst) {
-        Map<Path, Node> oldAstFiles = getFileNodesByPath(oldAst);
-        Map<Path, Node> newAstFiles = getFileNodesByPath(newAst);
-        
-        if (!oldAstFiles.keySet().equals(newAstFiles.keySet())) {
-            LOG.warning("Files have changed between old and new AST");
-        }
-        
-        Set<Node> modifiedFiles = new HashSet<>();
-        for (Path file : newAstFiles.keySet()) {
-            Node newFile = newAstFiles.get(file);
-            Node oldFile = oldAstFiles.get(file);
-            if (oldFile != null) {
-                if (!oldFile.equals(newFile)) {
-                    modifiedFiles.add(newFile);
-                }
-            } else {
-                modifiedFiles.add(newFile);
-            }
-        }
-        
-        return modifiedFiles;
-    }
-    
-    private void measureFitness(Variant variant, boolean withFaultLocalization) {
-        if (!withFaultLocalization) {
-            for (Node classNode : variant.getAst().childIterator()) {
-                if (classNode.getMetadata(Metadata.COVERED_BY) == null) {
-                    withFaultLocalization = true;
-                    LOG.warning(() -> "Evaluating variant without coverage information; forcing fault localization");
-                    break;
-                }
-            }
-        }
-        
-        double fitness;
-        List<TestResult> failingTests = List.of();
-        try {
-            
-            EvaluationResult evaluationResult;
-            
-            if (withFaultLocalization) {
-                evaluator.setKeepBinDirectory(true);
-                LOG.fine(() -> "Running all tests because fault localization is required");
-                evaluationResult = evaluator.evaluate(variant.getAst());
-                
-            } else {
-                Set<Node> modifiedFiles = computeModifiedFiles(unmodifiedVariant.getAst(), variant.getAst());
-                @SuppressWarnings("unchecked")
-                Set<String> relevantTests = modifiedFiles.stream()
-                        .map(n -> (Set<String>) n.getMetadata(Metadata.COVERED_BY))
-                        .flatMap(Set::stream)
-                        .collect(Collectors.toSet());
-                LOG.fine(() -> "Only running " + relevantTests.size() + " relevant tests: " + relevantTests);
-                evaluationResult = evaluator.evaluate(variant.getAst(), new ArrayList<>(relevantTests));
-            }
-            
-            fitness = getFitness(evaluationResult);
-            failingTests = evaluationResult.getFailures();
-            
-            if (withFaultLocalization) {
-                FaultLocalization faultLocalization = new FaultLocalization(project.getProjectDirectory(),
-                        project.getTestExecutionClassPathAbsolute(), project.getEncoding());
-                faultLocalization.measureAndAnnotateSuspiciousness(variant.getAst(), evaluator.getLastBinDirectory(),
-                        evaluationResult.getExecutedTests());
-                
-                try {
-                    tempDirManager.deleteTemporaryDirectory(evaluator.getLastBinDirectory());
-                } catch (IOException e) {
-                    // ignore, will be cleaned up later when tempDirManager is closed
-                }
-            }
-            
-        } catch (CompilationException e) {
-            fitness = 0;
-            
-        } catch (TestExecutionException e) {
-            LOG.log(Level.WARNING, "Failed running tests on variant", e);
-            fitness = 0;
-            
-        } finally {
-            evaluator.setKeepBinDirectory(false);
-        }
-        
-        variant.setFitness(fitness, failingTests);
-        
-        LOG.fine(() -> variant.toString());
-        if (fitness > bestFitness) {
-            bestFitness = fitness;
-            bestVariant = variant.copy();
-            LOG.info(() -> "New best variant: " + variant.getName());
-        }
-    }
-    
-    private double getFitness(EvaluationResult evaluation) {
-        int numPassingNegative = 0;
-        int numPassingPositive = 0;
-        Set<String> missingPositiveTests = new HashSet<>(positiveTests);
-        
-        for (TestResult test : evaluation.getExecutedTests()) {
-            missingPositiveTests.remove(test.toString());
-            if (!test.isFailure()) {
-                if (negativeTests.contains(test.toString())) {
-                    numPassingNegative++;
-                } else if (positiveTests.contains(test.toString())) {
-                    numPassingPositive++;
-                } else {
-                    LOG.severe(() -> test.toString() + " is neither in positive nor negative test cases");
-                    throw new IllegalArgumentException(test.toString() + " is not in known test cases");
-                }
-            }
-        }
-        
-        // assume that positive tests that weren't run are still positive
-        // this works because we only execute the relevant tests that cover the modified file(s)
-        numPassingPositive += missingPositiveTests.size();
-        
-        double fitness = Configuration.INSTANCE.genetic().negativeTestsWeight() * numPassingNegative
-                + Configuration.INSTANCE.genetic().positiveTestsWeight() * numPassingPositive;
-        if (fitness > getMaxFitness()) {
-            LOG.severe(() -> "Calculated invalid (too high) fitness for evaluation result");
-            throw new IllegalArgumentException("Fitness " + fitness + " is greater than max fitness "
-                    + getMaxFitness());
-        }
-        return fitness;
-    }
-    
-    private double getMaxFitness() {
-        return negativeTests.size() * Configuration.INSTANCE.genetic().negativeTestsWeight()
-                + positiveTests.size() * Configuration.INSTANCE.genetic().positiveTestsWeight();
-    }
-    
-    private int indexWithMaxFitness(List<Variant> population) {
-        int result = -1;
-        for (int i = 0; i < population.size(); i++) {
-            if (population.get(i).getFitness() >= getMaxFitness()) {
-                result = i;
-                break;
-            }
-        }
-        return result;
     }
     
 }

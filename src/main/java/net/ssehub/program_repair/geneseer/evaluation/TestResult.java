@@ -11,6 +11,10 @@ public record TestResult(String testClass, String testMethod, String failureMess
         return failureStacktrace != null;
     }
     
+    public boolean isTimeout() {
+        return testMethod.equals("<none>") && failureMessage.equals("Timeout") && failureStacktrace.equals("Timeout");
+    }
+    
     @Override
     public String toString() {
         return testClass + "::" + testMethod;

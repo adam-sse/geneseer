@@ -5,11 +5,11 @@ public class TestExecutionException extends EvaluationException {
 
     private static final long serialVersionUID = -6581323643570310384L;
 
-    public TestExecutionException(String message, Throwable cause) {
+    TestExecutionException(String message, Throwable cause) {
         super(message, cause);
     }
     
-    public TestExecutionException(String message) {
+    TestExecutionException(String message) {
         super(message);
     }
 

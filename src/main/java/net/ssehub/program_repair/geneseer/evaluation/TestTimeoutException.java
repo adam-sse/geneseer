@@ -5,7 +5,7 @@ public class TestTimeoutException extends TestExecutionException {
 
     private static final long serialVersionUID = 2350705615071892568L;
 
-    public TestTimeoutException(String message) {
+    TestTimeoutException(String message) {
         super(message);
     }
 

@@ -11,7 +11,7 @@ import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
-public class JunitEvaluation {
+class JunitEvaluation {
     
     private Path workingDirectory;
     

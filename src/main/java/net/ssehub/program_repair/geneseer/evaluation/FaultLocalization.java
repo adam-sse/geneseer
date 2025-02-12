@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer.evaluation.fault_localization;
+package net.ssehub.program_repair.geneseer.evaluation;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -22,12 +22,7 @@ import org.jacoco.core.analysis.IMethodCoverage;
 import org.jacoco.core.data.ExecutionDataStore;
 
 import net.ssehub.program_repair.geneseer.Configuration;
-import net.ssehub.program_repair.geneseer.evaluation.TestCoverageException;
-import net.ssehub.program_repair.geneseer.evaluation.TestExecution;
 import net.ssehub.program_repair.geneseer.evaluation.TestExecution.TestResultWithCoverage;
-import net.ssehub.program_repair.geneseer.evaluation.TestExecutionException;
-import net.ssehub.program_repair.geneseer.evaluation.TestResult;
-import net.ssehub.program_repair.geneseer.evaluation.TestTimeoutException;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;

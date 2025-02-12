@@ -18,7 +18,7 @@ import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
 
-public class ProjectCompiler {
+class ProjectCompiler {
     
     private static final Logger LOG = Logger.getLogger(ProjectCompiler.class.getName());
     

@@ -13,7 +13,6 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Project;
-import net.ssehub.program_repair.geneseer.evaluation.fault_localization.FaultLocalization;
 import net.ssehub.program_repair.geneseer.parsing.Writer;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;

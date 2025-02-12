@@ -27,7 +27,7 @@ import net.ssehub.program_repair.geneseer.util.ProcessRunner;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner.CaptureThread;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
-public class TestExecution implements AutoCloseable {
+class TestExecution implements AutoCloseable {
 
     private static final Logger LOG = Logger.getLogger(TestExecution.class.getName());
     

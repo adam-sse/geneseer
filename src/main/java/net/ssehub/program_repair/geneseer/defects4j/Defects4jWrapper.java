@@ -172,7 +172,7 @@ class Defects4jWrapper {
     }
 
     private List<Path> getMultiplePathsProperty(Path checkoutDirectory, String propertyName)
-            throws IOException, IllegalArgumentException {
+            throws IOException {
         
         return Arrays.stream(exportProperty(checkoutDirectory, propertyName)[0].split(File.pathSeparator))
                 .map(Path::of)

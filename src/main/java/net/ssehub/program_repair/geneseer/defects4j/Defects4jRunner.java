@@ -90,9 +90,9 @@ public class Defects4jRunner {
         this.cliArguments = cliArguments;
     }
     
-    public void run() throws Throwable {
+    public void run() throws IOException, IllegalArgumentException {
         LOG.info(() -> "Running on bug " + bug);
-        LOG.info("Preparing project...");
+        LOG.info("Preparing project");
         Project config = defects4j.prepareProject(bug);
         
         List<String> args = buildArgs(bug.getDirectory(), config);
@@ -104,7 +104,9 @@ public class Defects4jRunner {
             System.setOut(new PrintStream(capturedStdout));
         }
         
+        LOG.info("Running Geneseer");
         Geneseer.main(args.toArray(s -> new String[s]));
+        LOG.info("Geneseer finished");
         
         if (isSetupTest) {
             System.out.flush();
@@ -116,13 +118,13 @@ public class Defects4jRunner {
     private String augmentSetupTestOutput(String stdout) {
         Gson gson = new Gson();
         
+        LOG.fine("Augmenting SETUP_TEST result with expected failing tests from Defects4j");
         String result = stdout;
         try {
             @SuppressWarnings("unchecked")
             Map<Object, Object> json = gson.fromJson(stdout, Map.class);
             String jsonResult = (String) json.get("result");
-            if (jsonResult != null
-                    && (jsonResult.equals("FOUND_FAILING_TESTS") || jsonResult.equals("NO_FAILING_TESTS"))) {
+            if (jsonResult.equals("FOUND_FAILING_TESTS") || jsonResult.equals("NO_FAILING_TESTS")) {
                 
                 @SuppressWarnings("unchecked")
                 List<Map<Object, Object>> failingTests = (List<Map<Object, Object>>) json.get("failingTests");
@@ -140,14 +142,18 @@ public class Defects4jRunner {
                     json.put("result", "NOT_MATCHING_DEFECTS4J");
                 }
                 result = gson.toJson(json);
+                
+            } else {
+                LOG.warning("Result from SETUP_TEST is neither FOUND_FAILING_TESTS nor NO_FAILING_TESTS");
             }
         } catch (JsonParseException | NullPointerException | IOException e) {
             LOG.log(Level.WARNING, "Could not determine if failing tests were correct", e);
         }
+        
         return result;
     }
     
-    public static void main(String[] args) throws Throwable {
+    public static void main(String[] args) throws IOException {
         Set<String> cliOptions = new HashSet<>();
         cliOptions.add("--defects4j");
         cliOptions.add("--target");

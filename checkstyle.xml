@@ -100,6 +100,9 @@
     <module name="NestedTryDepth"/>
     <module name="SuperFinalize"/>
     <module name="IllegalCatch"/>
+    <module name="IllegalThrows">
+      <property name="illegalClassNames" value="java.lang.Exception,java.lang.Throwable,java.lang.RuntimeException"/>
+    </module>
     <module name="PackageDeclaration">
       <property name="severity" value="warning"/>
     </module>

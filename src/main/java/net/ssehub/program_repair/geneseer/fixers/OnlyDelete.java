@@ -30,7 +30,8 @@ public class OnlyDelete implements IFixer {
         
         int tested = 0;
         for (Node toDelete : suspicious) {
-            LOG.info("Deleting " + toDelete);
+            double suspiciousness = (double) toDelete.getMetadata(Metadata.SUSPICIOUSNESS);
+            LOG.info("Deleting " + toDelete + " (suspiciousness: " + suspiciousness + ")");
             tested++;
             
             Node clone = ast.cheapClone(toDelete);
@@ -47,7 +48,7 @@ public class OnlyDelete implements IFixer {
                 LOG.info(() -> numFailingTests + " failing tests");
                 if (numFailingTests < bestFailingTests) {
                     bestFailingTests = numFailingTests;
-                    bestSuspiciousness = (Double) toDelete.getMetadata(Metadata.SUSPICIOUSNESS);
+                    bestSuspiciousness = suspiciousness;
                     bestVariant = clone;
                 }
                 if (numFailingTests == 0) {
@@ -59,7 +60,7 @@ public class OnlyDelete implements IFixer {
             }
         }
         
-        result.put("bestFailingtests", bestFailingTests);
+        result.put("bestFailingTests", bestFailingTests);
         result.put("bestSuspiciousness", bestSuspiciousness);
         result.put("tested", tested);
         

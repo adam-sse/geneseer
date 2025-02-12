@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer;
+package net.ssehub.program_repair.geneseer.fixers;
 
 import java.io.IOException;
 import java.util.Map;

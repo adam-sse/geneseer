@@ -14,8 +14,8 @@ import java.util.stream.IntStream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Configuration.GeneticConfiguration.MutationScope;
-import net.ssehub.program_repair.geneseer.IFixer;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
+import net.ssehub.program_repair.geneseer.fixers.IFixer;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;

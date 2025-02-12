@@ -12,6 +12,7 @@ import java.util.stream.StreamSupport;
 
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
+import net.ssehub.program_repair.geneseer.fixers.IFixer;
 import net.ssehub.program_repair.geneseer.fixers.LlmQueryAnalysis;
 import net.ssehub.program_repair.geneseer.fixers.OnlyDelete;
 import net.ssehub.program_repair.geneseer.fixers.SingleLlm;

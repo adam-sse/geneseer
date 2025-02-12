@@ -17,7 +17,7 @@ public class OnlyDelete implements IFixer {
     
     @Override
     public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) {
-        int originalFailingTests = testSuite.getOriginalNegativeTestNames().size();
+        int originalFailingTests = testSuite.getOriginalFailingTestResults().size();
         result.put("originalFailingTests", originalFailingTests);
         
         List<Node> suspicious = ast.stream()

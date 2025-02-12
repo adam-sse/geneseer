@@ -16,7 +16,7 @@ public class SetupTest implements IFixer {
     
     @Override
     public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) throws IOException {
-        LOG.info(() -> testSuite.getOriginalNegativeTestNames().size() + " failing tests:");
+        LOG.info(() -> testSuite.getOriginalFailingTestResults().size() + " failing tests:");
         List<Map<String, String>> failingTests = new LinkedList<>();
         for (TestResult testResult : testSuite.getOriginalTestResults()) {
             if (testResult.isFailure()) {

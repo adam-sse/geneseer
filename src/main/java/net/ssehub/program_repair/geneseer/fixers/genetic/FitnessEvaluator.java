@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
@@ -26,8 +27,12 @@ class FitnessEvaluator {
     
     public FitnessEvaluator(TestSuite testSuite, Variant unmodifiedOriginal) {
         this.testSuite = testSuite;
-        this.originalNegativeTestNames = testSuite.getOriginalNegativeTestNames();
-        this.originalPositiveTestNames = testSuite.getOriginalPositiveTestNames();
+        this.originalNegativeTestNames = testSuite.getOriginalFailingTestResults().stream()
+                .map(TestResult::toString)
+                .collect(Collectors.toSet());
+        this.originalPositiveTestNames = testSuite.getOriginalPassingTestResults().stream()
+                .map(TestResult::toString)
+                .collect(Collectors.toSet());
         this.bestVariant = unmodifiedOriginal;
         
         unmodifiedOriginal.setFitness(getFitness(testSuite.getOriginalTestResults()),

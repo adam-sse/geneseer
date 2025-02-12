@@ -3,6 +3,7 @@ package net.ssehub.program_repair.geneseer.evaluation;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -76,20 +77,20 @@ public class TestSuite {
             List<TestResult> testResult = runTests(binDir, testMethods.keySet());
             for (TestResult tr : testResult) {
                 if (!testMethods.containsKey(tr.testClass())) {
-                    throw new EvaluationException("Got unknown test class as evaluation result: " + tr.testClass());
+                    throw new TestIntegrityException("Got unknown test class as evaluation result: " + tr.testClass());
                 }
                 if (tr.isTimeout()) {
-                    throw new EvaluationException("Got timeout in original evalution (in class " + tr.testClass()
+                    throw new TestIntegrityException("Got timeout in original evalution (in class " + tr.testClass()
                             + ")");
                 }
                 testMethods.get(tr.testClass()).add(tr.testMethod());
                 originalTestResults.put(tr.toString(), tr);
             }
             if (originalTestResults.size() != testResult.size()) {
-                throw new EvaluationException("Got duplicate test names in test suite result");
+                throw new TestIntegrityException("Got duplicate test names in test suite result");
             }
-            LOG.info(() -> "Got " + getOriginalPositiveTestNames().size() + " positive and "
-                    + getOriginalNegativeTestNames().size() + " negative tests");
+            LOG.info(() -> "Got " + getOriginalPassingTestResults().size() + " passing and "
+                    + getOriginalFailingTestResults().size() + " failing tests");
             
             LOG.info("Running fault localization and annotating original code with suspiciousness");
             faultLocalization.measureAndAnnotateSuspiciousness(originalSourceCode, binDir, testResult);
@@ -105,7 +106,7 @@ public class TestSuite {
             Set<Node> modifiedFiles = computeModifiedFiles(originalSourceCode, ast);
             for (Node modifiedFile : modifiedFiles) {
                 if (modifiedFile.getMetadata(Metadata.COVERED_BY) == null) {
-                    throw new EvaluationException("File node is missing coverage information");
+                    throw new TestIntegrityException("File node is missing coverage information");
                 }
             }
             LOG.fine(() -> "Detected " + modifiedFiles.size() + " modified files");
@@ -122,7 +123,7 @@ public class TestSuite {
             for (TestResult tr : testResult) {
                 Set<String> knownMethods = testMethods.get(tr.testClass());
                 if  (knownMethods == null) {
-                    throw new EvaluationException("Unknown test class in result: " + tr.testClass());
+                    throw new TestIntegrityException("Unknown test class in result: " + tr.testClass());
                 }
                 if (tr.isTimeout()) {
                     for (String testMethod : knownMethods) {
@@ -130,7 +131,7 @@ public class TestSuite {
                     }
                 } else {
                     if (!knownMethods.contains(tr.testMethod())) {
-                        throw new EvaluationException("Unknown test method in result: " + tr.toString());
+                        throw new TestIntegrityException("Unknown test method in result: " + tr.toString());
                     }
                     extendedTestResult.add(tr);
                 }
@@ -142,7 +143,7 @@ public class TestSuite {
                         String testName = entry.getKey() + "::" + testMethod;
                         TestResult originalResult = originalTestResults.get(testName);
                         if (originalResult == null) {
-                            throw new EvaluationException("Can't find original result for test " + testName);
+                            throw new TestIntegrityException("Can't find original result for test " + testName);
                         }
                         extendedTestResult.add(originalResult);
                     }
@@ -164,14 +165,14 @@ public class TestSuite {
             for (TestResult tr : testResult) {
                 Set<String> knownMethods = testMethods.get(tr.testClass());
                 if  (knownMethods == null) {
-                    throw new EvaluationException("Unknown test class in result: " + tr.testClass());
+                    throw new TestIntegrityException("Unknown test class in result: " + tr.testClass());
                 }
                 if (tr.isTimeout()) {
-                    throw new EvaluationException("Got timeout when trying to run fault localization");
+                    throw new TestIntegrityException("Got timeout when trying to run fault localization");
                 }
             }
             if (originalTestResults.size() != testResult.size()) {
-                throw new EvaluationException("Got wrong number of test results: " + testResult.size()
+                throw new TestIntegrityException("Got wrong number of test results: " + testResult.size()
                         + " (expected " + originalTestResults.size() + ")");
             }
             
@@ -218,7 +219,7 @@ public class TestSuite {
         for (Node child : astRoot.childIterator()) {
             Path path = (Path) child.getMetadata(Metadata.FILE_NAME);
             if (path == null) {
-                throw new EvaluationException("File node is missing FILE_NAME metadata");
+                throw new TestIntegrityException("File node is missing FILE_NAME metadata");
             }
             fileNodes.put(path, child);
         }
@@ -231,7 +232,7 @@ public class TestSuite {
         Map<Path, Node> newAstFiles = getFileNodesByPath(newAst);
         
         if (!oldAstFiles.keySet().equals(newAstFiles.keySet())) {
-            throw new EvaluationException("Files have changed between old and new AST");
+            throw new TestIntegrityException("Files have changed between old and new AST");
         }
         
         Set<Node> modifiedFiles = new HashSet<>();
@@ -257,21 +258,19 @@ public class TestSuite {
     }
     
     public Set<TestResult> getOriginalTestResults() {
-        return new HashSet<>(originalTestResults.values());
+        return Collections.unmodifiableSet(new HashSet<>(originalTestResults.values()));
     }
     
-    public Set<String> getOriginalPositiveTestNames() {
+    public Set<TestResult> getOriginalPassingTestResults() {
         return originalTestResults.values().stream()
                 .filter(t -> !t.isFailure())
-                .map(TestResult::toString)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toUnmodifiableSet());
     }
     
-    public Set<String> getOriginalNegativeTestNames() {
+    public Set<TestResult> getOriginalFailingTestResults() {
         return originalTestResults.values().stream()
-                .filter(t -> t.isFailure())
-                .map(TestResult::toString)
-                .collect(Collectors.toSet());
+                .filter(TestResult::isFailure)
+                .collect(Collectors.toUnmodifiableSet());
     }
     
     public int getNumCompilations() {

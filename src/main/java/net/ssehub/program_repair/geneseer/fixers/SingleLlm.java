@@ -24,7 +24,7 @@ public class SingleLlm implements IFixer {
         Optional<Node> modifiedAst = llmFixer.createVariant(ast, testSuite.getOriginalTestResults().stream()
                 .filter(TestResult::isFailure)
                 .toList());
-        int originalFailingTests = testSuite.getOriginalNegativeTestNames().size();
+        int originalFailingTests = testSuite.getOriginalFailingTestResults().size();
         result.put("originalFailingTests", originalFailingTests);
         
         Node patched;

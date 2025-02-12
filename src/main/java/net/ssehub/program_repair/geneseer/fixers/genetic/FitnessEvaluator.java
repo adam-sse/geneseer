@@ -9,7 +9,6 @@ import java.util.logging.Logger;
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
-import net.ssehub.program_repair.geneseer.evaluation.EvaluationResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
@@ -91,7 +90,7 @@ public class FitnessEvaluator {
         double fitness;
         List<TestResult> failingTests = List.of();
         try {
-            EvaluationResult evaluationResult;
+            List<TestResult> evaluationResult;
             
             if (withFaultLocalization) {
                 evaluationResult = testSuite.runAndAnnotateFaultLocalization(variant.getAst());
@@ -99,8 +98,8 @@ public class FitnessEvaluator {
                 evaluationResult = testSuite.evaluate(variant.getAst());
             }
             
-            fitness = getFitness(evaluationResult.getExecutedTests());
-            failingTests = evaluationResult.getFailures();
+            fitness = getFitness(evaluationResult);
+            failingTests = evaluationResult.stream().filter(TestResult::isFailure).toList();
             
         } catch (CompilationException e) {
             fitness = 0;

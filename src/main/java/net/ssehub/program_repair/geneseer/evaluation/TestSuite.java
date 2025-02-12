@@ -74,8 +74,8 @@ public class TestSuite {
         
         try {
             LOG.info("Running test suite on original code");
-            EvaluationResult testResult = runTests(binDir, testMethods.keySet());
-            for (TestResult tr : testResult.getExecutedTests()) {
+            List<TestResult> testResult = runTests(binDir, testMethods.keySet());
+            for (TestResult tr : testResult) {
                 if (!testMethods.containsKey(tr.testClass())) {
                     throw new EvaluationException("Got unknown test class as evaluation result: " + tr.testClass());
                 }
@@ -86,22 +86,21 @@ public class TestSuite {
                 testMethods.get(tr.testClass()).add(tr.testMethod());
                 originalTestResults.put(tr.toString(), tr);
             }
-            if (originalTestResults.size() != testResult.getExecutedTests().size()) {
+            if (originalTestResults.size() != testResult.size()) {
                 throw new EvaluationException("Got duplicate test names in test suite result");
             }
             LOG.info(() -> "Got " + getOriginalPositiveTestNames().size() + " positive and "
                     + getOriginalNegativeTestNames().size() + " negative tests");
             
             LOG.info("Running fault localization and annotating original code with suspiciousness");
-            faultLocalization.measureAndAnnotateSuspiciousness(originalSourceCode, binDir,
-                    testResult.getExecutedTests());
+            faultLocalization.measureAndAnnotateSuspiciousness(originalSourceCode, binDir, testResult);
             
         } finally {
             deleteTempDirNoEx(binDir);
         }
     }
     
-    public EvaluationResult evaluate(Node ast) throws EvaluationException {
+    public List<TestResult> evaluate(Node ast) throws EvaluationException {
         Path binDir = compile(ast);
         try {
             Set<Node> modifiedFiles = computeModifiedFiles(originalSourceCode, ast);
@@ -119,22 +118,22 @@ public class TestSuite {
             LOG.fine(() -> "Only running " + relevantTestClasses.size() + " relevant test classes (out of "
                     + testMethods.size() + " total): " + relevantTestClasses);
             
-            EvaluationResult testResult = runTests(binDir, relevantTestClasses);
-            List<TestResult> extendedTests = new LinkedList<>();
-            for (TestResult tr : testResult.getExecutedTests()) {
+            List<TestResult> testResult = runTests(binDir, relevantTestClasses);
+            List<TestResult> extendedTestResult = new LinkedList<>();
+            for (TestResult tr : testResult) {
                 Set<String> knownMethods = testMethods.get(tr.testClass());
                 if  (knownMethods == null) {
                     throw new EvaluationException("Unknown test class in result: " + tr.testClass());
                 }
                 if (tr.isTimeout()) {
                     for (String testMethod : knownMethods) {
-                        extendedTests.add(new TestResult(tr.testClass(), testMethod, "Timeout", "Timeout"));
+                        extendedTestResult.add(new TestResult(tr.testClass(), testMethod, "Timeout", "Timeout"));
                     }
                 } else {
                     if (!knownMethods.contains(tr.testMethod())) {
                         throw new EvaluationException("Unknown test method in result: " + tr.toString());
                     }
-                    extendedTests.add(tr);
+                    extendedTestResult.add(tr);
                 }
             }
             
@@ -146,23 +145,24 @@ public class TestSuite {
                         if (originalResult == null) {
                             throw new EvaluationException("Can't find original result for test " + testName);
                         }
-                        extendedTests.add(originalResult);
+                        extendedTestResult.add(originalResult);
                     }
                 }
             }
-            testResult.setExecutedTests(extendedTests);
-            return testResult;
+            
+            return extendedTestResult;
+            
         } finally {
             deleteTempDirNoEx(binDir);
         }
     }
     
-    public EvaluationResult runAndAnnotateFaultLocalization(Node ast) throws EvaluationException {
+    public List<TestResult> runAndAnnotateFaultLocalization(Node ast) throws EvaluationException {
         Path binDir = compile(ast);
         
         try {
-            EvaluationResult testResult = runTests(binDir, testMethods.keySet());
-            for (TestResult tr : testResult.getExecutedTests()) {
+            List<TestResult> testResult = runTests(binDir, testMethods.keySet());
+            for (TestResult tr : testResult) {
                 Set<String> knownMethods = testMethods.get(tr.testClass());
                 if  (knownMethods == null) {
                     throw new EvaluationException("Unknown test class in result: " + tr.testClass());
@@ -171,12 +171,12 @@ public class TestSuite {
                     throw new EvaluationException("Got timeout when trying to run fault localization");
                 }
             }
-            if (originalTestResults.size() != testResult.getExecutedTests().size()) {
-                throw new EvaluationException("Got wrong number of test results: "
-                        + testResult.getExecutedTests().size() + " (expected " + originalTestResults.size() + ")");
+            if (originalTestResults.size() != testResult.size()) {
+                throw new EvaluationException("Got wrong number of test results: " + testResult.size()
+                        + " (expected " + originalTestResults.size() + ")");
             }
             
-            faultLocalization.measureAndAnnotateSuspiciousness(ast, binDir, testResult.getExecutedTests());
+            faultLocalization.measureAndAnnotateSuspiciousness(ast, binDir, testResult);
             
             return testResult;
             
@@ -208,11 +208,9 @@ public class TestSuite {
         }
     }
     
-    private EvaluationResult runTests(Path binDirectory, Set<String> testClassNames) throws TestExecutionException {
+    private List<TestResult> runTests(Path binDirectory, Set<String> testClassNames) throws TestExecutionException {
         numTestSuiteRuns++;
-        
-        EvaluationResult result = junitSuite.runTests(binDirectory, testClassNames);
-        return result;
+        return junitSuite.runTests(binDirectory, testClassNames);
     }
     
     private static Map<Path, Node> getFileNodesByPath(Node astRoot)  throws EvaluationException {

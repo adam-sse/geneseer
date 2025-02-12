@@ -25,7 +25,7 @@ public class JunitEvaluation {
         this.encoding = encoding;
     }
 
-    public EvaluationResult runTests(Path classes, Collection<String> testClasses) throws TestExecutionException {
+    public List<TestResult> runTests(Path classes, Collection<String> testClasses) throws TestExecutionException {
         
         try (Probe probe = Measurement.INSTANCE.start("junit-evaluation")) {
             
@@ -41,10 +41,7 @@ public class JunitEvaluation {
                 }
             }
             
-            EvaluationResult result = new EvaluationResult();
-            result.setExecutedTests(executedTests);
-
-            return result;
+            return executedTests;
         }
     }
 

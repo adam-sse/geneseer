@@ -7,7 +7,7 @@ import java.util.logging.Logger;
 
 import net.ssehub.program_repair.geneseer.IFixer;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
-import net.ssehub.program_repair.geneseer.evaluation.EvaluationResult;
+import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
@@ -44,9 +44,9 @@ public class OnlyDelete implements IFixer {
             clone.lock();
             
             try {
-                EvaluationResult evaluation = testSuite.evaluate(clone);
+                List<TestResult> evaluation = testSuite.evaluate(clone);
                 
-                int numFailingTests = evaluation.getFailures().size();
+                int numFailingTests = (int) evaluation.stream().filter(TestResult::isFailure).count();
                 LOG.info(() -> numFailingTests + " failing tests");
                 if (numFailingTests < originalFailingTests) {
                     bestFailingTests = numFailingTests;

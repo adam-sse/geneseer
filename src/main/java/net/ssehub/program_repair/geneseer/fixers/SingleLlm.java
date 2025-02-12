@@ -1,12 +1,12 @@
 package net.ssehub.program_repair.geneseer.fixers;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import net.ssehub.program_repair.geneseer.IFixer;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
-import net.ssehub.program_repair.geneseer.evaluation.EvaluationResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
@@ -33,8 +33,8 @@ public class SingleLlm implements IFixer {
         if (modifiedAst.isPresent()) {
             patched = modifiedAst.get();
             try {
-                EvaluationResult evaluation = testSuite.evaluate(patched);
-                int failingTests = evaluation.getFailures().size();
+                List<TestResult> evaluation = testSuite.evaluate(patched);
+                int failingTests = (int) evaluation.stream().filter(TestResult::isFailure).count();
                 result.put("modifiedFailingTests", failingTests);
                 
                 if (failingTests == 0) {

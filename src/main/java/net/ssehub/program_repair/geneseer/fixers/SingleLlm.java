@@ -21,11 +21,9 @@ public class SingleLlm implements IFixer {
     
     @Override
     public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) throws IOException {
-        Optional<Node> modifiedAst = llmFixer.createVariant(ast, testSuite.getOriginalTestResults().stream()
+        Optional<Node> modifiedAst = llmFixer.createVariant(ast, testSuite.getInitialTestResults().stream()
                 .filter(TestResult::isFailure)
                 .toList());
-        int originalFailingTests = testSuite.getOriginalFailingTestResults().size();
-        result.put("originalFailingTests", originalFailingTests);
         
         Node patched;
         String resultString;
@@ -36,11 +34,12 @@ public class SingleLlm implements IFixer {
                 int failingTests = (int) evaluation.stream().filter(TestResult::isFailure).count();
                 result.put("modifiedFailingTests", failingTests);
                 
+                int initialFailingTests = testSuite.getInitialFailingTestResults().size();
                 if (failingTests == 0) {
                     resultString = "FOUND_FIX";
-                } else if (failingTests < originalFailingTests) {
+                } else if (failingTests < initialFailingTests) {
                     resultString = "IMPROVED";
-                } else if (failingTests == originalFailingTests) {
+                } else if (failingTests == initialFailingTests) {
                     resultString = "NO_CHANGE";
                 } else {
                     resultString = "WORSENED";

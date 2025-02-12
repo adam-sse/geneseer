@@ -39,7 +39,7 @@ public class TestSuite {
     
     private Map<String, Set<String>> testMethods;
     
-    private Map<String, TestResult> originalTestResults;
+    private Map<String, TestResult> initialTestResults;
     
     private int numCompilations;
     
@@ -61,7 +61,7 @@ public class TestSuite {
         for (String testClass : project.getTestClassNames()) {
             testMethods.put(testClass, new HashSet<>());
         }
-        this.originalTestResults = new HashMap<>();
+        this.initialTestResults = new HashMap<>();
         
         initialize();
     }
@@ -84,13 +84,13 @@ public class TestSuite {
                             + ")");
                 }
                 testMethods.get(tr.testClass()).add(tr.testMethod());
-                originalTestResults.put(tr.toString(), tr);
+                initialTestResults.put(tr.toString(), tr);
             }
-            if (originalTestResults.size() != testResult.size()) {
+            if (initialTestResults.size() != testResult.size()) {
                 throw new TestIntegrityException("Got duplicate test names in test suite result");
             }
-            LOG.info(() -> "Got " + getOriginalPassingTestResults().size() + " passing and "
-                    + getOriginalFailingTestResults().size() + " failing tests");
+            LOG.info(() -> "Got " + getInitialPassingTestResults().size() + " passing and "
+                    + getInitialFailingTestResults().size() + " failing tests");
             
             LOG.info("Running fault localization and annotating original code with suspiciousness");
             faultLocalization.measureAndAnnotateSuspiciousness(originalSourceCode, binDir, testResult);
@@ -141,11 +141,11 @@ public class TestSuite {
                 if (!relevantTestClasses.contains(entry.getKey())) {
                     for (String testMethod : entry.getValue()) {
                         String testName = entry.getKey() + "::" + testMethod;
-                        TestResult originalResult = originalTestResults.get(testName);
-                        if (originalResult == null) {
-                            throw new TestIntegrityException("Can't find original result for test " + testName);
+                        TestResult initialResult = initialTestResults.get(testName);
+                        if (initialResult == null) {
+                            throw new TestIntegrityException("Can't find initial result for test " + testName);
                         }
-                        extendedTestResult.add(originalResult);
+                        extendedTestResult.add(initialResult);
                     }
                 }
             }
@@ -171,9 +171,9 @@ public class TestSuite {
                     throw new TestIntegrityException("Got timeout when trying to run fault localization");
                 }
             }
-            if (originalTestResults.size() != testResult.size()) {
+            if (initialTestResults.size() != testResult.size()) {
                 throw new TestIntegrityException("Got wrong number of test results: " + testResult.size()
-                        + " (expected " + originalTestResults.size() + ")");
+                        + " (expected " + initialTestResults.size() + ")");
             }
             
             faultLocalization.measureAndAnnotateSuspiciousness(ast, binDir, testResult);
@@ -257,18 +257,18 @@ public class TestSuite {
         }
     }
     
-    public Set<TestResult> getOriginalTestResults() {
-        return Collections.unmodifiableSet(new HashSet<>(originalTestResults.values()));
+    public Set<TestResult> getInitialTestResults() {
+        return Collections.unmodifiableSet(new HashSet<>(initialTestResults.values()));
     }
     
-    public Set<TestResult> getOriginalPassingTestResults() {
-        return originalTestResults.values().stream()
+    public Set<TestResult> getInitialPassingTestResults() {
+        return initialTestResults.values().stream()
                 .filter(t -> !t.isFailure())
                 .collect(Collectors.toUnmodifiableSet());
     }
     
-    public Set<TestResult> getOriginalFailingTestResults() {
-        return originalTestResults.values().stream()
+    public Set<TestResult> getInitialFailingTestResults() {
+        return initialTestResults.values().stream()
                 .filter(TestResult::isFailure)
                 .collect(Collectors.toUnmodifiableSet());
     }

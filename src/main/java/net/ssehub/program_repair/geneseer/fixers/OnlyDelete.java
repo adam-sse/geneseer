@@ -17,16 +17,14 @@ public class OnlyDelete implements IFixer {
     
     @Override
     public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) {
-        int originalFailingTests = testSuite.getOriginalFailingTestResults().size();
-        result.put("originalFailingTests", originalFailingTests);
-        
         List<Node> suspicious = ast.stream()
                 .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                 .sorted((n1, n2) -> Double.compare((double) n2.getMetadata(Metadata.SUSPICIOUSNESS),
                         (double) n1.getMetadata(Metadata.SUSPICIOUSNESS)))
                 .toList();
         
-        int bestFailingTests = originalFailingTests;
+        int initialFailingTests = testSuite.getInitialFailingTestResults().size();
+        int bestFailingTests = initialFailingTests;
         Node bestVariant = ast;
         Double bestSuspiciousness = null;
         
@@ -47,7 +45,7 @@ public class OnlyDelete implements IFixer {
                 
                 int numFailingTests = (int) evaluation.stream().filter(TestResult::isFailure).count();
                 LOG.info(() -> numFailingTests + " failing tests");
-                if (numFailingTests < originalFailingTests) {
+                if (numFailingTests < bestFailingTests) {
                     bestFailingTests = numFailingTests;
                     bestSuspiciousness = (Double) toDelete.getMetadata(Metadata.SUSPICIOUSNESS);
                     bestVariant = clone;
@@ -68,9 +66,9 @@ public class OnlyDelete implements IFixer {
         if (bestFailingTests == 0) {
             LOG.info(() -> "Result: Found full fix");
             result.put("result", "FOUND_FIX");
-        } else if (bestFailingTests < originalFailingTests) {
+        } else if (bestFailingTests < initialFailingTests) {
             int b = bestFailingTests;
-            LOG.info(() -> "Result: Improved from " + originalFailingTests + " to " + b + " failing tests");
+            LOG.info(() -> "Result: Improved from " + initialFailingTests + " to " + b + " failing tests");
             result.put("result", "IMPROVED");
         } else {
             LOG.info(() -> "Result: No improvement");

@@ -20,23 +20,23 @@ class FitnessEvaluator {
     private static final Logger LOG = Logger.getLogger(FitnessEvaluator.class.getName());
     
     private TestSuite testSuite;
-    private Set<String> originalNegativeTestNames;
-    private Set<String> originalPositiveTestNames;
+    private Set<String> negativeTestNames;
+    private Set<String> positiveTestNames;
     
     private Variant bestVariant;
     
     public FitnessEvaluator(TestSuite testSuite, Variant unmodifiedOriginal) {
         this.testSuite = testSuite;
-        this.originalNegativeTestNames = testSuite.getOriginalFailingTestResults().stream()
+        this.negativeTestNames = testSuite.getInitialFailingTestResults().stream()
                 .map(TestResult::toString)
                 .collect(Collectors.toSet());
-        this.originalPositiveTestNames = testSuite.getOriginalPassingTestResults().stream()
+        this.positiveTestNames = testSuite.getInitialPassingTestResults().stream()
                 .map(TestResult::toString)
                 .collect(Collectors.toSet());
         this.bestVariant = unmodifiedOriginal;
         
-        unmodifiedOriginal.setFitness(getFitness(testSuite.getOriginalTestResults()),
-                testSuite.getOriginalTestResults().stream()
+        unmodifiedOriginal.setFitness(getFitness(testSuite.getInitialTestResults()),
+                testSuite.getInitialTestResults().stream()
                         .filter(TestResult::isFailure)
                         .toList());
     }
@@ -47,9 +47,9 @@ class FitnessEvaluator {
         
         for (TestResult test : testResult) {
             if (!test.isFailure()) {
-                if (originalNegativeTestNames.contains(test.toString())) {
+                if (negativeTestNames.contains(test.toString())) {
                     numPassingNegative++;
-                } else if (originalPositiveTestNames.contains(test.toString())) {
+                } else if (positiveTestNames.contains(test.toString())) {
                     numPassingPositive++;
                 } else {
                     throw new IllegalArgumentException(test.toString()
@@ -77,8 +77,8 @@ class FitnessEvaluator {
     }
     
     public double getMaxFitness() {
-        return originalNegativeTestNames.size() * Configuration.INSTANCE.genetic().negativeTestsWeight()
-                + originalPositiveTestNames.size() * Configuration.INSTANCE.genetic().positiveTestsWeight();
+        return negativeTestNames.size() * Configuration.INSTANCE.genetic().negativeTestsWeight()
+                + positiveTestNames.size() * Configuration.INSTANCE.genetic().positiveTestsWeight();
     }
     
     public void measureFitness(Variant variant, boolean withFaultLocalization) {

@@ -84,6 +84,8 @@ public class Geneseer {
         
         TestSuite testSuite = null;
         Map<String, Object> result = new HashMap<>();
+        Map<String, Integer> evaluationStats = new HashMap<>();
+        result.put("evaluation", evaluationStats);
         boolean oom = false;
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
@@ -99,6 +101,8 @@ public class Geneseer {
             astStats.put("suspicious", ast.stream()
                     .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                     .count());
+            evaluationStats.put("initialPassingTestCases", testSuite.getInitialPassingTestResults().size());
+            evaluationStats.put("initialFailingTestCases", testSuite.getInitialFailingTestResults().size());
             
             Node patched = createFixer(project, tempDirManager).run(ast, testSuite, result);
             if (patched != null) {
@@ -122,10 +126,8 @@ public class Geneseer {
         } finally {
             if (!oom) {
                 if (testSuite != null) {
-                    Map<String, Integer> evaluationStats = new HashMap<>();
                     evaluationStats.put("compilations", testSuite.getNumCompilations());
                     evaluationStats.put("testSuiteRuns", testSuite.getNumTestSuiteRuns());
-                    result.put("evaluations", evaluationStats);
                 }
                 LOG.info("Timing measurements:");
                 Map<String, Object> timings = new HashMap<>();

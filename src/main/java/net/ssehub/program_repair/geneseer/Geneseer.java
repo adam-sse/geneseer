@@ -82,6 +82,7 @@ public class Geneseer {
         LOG.config("    test classes (" + project.getTestClassNames().size() + "): " + project.getTestClassNames());
         LOG.config("    encoding: " + project.getEncoding());
         
+        TestSuite testSuite = null;
         Map<String, Object> result = new HashMap<>();
         boolean oom = false;
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
@@ -94,7 +95,7 @@ public class Geneseer {
             result.put("ast", astStats);
             astStats.put("nodes", ast.stream().count());
             
-            TestSuite testSuite = new TestSuite(project, ast, tempDirManager);
+            testSuite = new TestSuite(project, ast, tempDirManager);
             astStats.put("suspicious", ast.stream()
                     .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                     .count());
@@ -103,11 +104,6 @@ public class Geneseer {
             if (patched != null) {
                 analyzeDiffOfPatched(result, ast, patched, project.getEncoding(), tempDirManager);
             }
-            
-            Map<String, Integer> evaluationStats = new HashMap<>();
-            evaluationStats.put("compilations", testSuite.getNumCompilations());
-            evaluationStats.put("testSuiteRuns", testSuite.getNumTestSuiteRuns());
-            result.put("evaluations", evaluationStats);
             
         } catch (EvaluationException e) {
             result.put("result", "ORIGINAL_UNFIT");
@@ -125,6 +121,12 @@ public class Geneseer {
             
         } finally {
             if (!oom) {
+                if (testSuite != null) {
+                    Map<String, Integer> evaluationStats = new HashMap<>();
+                    evaluationStats.put("compilations", testSuite.getNumCompilations());
+                    evaluationStats.put("testSuiteRuns", testSuite.getNumTestSuiteRuns());
+                    result.put("evaluations", evaluationStats);
+                }
                 LOG.info("Timing measurements:");
                 Map<String, Object> timings = new HashMap<>();
                 StreamSupport.stream(Measurement.INSTANCE.finishedProbes().spliterator(), false)

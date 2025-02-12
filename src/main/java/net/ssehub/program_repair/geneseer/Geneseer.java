@@ -40,7 +40,19 @@ public class Geneseer {
     
     private static final Logger LOG = Logger.getLogger(Geneseer.class.getName());
     
-    static Project initialize(String[] args) throws IOException {
+    public static void main(String[] args) {
+        Project project = null;
+        try {
+            project = initializeProjectsAndConfiguration(args);
+        } catch (IOException e) {
+            LOG.log(Level.SEVERE, "Failed to read configuration file", e);
+            System.exit(1);
+        }
+        
+        main(project);
+    }
+
+    private static Project initializeProjectsAndConfiguration(String[] args) throws IOException {
         Set<String> options = new HashSet<>();
         options.addAll(Project.getCliOptions());
         options.addAll(Configuration.INSTANCE.getCliOptions());
@@ -55,6 +67,13 @@ public class Geneseer {
             System.exit(1);
         }
         
+        Configuration.INSTANCE.loadFromCli(cli);
+        Configuration.INSTANCE.log();
+        
+        return project;
+    }
+    
+    public static void main(Project project) {
         LOG.config("Project:");
         LOG.config("    base directory: " + project.getProjectDirectory());
         LOG.config("    source directory: " + project.getSourceDirectory());
@@ -62,22 +81,6 @@ public class Geneseer {
         LOG.config("    test execution classpath: " + project.getTestExecutionClassPath());
         LOG.config("    test classes (" + project.getTestClassNames().size() + "): " + project.getTestClassNames());
         LOG.config("    encoding: " + project.getEncoding());
-        
-        
-        Configuration.INSTANCE.loadFromCli(cli);
-        Configuration.INSTANCE.log();
-        
-        return project;
-    }
-    
-    public static void main(String[] args) {
-        Project project = null;
-        try {
-            project = initialize(args);
-        } catch (IOException e) {
-            LOG.log(Level.SEVERE, "Failed to read configuration file", e);
-            System.exit(1);
-        }
         
         Map<String, Object> result = new HashMap<>();
         boolean oom = false;

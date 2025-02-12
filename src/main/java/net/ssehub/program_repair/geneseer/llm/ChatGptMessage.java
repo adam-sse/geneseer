@@ -2,7 +2,7 @@ package net.ssehub.program_repair.geneseer.llm;
 
 import com.google.gson.annotations.SerializedName;
 
-public record ChatGptMessage(String content, Role role) {
+record ChatGptMessage(String content, Role role) {
     
     public enum Role {
         @SerializedName("system") SYSTEM,

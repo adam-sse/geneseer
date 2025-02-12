@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.google.gson.annotations.SerializedName;
 
-public record ChatGptResponse(
+record ChatGptResponse(
         String id,
         List<Choice> choices,
         long created,

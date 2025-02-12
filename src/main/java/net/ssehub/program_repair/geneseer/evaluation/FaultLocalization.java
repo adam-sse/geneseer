@@ -198,8 +198,7 @@ public class FaultLocalization {
         classpath.add(classesDirectory);
         classpath.addAll(this.classpath);
         
-        try (Probe probe = Measurement.INSTANCE.start("junit-coverage-matrix");
-                TestExecution testExec = new TestExecution(workingDirectory, classpath, encoding, true)) {
+        try (TestExecution testExec = new TestExecution(workingDirectory, classpath, encoding, true)) {
             testExec.setTimeout(Configuration.INSTANCE.setup().testExecutionTimeoutMs());
          
             if (Configuration.INSTANCE.setup().coverageMatrixSimplified()) {

@@ -148,10 +148,11 @@ if applicable):
     "llmCallsWithPreviousModifications": 0
   },
   "timings": { // timing measurements in ms
-    "genetic-algorithm": 29699,
-    "compilation": 28183,
-    "fault-localization": 1908,
-    "junit-evaluation": 1792
+    "genetic-algorithm": 32793,
+    "compilation": 29222, // total time spent compiling
+    "fault-localization": 1763, // total time spent for fault localization (usually just once initially)
+    "junit-evaluation": 1804, // total time spent running tests (excluding coverage for fault-localization)
+    "llm-query": 879 // total time spent querying the LLM for patches
     // ...
   },
   "exception": "exception message" // only present for IO_EXCEPTION

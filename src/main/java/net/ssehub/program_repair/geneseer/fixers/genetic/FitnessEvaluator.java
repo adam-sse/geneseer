@@ -14,7 +14,7 @@ import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 
-public class FitnessEvaluator {
+class FitnessEvaluator {
 
     private static final Logger LOG = Logger.getLogger(FitnessEvaluator.class.getName());
     

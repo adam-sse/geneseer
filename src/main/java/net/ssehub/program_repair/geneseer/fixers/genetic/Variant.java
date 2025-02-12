@@ -9,7 +9,7 @@ import java.util.Locale;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 
-public class Variant {
+class Variant {
 
     private static int idCounter = 0;
     

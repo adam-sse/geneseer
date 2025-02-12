@@ -104,6 +104,8 @@ public class Configuration {
     
     public static class SetupConfiguration extends Section {
         
+        private Option<String> fixer = new Option<>("fixer",
+                "Fixer to use", "GENETIC_ALGORITHM", s -> s.toUpperCase());
         private Option<String> jvmBinaryPath = new Option<>("jvmBinaryPath",
                 "JVM binary path", "java", Function.identity());
         private Option<String> javaCompilerBinaryPath = new Option<>("javaCompilerBinaryPath",
@@ -123,12 +125,17 @@ public class Configuration {
         
         public SetupConfiguration() {
             super("setup", "Setup Configuration", new LinkedList<>());
+            super.options.add(fixer);
             super.options.add(jvmBinaryPath);
             super.options.add(javaCompilerBinaryPath);
             super.options.add(testExecutionTimeoutMs);
             super.options.add(coverageMatrixSimplified);
             super.options.add(testsToRun);
             super.options.add(debugTestDriver);
+        }
+        
+        public String getFixer() {
+            return fixer.getValue();
         }
         
         public String jvmBinaryPath() {

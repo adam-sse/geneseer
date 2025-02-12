@@ -1,6 +1,7 @@
 package net.ssehub.program_repair.geneseer;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -9,12 +10,22 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.StreamSupport;
 
-import net.ssehub.program_repair.geneseer.evaluation.Evaluator;
-import net.ssehub.program_repair.geneseer.evaluation.JunitEvaluation;
-import net.ssehub.program_repair.geneseer.evaluation.ProjectCompiler;
-import net.ssehub.program_repair.geneseer.genetic.GeneticAlgorithm;
+import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
+import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
+import net.ssehub.program_repair.geneseer.fixers.LlmQueryAnalysis;
+import net.ssehub.program_repair.geneseer.fixers.OnlyDelete;
+import net.ssehub.program_repair.geneseer.fixers.SingleLlm;
+import net.ssehub.program_repair.geneseer.fixers.SetupTest;
+import net.ssehub.program_repair.geneseer.fixers.genetic.GeneticAlgorithm;
+import net.ssehub.program_repair.geneseer.llm.ChatGptConnection;
+import net.ssehub.program_repair.geneseer.llm.DummyChatGptConnection;
+import net.ssehub.program_repair.geneseer.llm.IChatGptConnection;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
+import net.ssehub.program_repair.geneseer.parsing.Parser;
+import net.ssehub.program_repair.geneseer.parsing.model.Node;
+import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
+import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
 import net.ssehub.program_repair.geneseer.util.JsonUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
@@ -71,18 +82,32 @@ public class Geneseer {
         boolean oom = false;
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
-            ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute(),
-                    project.getEncoding());
-            JunitEvaluation junit = new JunitEvaluation(project.getProjectDirectory(),
-                    project.getTestExecutionClassPathAbsolute(), project.getEncoding());
-            Evaluator evaluator = new Evaluator(project, compiler, junit, tempDirManager);
+            Node ast = Parser.parse(project.getSourceDirectoryAbsolute(), project.getEncoding());
+            ast.lock();
+            LOG.fine(() -> ast.stream().count() + " nodes in AST");
             
-            LlmFixer llmFixer = null;
-            if (Configuration.INSTANCE.genetic().llmMutationProbability() > 0.0) {
-                llmFixer = PureLlmFixer.createLlmFixer(project, tempDirManager);
+            Map<String, Object> astStats = new HashMap<>();
+            result.put("ast", astStats);
+            astStats.put("nodes", ast.stream().count());
+            
+            TestSuite testSuite = new TestSuite(project, ast, tempDirManager);
+            astStats.put("suspicious", ast.stream()
+                    .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                    .count());
+            
+            Node patched = createFixer(project, tempDirManager).run(ast, testSuite, result);
+            if (patched != null) {
+                analyzeDiffOfPatched(result, ast, patched, project.getEncoding(), tempDirManager);
             }
             
-            new GeneticAlgorithm(project, evaluator, llmFixer, tempDirManager).run(result);
+            Map<String, Integer> evaluationStats = new HashMap<>();
+            evaluationStats.put("compilations", testSuite.getNumCompilations());
+            evaluationStats.put("testSuiteRuns", testSuite.getNumTestSuiteRuns());
+            result.put("evaluations", evaluationStats);
+            
+        } catch (EvaluationException e) {
+            result.put("result", "ORIGINAL_UNFIT");
+            result.put("exception", e.getMessage());
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);
@@ -108,6 +133,98 @@ public class Geneseer {
                 System.out.println(JsonUtils.GSON.toJson(result));
             }
         }
+    }
+    
+    private static IFixer createFixer(Project project, TemporaryDirectoryManager tempDirManager) {
+        IFixer result;
+        switch (Configuration.INSTANCE.setup().getFixer()) {
+        case "GENETIC_ALGORITHM":
+            result = new GeneticAlgorithm(Configuration.INSTANCE.genetic().llmMutationProbability() > 0.0
+                            ? createLlmFixer(project, tempDirManager)
+                            : null);
+            break;
+        case "LLM_SINGLE":
+            result = new SingleLlm(createLlmFixer(project, tempDirManager));
+            break;
+        case "SETUP_TEST":
+            result = new SetupTest();
+            break;
+        case "ONLY_DELETE":
+            result = new OnlyDelete();
+            break;
+        case "LLM_QUERY_ANALYSIS":
+            result = new LlmQueryAnalysis(project.getEncoding(), project.getProjectDirectory());
+            break;
+            
+        default:
+            throw new IllegalArgumentException("Unknown fixer name: " + Configuration.INSTANCE.setup().getFixer());
+        }
+        return result;
+    }
+    
+    private static LlmFixer createLlmFixer(Project project, TemporaryDirectoryManager tempDirManager) {
+        IChatGptConnection chatGpt;
+        if (Configuration.INSTANCE.llm().model().equals("dummy")) {
+            LOG.warning("llm.model is set to \"dummy\"; not using a real LLM");
+            chatGpt = new DummyChatGptConnection();
+        } else {
+            chatGpt = new ChatGptConnection(Configuration.INSTANCE.llm().apiUrl());
+            if (Configuration.INSTANCE.llm().apiToken() != null) {
+                ((ChatGptConnection) chatGpt).setToken(Configuration.INSTANCE.llm().apiToken());
+            }
+            if (Configuration.INSTANCE.llm().apiUserHeader() != null) {
+                ((ChatGptConnection) chatGpt).setUserHeader(Configuration.INSTANCE.llm().apiUserHeader());
+            }
+        }
+        
+        LlmFixer llmFixer = new LlmFixer(chatGpt, tempDirManager, project.getEncoding(),
+                project.getProjectDirectory());
+        
+        return llmFixer;
+    }
+    
+    @SuppressWarnings("unchecked")
+    private static void analyzeDiffOfPatched(Map<String, Object> result, Node original, Node patched, Charset encoding,
+            TemporaryDirectoryManager tempDirManager) throws IOException {
+        Map<String, Object> diffResult;
+        if (result.containsKey("patch")) {
+            diffResult = (Map<String, Object>) result.get("patch");
+        } else {
+            diffResult = new HashMap<>();
+        }
+        result.put("patch", diffResult);
+        
+        String diff = AstDiff.getDiff(original, patched, tempDirManager, encoding);
+        
+        LOG.info(() -> "Final patch:\n" + diff);
+        diffResult.put("diff", diff);
+        
+        String[] difflines = diff.split("\n");
+        int i;
+        for (i = 0; i < difflines.length; i++) {
+            if (difflines[i].startsWith("@@")) {
+                break;
+            }
+        }
+        
+        int countAdd = 0;
+        int countRemove = 0;
+        for (; i < difflines.length; i++) {
+            String l = difflines[i];
+            if (l.startsWith("+") && !l.substring(1).isBlank()) {
+                countAdd++;
+            } else if (l.startsWith("-") && !l.substring(1).isBlank()) {
+                countRemove++;
+            } else if (l.startsWith("diff --git ")) {
+                for (; i < difflines.length; i++) {
+                    if (difflines[i].startsWith("@@")) {
+                        break;
+                    }
+                }
+            }
+        }
+        diffResult.put("addedLines", countAdd);
+        diffResult.put("removedLines", countRemove);
     }
     
 }

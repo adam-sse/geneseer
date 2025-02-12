@@ -1,7 +1,7 @@
 package net.ssehub.program_repair.geneseer.evaluation;
 
 
-public abstract class EvaluationException extends Exception {
+public class EvaluationException extends Exception {
 
     private static final long serialVersionUID = -4079760130679646450L;
 

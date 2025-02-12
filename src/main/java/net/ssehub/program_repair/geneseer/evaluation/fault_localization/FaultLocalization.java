@@ -77,11 +77,11 @@ public class FaultLocalization {
                 
                 if (matchingStatements.isEmpty()) {
                     String cn = className;
-                    LOG.info(() -> "Found no statements for suspicious " + entry.getValue() + " at "
+                    LOG.fine(() -> "Found no statements for suspicious " + entry.getValue() + " at "
                             + cn + ":" + line);
                 } else if (matchingStatements.size() > 1) {
                     String cn = className;
-                    LOG.info(() -> "Found " + matchingStatements.size() + " statements for " + cn
+                    LOG.fine(() -> "Found " + matchingStatements.size() + " statements for " + cn
                             + ":" + line + "; adding suspiciousness to all of them");
                 }
                     
@@ -259,7 +259,7 @@ public class FaultLocalization {
             
             if (coverageResults.size() != tests.size()) {
                 int size = coverageResults.size();
-                LOG.warning(() -> "Got different number of test methods in class " + className
+                throw new TestExecutionException("Got different number of test methods in class " + className
                         + " when running with coverage (got " + size + ", expected " + tests.size() + ")");
             }
             
@@ -273,11 +273,12 @@ public class FaultLocalization {
                     if (expected.isPresent()) {
                         actuallyReturnedTests.add(expected.get());
                         if (expected.get().isFailure() != coverageResult.getTestResult().isFailure()) {
-                            LOG.warning(() -> "Test result for " + coverageResult.getTestResult()
+                            throw new TestExecutionException("Test result for " + coverageResult.getTestResult()
                                     + " differs when run with coverage");
                         }
                     } else {
-                        LOG.warning(() -> "Test " + coverageResult.getTestResult() + " is new with coverage");
+                        throw new TestExecutionException("Test returned by coverage run ("
+                                + coverageResult.getTestResult() + ") is unknown");
                     }
                 }
                 
@@ -286,7 +287,7 @@ public class FaultLocalization {
             }
             
         } else {
-            LOG.fine(() -> "Test class " + className + " contains failing tests; running " + tests.size()
+            LOG.info(() -> "Test class " + className + " contains failing tests; running " + tests.size()
                     + " test methods individually");
             for (TestResult test : tests) {
                 measureCoverageForSingleTest(test, result, testExec, classesDirectory);
@@ -302,7 +303,8 @@ public class FaultLocalization {
             
             if (testResult.getTestResult() != null) {
                 if (test.isFailure() != testResult.getTestResult().isFailure()) {
-                    LOG.warning(() -> "Test result for " + test + " differs when run with coverage");
+                    throw new TestExecutionException("Test result for " + testResult.getTestResult()
+                            + " differs when run with coverage");
                 }
                 
                 parseJacocoCoverage(List.of(test), testResult.getCoverage(), classesDirectory, coverage);
@@ -313,11 +315,11 @@ public class FaultLocalization {
                 // src/main/java/fr/spoonlabs/flacoco/core/coverage/CoverageMatrix.java#L82-L128
                 
             } else {
-                LOG.warning("Test " + test + " did not return a result");
+                throw new TestExecutionException("Test " + test + " did not return a result");
             }
             
         } catch (TestTimeoutException e) {
-            LOG.warning(() -> "Test " + test + " timed out when run with coverage");
+            throw new TestExecutionException("Test " + test + " timed out when run with coverage");
         }
     }
     

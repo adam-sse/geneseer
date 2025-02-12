@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer.genetic;
+package net.ssehub.program_repair.geneseer.fixers.genetic;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -9,43 +9,32 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Configuration.GeneticConfiguration.MutationScope;
-import net.ssehub.program_repair.geneseer.Project;
-import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
-import net.ssehub.program_repair.geneseer.evaluation.Evaluator;
-import net.ssehub.program_repair.geneseer.evaluation.fault_localization.FaultLocalization;
+import net.ssehub.program_repair.geneseer.IFixer;
+import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
-import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
 import net.ssehub.program_repair.geneseer.parsing.model.Position;
-import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
-import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
-public class GeneticAlgorithm {
+public class GeneticAlgorithm implements IFixer {
 
     private static final Logger LOG = Logger.getLogger(GeneticAlgorithm.class.getName());
     
     private Random random = new Random(Configuration.INSTANCE.genetic().randomSeed());
     
-    private Project project;
-    
-    private Evaluator evaluator;
     private FitnessEvaluator fitnessEvaluator;
     
     private LlmFixer llmFixer;
-    
-    private TemporaryDirectoryManager tempDirManager;
     
     private int generation;
     private Variant unmodifiedVariant;
@@ -58,17 +47,16 @@ public class GeneticAlgorithm {
     private int numLlmCallsOnUnmodified;
     private int numLlmCallsWithPreviousModifications;
     
-    public GeneticAlgorithm(Project project, Evaluator evaluator, LlmFixer llmfixer,
-            TemporaryDirectoryManager tempDirManager) {
-        this.evaluator = evaluator;
-        this.project = project;
+    public GeneticAlgorithm(LlmFixer llmfixer) {
         this.llmFixer = llmfixer;
-        this.tempDirManager = tempDirManager;
     }
     
-    public void run(Map<String, Object> result) throws IOException {
+    public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) throws IOException {
         try (Probe measure = Measurement.INSTANCE.start("genetic-algorithm")) {
-            runInternal(result);
+            this.unmodifiedVariant = new Variant(ast);
+            this.fitnessEvaluator = new FitnessEvaluator(testSuite, this.unmodifiedVariant);
+            
+            return runInternal(result);
         } catch (IOException e) {
             result.put("generation", generation);
             throw e;
@@ -79,80 +67,47 @@ public class GeneticAlgorithm {
         this.random = random;
     }
     
-    private void runInternal(Map<String, Object> result) throws IOException {
-        LOG.info("Parsing code");
-        createUnmodifiedVariant();
-        Map<String, Object> astStats = new HashMap<>();
-        result.put("ast", astStats);
-        astStats.put("nodes", unmodifiedVariant.getAst().stream().count());
+    private Node runInternal(Map<String, Object> result) throws IOException {
+        Map<String, Object> fitnessResult = new HashMap<>();
+        result.put("fitness", fitnessResult);
+        fitnessResult.put("original", unmodifiedVariant.getFitness());
+        fitnessResult.put("max", fitnessEvaluator.getMaxFitness());
         
-        try {
-            fitnessEvaluator = new FitnessEvaluator(unmodifiedVariant, evaluator,
-                    new FaultLocalization(project.getProjectDirectory(), project.getTestExecutionClassPathAbsolute(),
-                            project.getEncoding()), tempDirManager);
-            
-            Map<String, Object> fitnessResult = new HashMap<>();
-            result.put("fitness", fitnessResult);
-            fitnessResult.put("original", unmodifiedVariant.getFitness());
-            fitnessResult.put("max", fitnessEvaluator.getMaxFitness());
-            astStats.put("suspicious", unmodifiedVariant.getAst().stream()
-                    .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                    .count());
-            
-            LOG.info("Creating initial population");
-            List<Variant> population = createInitialPopulation();
-            
-            while (!fitnessEvaluator.hasFoundMaxFitness()
-                    && ++generation <= Configuration.INSTANCE.genetic().generationLimit()) {
-                singleGeneration(population);
-            }
-            
-            Map<String, Integer> evaluationStats = new HashMap<>();
-            evaluationStats.put("compilations", evaluator.getNumCompilations());
-            evaluationStats.put("testSuiteRuns", evaluator.getNumTestSuiteRuns());
-            
-            result.put("evaluations", evaluationStats);
-            
-            Map<String, Integer> mutationStats = new HashMap<>();
-            mutationStats.put("insertions", numInsertions);
-            mutationStats.put("deletions", numDeletions);
-            mutationStats.put("successfulCrossovers", numSuccessfulCrossovers);
-            mutationStats.put("failedCrossovers", numFailedCrossovers);
-            mutationStats.put("llmCalls", numLlmCalls);
-            mutationStats.put("llmCallsOnUnmodified", numLlmCallsOnUnmodified);
-            mutationStats.put("llmCallsWithPreviousModifications", numLlmCallsWithPreviousModifications);
-            
-            result.put("mutationStats", mutationStats);
-            result.put("generation", generation);
-            fitnessResult.put("best", fitnessEvaluator.getBestVariant().getFitness());
-            
-            if (fitnessEvaluator.hasFoundMaxFitness()) {
-                LOG.info(() -> "Variant with max fitness: " + fitnessEvaluator.getBestVariant());
-                result.put("result", "FOUND_FIX");
-            } else {
-                LOG.info(() -> "Stopping because limit of " + Configuration.INSTANCE.genetic().generationLimit()
-                        + " generations reached");
-                result.put("result", "GENERATION_LIMIT_REACHED");
-            }
-            
-            try {
-                analyzeDiffOfBestVariant(result, fitnessEvaluator.getBestVariant());
-            } catch (IOException e) {
-                LOG.log(Level.WARNING, "Failed to compute diff of best variant", e);
-            }
-        } catch (EvaluationException e) {
-            LOG.log(Level.SEVERE, "Failed evaluation of unmodified original", e);
-            result.put("result", "ORIGINAL_UNFIT");
+        LOG.info("Creating initial population");
+        List<Variant> population = createInitialPopulation();
+        
+        while (!fitnessEvaluator.hasFoundMaxFitness()
+                && ++generation <= Configuration.INSTANCE.genetic().generationLimit()) {
+            singleGeneration(population);
         }
         
-    }
-
-    private void createUnmodifiedVariant() throws IOException {
-        Node ast = Parser.parse(project.getSourceDirectoryAbsolute(), project.getEncoding());
-        ast.lock();
-        LOG.fine(() -> ast.stream().count() + " nodes in AST");
+        Map<String, Integer> mutationStats = new HashMap<>();
+        mutationStats.put("insertions", numInsertions);
+        mutationStats.put("deletions", numDeletions);
+        mutationStats.put("successfulCrossovers", numSuccessfulCrossovers);
+        mutationStats.put("failedCrossovers", numFailedCrossovers);
+        mutationStats.put("llmCalls", numLlmCalls);
+        mutationStats.put("llmCallsOnUnmodified", numLlmCallsOnUnmodified);
+        mutationStats.put("llmCallsWithPreviousModifications", numLlmCallsWithPreviousModifications);
         
-        this.unmodifiedVariant = new Variant(ast);
+        result.put("mutationStats", mutationStats);
+        result.put("generation", generation);
+        fitnessResult.put("best", fitnessEvaluator.getBestVariant().getFitness());
+        
+        if (fitnessEvaluator.hasFoundMaxFitness()) {
+            LOG.info(() -> "Variant with max fitness: " + fitnessEvaluator.getBestVariant());
+            result.put("result", "FOUND_FIX");
+        } else {
+            LOG.info(() -> "Stopping because limit of " + Configuration.INSTANCE.genetic().generationLimit()
+                    + " generations reached");
+            result.put("result", "GENERATION_LIMIT_REACHED");
+        }
+
+        Map<String, Object> diffResult = new HashMap<>();
+        result.put("patch", diffResult);
+        diffResult.put("mutations", fitnessEvaluator.getBestVariant().getMutations());
+        
+        return fitnessEvaluator.getBestVariant().getAst();
     }
 
     private List<Variant> createInitialPopulation() throws IOException {
@@ -520,46 +475,6 @@ public class GeneticAlgorithm {
             i++;
         }
         return result;
-    }
-    
-    private void analyzeDiffOfBestVariant(Map<String, Object> result, Variant bestVariant) throws IOException {
-        Map<String, Object> diffResult = new HashMap<>();
-        result.put("patch", diffResult);
-        
-        diffResult.put("mutations", bestVariant.getMutations());
-        
-        String diff = AstDiff.getDiff(unmodifiedVariant.getAst(), bestVariant.getAst(), tempDirManager,
-                project.getEncoding());
-        
-        LOG.info(() -> "Best variant " + bestVariant + ":\n" + diff);
-        diffResult.put("diff", diff);
-        
-        String[] difflines = diff.split("\n");
-        int i;
-        for (i = 0; i < difflines.length; i++) {
-            if (difflines[i].startsWith("@@")) {
-                break;
-            }
-        }
-        
-        int countAdd = 0;
-        int countRemove = 0;
-        for (; i < difflines.length; i++) {
-            String l = difflines[i];
-            if (l.startsWith("+") && !l.substring(1).isBlank()) {
-                countAdd++;
-            } else if (l.startsWith("-") && !l.substring(1).isBlank()) {
-                countRemove++;
-            } else if (l.startsWith("diff --git ")) {
-                for (; i < difflines.length; i++) {
-                    if (difflines[i].startsWith("@@")) {
-                        break;
-                    }
-                }
-            }
-        }
-        diffResult.put("addedLines", countAdd);
-        diffResult.put("removedLines", countRemove);
     }
     
 }

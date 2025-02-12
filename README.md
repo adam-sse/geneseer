@@ -50,19 +50,13 @@ the Defects4j bug in the current working directory (a sub-directory for the proj
 the bug). It then proceeds with a normal execution of geneseer, with the correct parameters as required for the
 Defects4j bug. The output is also identical to a normal geneseer execution after the Defects4j setup is done.
 
-The following command line arguments are mandatory (each with a following value):
+The following command line argument is mandatory (with a following value):
 
 * `--defects4j`: The path to the Defects4j root directory. Defects4j must be properly set up there (check that
 `framework/bin/defects4j` exists in it and is executable), but does not need to be on the path.
 
 The following optional command line arguments can be specified (each with a following value):
 
-* `--target`: Select which main program should be run on the projects. Either of the following values:
-    * `GENESEER` (the default) will run normal geneseer on each bug.
-    * `SETUP_TEST` will only parse, compile, and evaluate (run tests) on the projects, to check if everything is set up
-properly.
-    * `ONLY_DELETE` will go through each suspicious statement one by one and try to delete it individually.
-    * `PURE_LLM` will just query an LLM once to try to fix the bug.
 * `--config.*`: All configuration options are passed the geneseer execution, see below.
 
 After the command line arguments, you must specify on which Defects4j bug geneseer should be run. This is in the format
@@ -87,8 +81,9 @@ refers to configuration options regarding compiling, running tests, etc. The sec
 options of the genetic algorithm. The section `llm` refers to configuration options for calling an LLM via a REST API.
 Here is a list of possible keys, their meaning, and the default values:
 
-| Key                              |  Default Value       | Description                                                |
-|----------------------------------|----------------------|------------------------------------------------------------|
+| Key                                       |  Default Value       | Description                                                |
+|-------------------------------------------|----------------------|------------------------------------------------------------|
+| `--config.setup.fixer`                    | `GENESEER`           | The fixer to use. Possible values: `GENESEER`, `LLM_SINGLE`, `SETUP_TEST`, `ONLY_DELETE`, `LLM_QUERY_ANALYSIS` |
 | `--config.setup.jvmBinaryPath`            | `java`               | The path to the JVM binary to run tests. May be absolute or on the path. |
 | `--config.setup.javaCompilerBinaryPath`   | `javac`              | The path to the Java compiler to compile the project. May be absolute or on the path. |
 | `--config.setup.testExecutionTimeoutMs`   | `120000` (2 minutes) | The amount of milliseconds before considering a test execution timed-out. The test process will be killed and the tests count as failures. |
@@ -139,10 +134,24 @@ if applicable):
     "nodes": 123, // total nodes in AST
     "suspicious": 66 // number of statements with any suspiciousness
   },
-  "llmCalls": 0, // number of calls to an LLM to create mutations
+  "evaluations": {
+    "compilations": 23,
+    "testSuiteRuns: 16
+  },
+  "mutationStats": {
+    "insertions": 40,
+    "deletions": 45,
+    "successfulCrossovers": 3,
+    "failedCrossovers": 7,
+    "llmCalls": 0,
+    "llmCallsOnUnmodified": 0,
+    "llmCallsWithPreviousModifications": 0
+  },
   "timings": { // timing measurements in ms
-    "code-writing": 99,
-    "compilation": 31651
+    "genetic-algorithm": 29699,
+    "compilation": 28183,
+    "fault-localization": 1908,
+    "junit-evaluation": 1792
     // ...
   },
   "exception": "exception message" // only present for IO_EXCEPTION

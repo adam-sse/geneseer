@@ -3,6 +3,7 @@ package net.ssehub.program_repair.geneseer.evaluation;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -24,7 +25,7 @@ public class JunitEvaluation {
         this.encoding = encoding;
     }
 
-    public EvaluationResult runTests(Path classes, List<String> testClasses) throws TestExecutionException {
+    public EvaluationResult runTests(Path classes, Collection<String> testClasses) throws TestExecutionException {
         
         try (Probe probe = Measurement.INSTANCE.start("junit-evaluation")) {
             

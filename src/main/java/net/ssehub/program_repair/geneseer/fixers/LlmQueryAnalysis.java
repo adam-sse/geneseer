@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer.llm;
+package net.ssehub.program_repair.geneseer.fixers;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -17,14 +17,16 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import net.ssehub.program_repair.geneseer.Configuration;
-import net.ssehub.program_repair.geneseer.evaluation.TestResult;
+import net.ssehub.program_repair.geneseer.IFixer;
+import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
+import net.ssehub.program_repair.geneseer.llm.ChangedArea;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
 import net.ssehub.program_repair.geneseer.parsing.model.Position;
 
-public class LlmQueryAnalysis {
+public class LlmQueryAnalysis implements IFixer {
 
     private static final Logger LOG = Logger.getLogger(LlmQueryAnalysis.class.getName());
     
@@ -37,8 +39,8 @@ public class LlmQueryAnalysis {
         this.projectRoot = projectRoot;
     }
 
-    public void analyzeQueryForProject(Node original, List<TestResult> failingTests, Map<String, Object> result)
-            throws IOException {
+    @Override
+    public Node run(Node original, TestSuite testSuite, Map<String, Object> result) throws IOException {
         List<CodeSnippet> codeSnippets = selectMostSuspiciousMethods(original);
         
         Path changedAreasFile = projectRoot.resolve("geneseer-changed-areas.json");
@@ -84,6 +86,8 @@ public class LlmQueryAnalysis {
                 .mapToInt(s -> s.lineRange.size()).sum();
         int irrelevantLines = irrelevant.stream().mapToInt(s -> s.lineRange.size()).sum();
         result.put("queryLines", Map.of("relevant", relevantLines, "irrelevant", irrelevantLines));
+        
+        return null;
     }
 
     private List<CodeSnippet> selectMostSuspiciousMethods(Node original) throws IOException {

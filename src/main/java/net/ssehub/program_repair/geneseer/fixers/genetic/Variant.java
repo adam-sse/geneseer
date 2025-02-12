@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer.genetic;
+package net.ssehub.program_repair.geneseer.fixers.genetic;
 
 import java.util.ArrayList;
 import java.util.Collections;

@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
@@ -54,6 +55,9 @@ public class OnlyDelete implements IFixer {
                 if (numFailingTests == 0) {
                     break;
                 }
+                
+            } catch (CompilationException e) {
+                LOG.info("Doesn't compile");
                 
             } catch (EvaluationException e) {
                 LOG.log(Level.INFO, "Failed to evaluate", e);

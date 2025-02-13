@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
@@ -13,6 +16,8 @@ import net.ssehub.program_repair.geneseer.parsing.model.Node;
 
 public class SingleLlm implements IFixer {
 
+    private static final Logger LOG = Logger.getLogger(SingleLlm.class.getName());
+    
     private LlmFixer llmFixer;
     
     public SingleLlm(LlmFixer llmFixer) {
@@ -45,7 +50,10 @@ public class SingleLlm implements IFixer {
                     resultString = "WORSENED";
                 }
                 
+            } catch (CompilationException e) {
+                resultString = "VARIANT_UNFIT";
             } catch (EvaluationException e) {
+                LOG.log(Level.WARNING, "Failed to evaluate", e);
                 resultString = "VARIANT_UNFIT";
             }
         } else {

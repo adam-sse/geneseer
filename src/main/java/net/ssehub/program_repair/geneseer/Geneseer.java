@@ -111,7 +111,7 @@ public class Geneseer {
             
         } catch (EvaluationException e) {
             result.put("result", "ORIGINAL_UNFIT");
-            result.put("exception", e.getMessage());
+            result.put("exception", e.getClass().getName() + ": " + e.getMessage());
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);

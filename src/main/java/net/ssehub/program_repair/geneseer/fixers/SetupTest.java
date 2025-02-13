@@ -1,6 +1,6 @@
 package net.ssehub.program_repair.geneseer.fixers;
+
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -17,16 +17,11 @@ public class SetupTest implements IFixer {
     @Override
     public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) throws IOException {
         LOG.info(() -> testSuite.getInitialFailingTestResults().size() + " failing tests:");
-        List<Map<String, String>> failingTests = new LinkedList<>();
+        List<String> failingTests = new LinkedList<>();
         for (TestResult testResult : testSuite.getInitialTestResults()) {
             if (testResult.isFailure()) {
                 LOG.info(() -> "    " + testResult + " " + testResult.failureMessage());
-                
-                Map<String, String> failingTest = new HashMap<>();
-                failingTest.put("class", testResult.testClass());
-                failingTest.put("method", testResult.testMethod());
-                failingTest.put("message", testResult.failureMessage());
-                failingTests.add(failingTest);
+                failingTests.add(testResult.toString());
             }
         }
         result.put("failingTests", failingTests);

@@ -235,22 +235,15 @@ public class FaultLocalization {
     private void measureCoverageForWholeClass(String className, List<TestResult> tests, Path classesDirectory,
             TestExecution testExec, Map<Location, Set<TestResult>> result) throws TestExecutionException {
         
-        boolean containsFailure = false;
-        List<TestResultWithCoverage> coverageResults = null;
-        try {
-            coverageResults = testExec.executeTestClassWithCoverage(className);
-            
-            for (TestResultWithCoverage testResult : coverageResults) {
-                if (testResult.getTestResult().isFailure()) {
-                    containsFailure = true;
-                }
-            }
-        } catch (TestTimeoutException e) {
-            containsFailure = true;
-        }
+        boolean containsFailure = tests.stream().filter(TestResult::isFailure).findAny().isPresent();
         
         if (!containsFailure) {
-            
+            List<TestResultWithCoverage> coverageResults;
+            try {
+                coverageResults = testExec.executeTestClassWithCoverage(className);
+            } catch (TestTimeoutException e) {
+                throw new TestExecutionException("Test class " + className + " timed out when run with coverage");
+            }
             if (coverageResults.size() != tests.size()) {
                 int size = coverageResults.size();
                 throw new TestExecutionException("Got different number of test methods in class " + className

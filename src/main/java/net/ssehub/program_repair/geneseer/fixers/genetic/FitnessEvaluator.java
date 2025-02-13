@@ -116,10 +116,10 @@ class FitnessEvaluator {
         
         variant.setFitness(fitness, failingTests);
         
-        LOG.fine(() -> variant.toString());
+        LOG.fine(() -> "Measured fitness: " + variant.toString());
         if (fitness > bestVariant.getFitness()) {
             bestVariant = variant.copy();
-            LOG.info(() -> "New best variant: " + variant.getName());
+            LOG.info(() -> "New best variant " + variant.getName() + " with fitness " + variant.getFitness());
         }
     }
     

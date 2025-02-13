@@ -96,7 +96,7 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.genetic.generationLimit`        | `10`                 | The maximum number of generations to run for (inclusive). |
 | `--config.genetic.negativeTestsWeight`    | `10.0`               | The fitness function weight of test cases that are negative for the unmodified, original code. |
 | `--config.genetic.positiveTestsWeight`    | `1.0`                | The fitness function weight of test cases that are positive for the unmodified, original code. |
-| `--config.genetic.mutationProbability`    | `4.0`                | Controls the probability that mutations are created in a variant. This value is divided by the number of suspicious statements to get the probability of introducing a mutation at a suspicious statement. |
+| `--config.genetic.mutationProbability`    | `0.5`                | The probability for each variant, that it is mutated at the end of a generation. |
 | `--config.genetic.llmMutationProbability` | `0.1`                | The probability that mutations are created by calling an LLM instead of the classic simple mutation operations (insert, swap, delete). |
 | `--config.genetic.statementScope`         | `GLOBAL`             | Defines where other statements for mutations are taken from. Either `GLOBAL` or `FILE`. |
 | `--config.llm.model`                      | `dummy`              | The name of the model to call. The special value `dummy` will not call an API but instead return a static dummy string (for debugging). |

@@ -73,7 +73,6 @@ public class GeneticAlgorithm implements IFixer {
         fitnessResult.put("original", unmodifiedVariant.getFitness());
         fitnessResult.put("max", fitnessEvaluator.getMaxFitness());
         
-        LOG.info("Creating initial population");
         List<Variant> population = createInitialPopulation();
         
         while (!fitnessEvaluator.hasFoundMaxFitness()
@@ -111,11 +110,12 @@ public class GeneticAlgorithm implements IFixer {
     }
 
     private List<Variant> createInitialPopulation() throws IOException {
+        LOG.info("Creating initial population of  " + Configuration.INSTANCE.genetic().populationSize() + " variants");
         List<Variant> population = new ArrayList<>(Configuration.INSTANCE.genetic().populationSize());
         for (int i = 0; i < Configuration.INSTANCE.genetic().populationSize(); i++) {
-            population.add(newVariant());
+            population.add(newVariant(i > 0));
         }
-        LOG.fine(() -> "Population fitness: " + population.stream()
+        LOG.info(() -> "Population fitness: " + population.stream()
                 .map(v -> v.getName() + "(" + v.getFitness() + ")")
                 .toList());
         return population;
@@ -129,11 +129,13 @@ public class GeneticAlgorithm implements IFixer {
                 .sorted(Comparator.comparingDouble(Variant::getFitness).reversed())
                 .toList();
         population.clear();
-        LOG.info(() -> "Viable: " + viable.stream()
+        LOG.info(() -> viable.size() + " viable: " + viable.stream()
                 .map(v -> v.getName() + "(" + v.getFitness() + ")")
                 .toList());
         
-        List<Double> cummulativeProbabilityDistribution = calculateCummulativeProbabilityDistribution(viable);
+        List<Double> cummulativeProbabilityDistribution = calculateCummulativeProbabilityDistribution(viable.stream()
+                .map(Variant::getFitness)
+                .toList());
         
         List<Integer> selected;
         if (viable.size() > Configuration.INSTANCE.genetic().populationSize() / 2) {
@@ -142,6 +144,10 @@ public class GeneticAlgorithm implements IFixer {
         } else {
             selected = IntStream.range(0, viable.size()).mapToObj(Integer::valueOf).toList();
         }
+        LOG.info(() -> "Selected " + selected.size() + " for reproduction: " + selected.stream()
+                .map(i -> viable.get(i))
+                .map(v -> v.getName() + "(" + v.getFitness() + ")")
+                .toList());
         
         for (int i = 0; i < selected.size(); i += 2) {
             Variant p1 = viable.get(i);
@@ -160,23 +166,33 @@ public class GeneticAlgorithm implements IFixer {
             }
         }
         
+        LOG.info(() -> "Filling up population with "
+                    + (Configuration.INSTANCE.genetic().populationSize() - population.size()) + " new variants");
         while (population.size() < Configuration.INSTANCE.genetic().populationSize()) {
-            population.add(newVariant());
+            population.add(newVariant(true));
         }
         
+        LOG.info("Mutating population");
         for (Variant variant : population) {
-            mutate(variant);
+            if (random.nextDouble() < Configuration.INSTANCE.genetic().mutationProbability()) {
+                mutate(variant);
+                LOG.info(() -> "Mutated " + variant);
+            }
         }
+        
         LOG.info(() -> "Population fitness: " + population.stream()
                 .map(v -> v.getName() + "(" + v.getFitness() + ")")
                 .toList());
     }
 
-    private Variant newVariant() throws IOException {
+    private Variant newVariant(boolean withMutation) throws IOException {
         Variant variant = new Variant(unmodifiedVariant.getAst());
-        variant.setFitness(unmodifiedVariant.getFitness(), unmodifiedVariant.getFailingTests());
-        LOG.fine("Creating new variant " + variant.getName());
-        mutate(variant);
+        if (withMutation) {
+            mutate(variant);
+        } else {
+            variant.setFitness(unmodifiedVariant.getFitness(), unmodifiedVariant.getFailingTests());
+        }
+        LOG.info("Created new " + variant);
         return variant;
     }
     
@@ -187,7 +203,7 @@ public class GeneticAlgorithm implements IFixer {
         Node astRoot = variant.getAst();
         
         if (random.nextDouble() < Configuration.INSTANCE.genetic().llmMutationProbability()) {
-            LOG.info(() -> "Using LLM to mutate variant " + variant.getName());
+            LOG.info(() -> "Using LLM to mutate " + variant.getName());
             if (!variant.hasFitness()) {
                 LOG.fine(() -> "Running tests on variant as it has no fitness and thus no failing tests yet");
                 fitnessEvaluator.measureFitness(variant, false);
@@ -215,34 +231,29 @@ public class GeneticAlgorithm implements IFixer {
         } else {
             List<Node> suspiciousStatements = astRoot.stream()
                     .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                    .sorted((n1, n2) -> Double.compare((double) n2.getMetadata(Metadata.SUSPICIOUSNESS),
+                            (double) n1.getMetadata(Metadata.SUSPICIOUSNESS)))
                     .toList();
             
-            double mutationProbability =
-                    Configuration.INSTANCE.genetic().mutationProbability() / suspiciousStatements.size();
-            List<Node> ss = suspiciousStatements;
-            LOG.finer(() -> ss.size() + " suspicious statements -> mutation probability " + mutationProbability);
-            for (int i = 0; i < suspiciousStatements.size(); i++) {
-                Node suspicious = suspiciousStatements.get(i);
-                if (random.nextDouble() < mutationProbability 
-                        && random.nextDouble() < (double) suspicious.getMetadata(Metadata.SUSPICIOUSNESS)) {
-                    
-                    astRoot = singleMutation(variant, astRoot, suspicious);
-                    
-                    suspiciousStatements = astRoot.stream()
-                            .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                            .toList();
-                    
-                    needsFitnessReevaluation = true;
-                }
+            List<Double> probabilities = calculateCummulativeProbabilityDistribution(suspiciousStatements.stream()
+                    .map(s -> (Double) s.getMetadata(Metadata.SUSPICIOUSNESS))
+                    .toList());
+            
+            double randomValue = random.nextDouble();
+            int selected = 0;
+            while (randomValue > probabilities.get(selected) && selected < suspiciousStatements.size()) {
+                selected++;
             }
+            
+            Node suspicious = suspiciousStatements.get(selected);
+            needsFitnessReevaluation = singleMutation(variant, astRoot, suspicious);
         }
         
-        if (!needsFitnessReevaluation && !needsFaultLocalization) {
-            LOG.fine(() -> "No new mutations added to " + variant.getName());
+        if (!needsFitnessReevaluation) {
+            LOG.info(() -> "No new mutation added to " + variant.getName());
         }
         
         if (needsFitnessReevaluation || !variant.hasFitness()) {
-            LOG.fine(() -> "Evaluating fitness after mutation");
             fitnessEvaluator.measureFitness(variant, needsFaultLocalization);
         }
     }
@@ -259,7 +270,8 @@ public class GeneticAlgorithm implements IFixer {
                 .forEach(n -> ((LeafNode) n).setPosition(position));
     }
 
-    private Node singleMutation(Variant variant, Node astRoot, Node suspicious) {
+    private boolean singleMutation(Variant variant, Node astRoot, Node suspicious) {
+        boolean success;
         Node oldAstRoot = astRoot;
         astRoot = astRoot.cheapClone(suspicious);
         variant.setAst(astRoot);
@@ -269,15 +281,15 @@ public class GeneticAlgorithm implements IFixer {
         int rand = random.nextInt(2); // TODO: no swap yet
         if (rand == 0) {
             // delete
-            Node s = suspicious;
-            LOG.fine(() -> "Mutating " + variant.getName() + ": deleting " + s.toString());
-            
             boolean removed = parent.remove(suspicious);
             if (!removed) {
+                Node s = suspicious;
                 LOG.warning(() -> "Failed to delete statement " + s.toString());
+                success = false;
             } else {
-                variant.addMutation("del " + s.toString());
+                variant.addMutation("del " + suspicious.toString());
                 numDeletions++;
+                success = true;
             }
             
         } else {
@@ -287,24 +299,22 @@ public class GeneticAlgorithm implements IFixer {
                     suspicious.getMetadata(Metadata.SUSPICIOUSNESS));
             
             if (rand == 1) {
-                Node s = suspicious;
-                LOG.fine(() -> "Mutating " + variant.getName() + ": inserting " + otherStatement.toString()
-                        + " before " + s.toString());
-                
                 // insert
                 int index = parent.indexOf(suspicious);
                 parent.add(index, otherStatement);
-                variant.addMutation("ins " + otherStatement.toString() + " before " + s.toString());
+                variant.addMutation("ins " + otherStatement.toString() + " before " + suspicious.toString());
                 numInsertions++;
+                success = true;
                 
             } else {
                 // swap
                 // TODO
+                success = false;
             }
         }
         
         astRoot.lock();
-        return astRoot;
+        return success;
     }
     
     private Node findFileNode(Node astRoot, Node node) {
@@ -331,15 +341,13 @@ public class GeneticAlgorithm implements IFixer {
     }
     
     private List<Variant> crossover(Variant p1, Variant p2) {
-        LOG.fine(() -> "Crossing over " + p1 + " and " + p2);
-        
         List<Node> p1Parents = new LinkedList<>();
         List<Node> p2Parents = new LinkedList<>();
         findMatchingModifiedBlocks(p1.getAst(), p2.getAst(), p1Parents, p2Parents);
         
         List<Variant> result;
         if (p1Parents.size() == 0) {
-            LOG.fine(() -> "Parents don't differ, crossover not possible");
+            LOG.info(() -> p1 + " and " + p2 + " don't differ, crossover not possible");
             numFailedCrossovers++;
             result = List.of();
         } else {
@@ -409,10 +417,14 @@ public class GeneticAlgorithm implements IFixer {
         
         Variant v1 = new Variant(c1);
         v1.addMutation("child " + p1.getName() + " " + p2.getName());
+        fitnessEvaluator.measureFitness(v1, false);
+        LOG.info(() -> "Created " + v1 + " as child of " + p1 + " and " + p2);
+        
         Variant v2 = new Variant(c2);
         v2.addMutation("child " + p2.getName() + " " + p1.getName());
-        LOG.fine(() -> "Created child of " + p1.getName() + " and " + p2.getName() + ": " + v1);
-        LOG.fine(() -> "Created child of " + p1.getName() + " and " + p2.getName() + ": " + v2);
+        fitnessEvaluator.measureFitness(v2, false);
+        LOG.info(() -> "Created " + v2 + " as child of " + p2 + " and " + p1);
+        
         return List.of(v1, v2);
     }
 
@@ -444,12 +456,11 @@ public class GeneticAlgorithm implements IFixer {
         return result;
     }
     
-    private List<Double> calculateCummulativeProbabilityDistribution(List<Variant> variants) {
-        double sum = variants.stream().mapToDouble(Variant::getFitness).sum();
+    private List<Double> calculateCummulativeProbabilityDistribution(List<Double> values) {
+        double sum = values.stream().mapToDouble(d -> d).sum();
         
-        List<Double> cummulativeProbabilityDistribution = new ArrayList<>(variants.size());
-        variants.stream()
-                .map(Variant::getFitness)
+        List<Double> cummulativeProbabilityDistribution = new ArrayList<>(values.size());
+        values.stream()
                 .map(f -> f / sum)
                 .forEach(cummulativeProbabilityDistribution::add);
         

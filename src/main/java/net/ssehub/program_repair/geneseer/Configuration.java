@@ -115,7 +115,9 @@ public class Configuration {
         private Option<Boolean> coverageMatrixSimplified = new Option<>("coverageMatrixSimplified",
                 "Simplified coverage matrix", true, Boolean::parseBoolean);
         private Option<Double> suspiciousnessThreshold = new Option<>("suspiciousnessThreshold",
-                "Suspiciousness Threshold", 0.01, Double::parseDouble);
+                "Suspiciousness threshold", 0.01, Double::parseDouble);
+        private Option<Integer> suspiciousStatementLimit = new Option<>("suspiciousStatementLimit",
+                "Suspicious statement limit", 500, Integer::parseInt);
         private Option<TestsToRun> testsToRun = new Option<>("testsToRun",
                 "Tests to run", TestsToRun.ALL_TESTS, v -> TestsToRun.valueOf(v.toUpperCase()));
         private Option<Boolean> debugTestDriver = new Option<>("debugTestDriver",
@@ -133,6 +135,7 @@ public class Configuration {
             super.options.add(testExecutionTimeoutMs);
             super.options.add(coverageMatrixSimplified);
             super.options.add(suspiciousnessThreshold);
+            super.options.add(suspiciousStatementLimit);
             super.options.add(testsToRun);
             super.options.add(debugTestDriver);
         }
@@ -159,6 +162,10 @@ public class Configuration {
         
         public double getSuspiciousnessThreshold() {
             return suspiciousnessThreshold.getValue();
+        }
+        
+        public int getSuspiciousStatementLimit() {
+            return suspiciousStatementLimit.getValue();
         }
         
         public TestsToRun testsToRun() {

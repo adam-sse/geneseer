@@ -20,8 +20,7 @@ public class OnlyDelete implements IFixer {
     public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) {
         List<Node> suspicious = ast.stream()
                 .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                .sorted((n1, n2) -> Double.compare((double) n2.getMetadata(Metadata.SUSPICIOUSNESS),
-                        (double) n1.getMetadata(Metadata.SUSPICIOUSNESS)))
+                .sorted(Node.DESCENDING_SUSPICIOUSNESS)
                 .toList();
         
         int initialFailingTests = testSuite.getInitialFailingTestResults().size();

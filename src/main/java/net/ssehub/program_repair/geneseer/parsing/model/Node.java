@@ -1,5 +1,6 @@
 package net.ssehub.program_repair.geneseer.parsing.model;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -9,6 +10,10 @@ import java.util.stream.Stream;
 
 public abstract class Node implements Cloneable {
 
+    public static final Comparator<Node> DESCENDING_SUSPICIOUSNESS = (n1, n2) ->
+            Double.compare((double) n2.getMetadata(Metadata.SUSPICIOUSNESS),
+                    (double) n1.getMetadata(Metadata.SUSPICIOUSNESS));
+    
     public enum Type {
         COMPILATION_UNIT,
         CLASS,

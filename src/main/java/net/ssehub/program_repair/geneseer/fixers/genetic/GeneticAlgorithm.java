@@ -231,8 +231,7 @@ public class GeneticAlgorithm implements IFixer {
         } else {
             List<Node> suspiciousStatements = astRoot.stream()
                     .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                    .sorted((n1, n2) -> Double.compare((double) n2.getMetadata(Metadata.SUSPICIOUSNESS),
-                            (double) n1.getMetadata(Metadata.SUSPICIOUSNESS)))
+                    .sorted(Node.DESCENDING_SUSPICIOUSNESS)
                     .toList();
             
             List<Double> probabilities = calculateCummulativeProbabilityDistribution(suspiciousStatements.stream()

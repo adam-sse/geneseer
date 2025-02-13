@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -48,21 +47,15 @@ public class FaultLocalization {
     
     public void measureAndAnnotateSuspiciousness(Node ast, Path variantBinDir, List<TestResult> tests)
             throws TestExecutionException {
-        
         LOG.info("Measuring suspiciousness");
         LinkedHashMap<Location, Double> suspiciousness = measureSuspiciousness(tests, variantBinDir, ast);
         
         Map<String, Node> classes = getFileNodesByClassName(ast);
         
-        AtomicInteger suspiciousStatementCount = new AtomicInteger();
         for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
-            String className = entry.getKey().className();
-            int dollarIndex = className.indexOf('$');
-            if (dollarIndex != -1) {
-                className = className.substring(0, dollarIndex);
-            }
-            
+            String className = getClassNameWithoutDollar(entry.getKey().className());
             int line = entry.getKey().line();
+            double susValue = entry.getValue();
             
             Node classNode = classes.get(className);
             if (classNode != null) {
@@ -72,10 +65,9 @@ public class FaultLocalization {
                         .collect(Collectors.toList());
                 
                 if (matchingStatements.isEmpty()) {
-                    // this are usually implicit returns at the end of void methods, at the line of the closing }
+                    // these are usually implicit returns at the end of void methods, at the line of the closing }
                     String cn = className;
-                    LOG.fine(() -> "Found no statements for suspicious " + entry.getValue() + " at "
-                            + cn + ":" + line);
+                    LOG.fine(() -> "Found no statements for suspicious " + susValue + " at " + cn + ":" + line);
                 } else if (matchingStatements.size() > 1) {
                     removeParentsOfLastElement(matchingStatements, ast);
                     if (matchingStatements.size() > 1) {
@@ -84,29 +76,65 @@ public class FaultLocalization {
                                 + ":" + line + "; adding suspiciousness to all of them");
                     }
                 }
-                    
-                String cn = className;
-                matchingStatements.stream()
-                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
-                        .forEach(n -> {
-                            Double previousSuspiciousness = (Double) n.getMetadata(Metadata.SUSPICIOUSNESS);
-                            if (previousSuspiciousness == null || entry.getValue() > previousSuspiciousness) {
-                                LOG.fine(() -> "Suspicious " + entry.getValue() + " at " + cn + ":" + line
-                                        + " '" + n.getText() + "'");
-                                n.setMetadata(Metadata.SUSPICIOUSNESS, entry.getValue());
-                                if (previousSuspiciousness == null) {
-                                    suspiciousStatementCount.incrementAndGet();
-                                }
-                            }
-                        });
+                
+                for (Node stmt : matchingStatements) {
+                    if (stmt.getMetadata(Metadata.SUSPICIOUSNESS) == null
+                            || ((double) stmt.getMetadata(Metadata.SUSPICIOUSNESS)) < susValue) {
+                        String cn = className;
+                        LOG.fine(() -> "Suspicious " + susValue + " at " + cn + ":" + line
+                                + " '" + stmt.getText() + "'");
+                        stmt.setMetadata(Metadata.SUSPICIOUSNESS, susValue);
+                    }
+                }
             } else {
                 String cn = className;
                 LOG.warning(() -> "Can't find class name " + cn);
             }
         }
-        LOG.info(() -> suspiciousStatementCount.get() + " suspicious statements");
+        removeBelowThreshold(ast, Configuration.INSTANCE.setup().getSuspiciousnessThreshold());
+        removeToKeepLimit(ast, Configuration.INSTANCE.setup().getSuspiciousStatementLimit());
+        LOG.info(() -> ast.stream().filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null).count()
+                + " suspicious statements");
+    }
+
+    private static String getClassNameWithoutDollar(String className) {
+        int dollarIndex = className.indexOf('$');
+        if (dollarIndex != -1) {
+            className = className.substring(0, dollarIndex);
+        }
+        return className;
     }
     
+    private static void removeBelowThreshold(Node ast, double threshold) {
+        int count = (int) ast.stream()
+                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                .filter(n -> ((double) n.getMetadata(Metadata.SUSPICIOUSNESS)) < threshold)
+                .peek(n -> n.setMetadata(Metadata.SUSPICIOUSNESS, null))
+                .count();
+        if (count > 0) {
+            LOG.info(() -> "Removed " + count + " suspicious statements below suspiciousness threshold");
+        }
+    }
+    
+    private static void removeToKeepLimit(Node ast, int limit) {
+        double[] highestSuspiciousnessValue = {-1};
+        int count = (int) ast.stream()
+                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                .sorted(Node.DESCENDING_SUSPICIOUSNESS)
+                .skip(limit)
+                .peek(n -> {
+                    if (highestSuspiciousnessValue[0] <= 0) {
+                        highestSuspiciousnessValue[0] = (double) n.getMetadata(Metadata.SUSPICIOUSNESS);
+                    }
+                    n.setMetadata(Metadata.SUSPICIOUSNESS, null);
+                })
+                .count();
+        if (count > 0) {
+            LOG.info(() -> "Removed " + count + " suspicious statements to keep limit, cutoff at suspiciousness "
+                    + highestSuspiciousnessValue[0]);
+        }
+    }
+
     private Map<String, Node> getFileNodesByClassName(Node ast) {
         Map<String, Node> classes = new HashMap<>(ast.childCount());
         for (Node file : ast.childIterator()) {
@@ -138,7 +166,6 @@ public class FaultLocalization {
     public LinkedHashMap<Location, Double> measureSuspiciousness(List<TestResult> tests, Path classesDirectory,
             Node ast) throws TestExecutionException {
         
-        int skippedBelowThreshold = 0;
         try (Probe probe = Measurement.INSTANCE.start("fault-localization")) {
             Map<Location, Set<TestResult>> coverage = measureCoverage(tests, classesDirectory);
             annotateClassBasedCoverageOnAstNodes(coverage, ast);
@@ -170,19 +197,15 @@ public class FaultLocalization {
                 
                 double susValue = ochiaiFormula(nPassingNotExecuting, nFailingNotExecuting,
                         nPassingExecuting, nFailingExecuting);
-                if (susValue > Configuration.INSTANCE.setup().getSuspiciousnessThreshold()) {
+                if (susValue > 0) {
                     suspiciousness.put(coverageEntry.getKey(), susValue);
-                } else if (susValue > 0) {
-                    skippedBelowThreshold++;
                 }
             }
             
-            LOG.info("Removed " + skippedBelowThreshold + " suspicious locations below threshold");
             LinkedHashMap<Location, Double> sortedSuspiciousness = new LinkedHashMap<>(suspiciousness.size());
             suspiciousness.entrySet().stream()
                     .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
                     .forEach(e -> sortedSuspiciousness.put(e.getKey(), e.getValue()));
-            
             return sortedSuspiciousness;
         }
     }

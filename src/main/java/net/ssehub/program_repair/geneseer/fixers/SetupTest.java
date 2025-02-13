@@ -1,7 +1,6 @@
 package net.ssehub.program_repair.geneseer.fixers;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -10,7 +9,6 @@ import java.util.logging.Logger;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
-import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 
 public class SetupTest implements IFixer {
     
@@ -32,20 +30,6 @@ public class SetupTest implements IFixer {
         } else {
             result.put("result", "FOUND_FAILING_TESTS");
         }
-        
-        List<Double> suspiciousValues = ast.stream()
-                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                .map(n -> (Double) n.getMetadata(Metadata.SUSPICIOUSNESS))
-                .toList();
-        List<Long> suspiciousSizes = new ArrayList<>(10);
-        List<Double> tresholds = List.of(.01, .02, .03, .04, .05 , .06, .07, .08, .09, .10);
-        for (double threshold : tresholds) {
-            suspiciousSizes.add(suspiciousValues.stream()
-                    .filter(s -> s >= threshold)
-                    .count());
-        }
-        result.put("thresholds", tresholds);
-        result.put("suspiciousByThreshhold", suspiciousSizes);
         
         return null;
     }

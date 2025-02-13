@@ -50,7 +50,7 @@ public class Defects4jRunner {
         LOG.info("Preparing project");
         Project config = defects4j.prepareProject(bug);
         
-        boolean isSetupTest = Configuration.INSTANCE.setup().getFixer().equals("SETUP_TEST");
+        boolean isSetupTest = Configuration.INSTANCE.setup().fixer().equals("SETUP_TEST");
         ByteArrayOutputStream capturedStdout = new ByteArrayOutputStream();
         PrintStream sysout = System.out;
         if (isSetupTest) {

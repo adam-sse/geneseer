@@ -91,8 +91,8 @@ public class FaultLocalization {
                 LOG.warning(() -> "Can't find class name " + cn);
             }
         }
-        removeBelowThreshold(ast, Configuration.INSTANCE.setup().getSuspiciousnessThreshold());
-        removeToKeepLimit(ast, Configuration.INSTANCE.setup().getSuspiciousStatementLimit());
+        removeBelowThreshold(ast, Configuration.INSTANCE.setup().suspiciousnessThreshold());
+        removeToKeepLimit(ast, Configuration.INSTANCE.setup().suspiciousStatementLimit());
         LOG.info(() -> ast.stream().filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null).count()
                 + " suspicious statements");
     }

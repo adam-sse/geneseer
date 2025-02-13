@@ -145,7 +145,7 @@ public class Geneseer {
     
     private static IFixer createFixer(Project project, TemporaryDirectoryManager tempDirManager) {
         IFixer result;
-        switch (Configuration.INSTANCE.setup().getFixer()) {
+        switch (Configuration.INSTANCE.setup().fixer()) {
         case "GENETIC_ALGORITHM":
             result = new GeneticAlgorithm(Configuration.INSTANCE.genetic().llmMutationProbability() > 0.0
                             ? createLlmFixer(project, tempDirManager)
@@ -165,7 +165,7 @@ public class Geneseer {
             break;
             
         default:
-            throw new IllegalArgumentException("Unknown fixer name: " + Configuration.INSTANCE.setup().getFixer());
+            throw new IllegalArgumentException("Unknown fixer name: " + Configuration.INSTANCE.setup().fixer());
         }
         return result;
     }

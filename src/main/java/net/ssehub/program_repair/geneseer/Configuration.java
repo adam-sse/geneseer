@@ -140,7 +140,7 @@ public class Configuration {
             super.options.add(debugTestDriver);
         }
         
-        public String getFixer() {
+        public String fixer() {
             return fixer.getValue();
         }
         
@@ -160,11 +160,11 @@ public class Configuration {
             return coverageMatrixSimplified.getValue();
         }
         
-        public double getSuspiciousnessThreshold() {
+        public double suspiciousnessThreshold() {
             return suspiciousnessThreshold.getValue();
         }
         
-        public int getSuspiciousStatementLimit() {
+        public int suspiciousStatementLimit() {
             return suspiciousStatementLimit.getValue();
         }
         

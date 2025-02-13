@@ -191,7 +191,7 @@ public class Configuration {
         private Option<Double> positiveTestsWeight = new Option<>("positiveTestsWeight",
                 "Positive tests weight", 1.0, Double::parseDouble);
         private Option<Double> mutationProbability = new Option<>("mutationProbability",
-                "Mutation probability", 4.0, Double::parseDouble);
+                "Mutation probability", 0.5, Double::parseDouble);
         private Option<Double> llmMutationProbability = new Option<>("llmMutationProbability",
                 "LLM-mutation probability", 0.1, Double::parseDouble);
         private Option<MutationScope> statementScope = new Option<>("statementScope",

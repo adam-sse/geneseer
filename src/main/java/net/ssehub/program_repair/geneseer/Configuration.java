@@ -114,6 +114,8 @@ public class Configuration {
                 "Test execution timeout", (int) TimeUnit.MINUTES.toMillis(2), Integer::parseInt);
         private Option<Boolean> coverageMatrixSimplified = new Option<>("coverageMatrixSimplified",
                 "Simplified coverage matrix", true, Boolean::parseBoolean);
+        private Option<Double> suspiciousnessThreshold = new Option<>("suspiciousnessThreshold",
+                "Suspiciousness Threshold", 0.01, Double::parseDouble);
         private Option<TestsToRun> testsToRun = new Option<>("testsToRun",
                 "Tests to run", TestsToRun.ALL_TESTS, v -> TestsToRun.valueOf(v.toUpperCase()));
         private Option<Boolean> debugTestDriver = new Option<>("debugTestDriver",
@@ -130,6 +132,7 @@ public class Configuration {
             super.options.add(javaCompilerBinaryPath);
             super.options.add(testExecutionTimeoutMs);
             super.options.add(coverageMatrixSimplified);
+            super.options.add(suspiciousnessThreshold);
             super.options.add(testsToRun);
             super.options.add(debugTestDriver);
         }
@@ -152,6 +155,10 @@ public class Configuration {
         
         public boolean coverageMatrixSimplified() {
             return coverageMatrixSimplified.getValue();
+        }
+        
+        public double getSuspiciousnessThreshold() {
+            return suspiciousnessThreshold.getValue();
         }
         
         public TestsToRun testsToRun() {

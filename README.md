@@ -88,6 +88,7 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.setup.javaCompilerBinaryPath`   | `javac`              | The path to the Java compiler to compile the project. May be absolute or on the path. |
 | `--config.setup.testExecutionTimeoutMs`   | `120000` (2 minutes) | The amount of milliseconds before considering a test execution timed-out. The test process will be killed and the tests count as failures. |
 | `--config.setup.coverageMatrixSimplified` | `true`               | Whether to aggregate the coverage per-class instead of running each test method individually when measuring the suspiciousness. If this is `true`, then the execution is (much) faster, but the suspiciousness values will be less accurate. |
+| `--config.setup.suspiciousnessThreshold`  | `0.01`               | The minimum suspiciousness value required; statements that are less suspicious will be ignored. |
 | `--config.setup.testsToRun`               | `ALL_TESTS`          | Relevant only for the Defects4j runner: Whether to run all tests or only the tests that Defects4j marked as relevant. Possible values are `ALL_TESTS` and `RELEVANT_TESTS`. |
 | `--config.setup.debugTestDriver`          | `false`              | Whether to print debug output of the test driver process to stderr. |
 | `--config.genetic.randomSeed`             | `0`                  | The seed to initialize the random source with. If this is the same (and the test cases are deterministic), then the same result is produced. |

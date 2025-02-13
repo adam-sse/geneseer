@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import org.jacoco.core.analysis.Analyzer;
 import org.jacoco.core.analysis.CoverageBuilder;
@@ -68,16 +69,20 @@ public class FaultLocalization {
                 List<Node> matchingStatements = classNode.stream()
                         .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
                         .filter(n -> n.hasLine(line))
-                        .toList();
+                        .collect(Collectors.toList());
                 
                 if (matchingStatements.isEmpty()) {
+                    // this are usually implicit returns at the end of void methods, at the line of the closing }
                     String cn = className;
                     LOG.fine(() -> "Found no statements for suspicious " + entry.getValue() + " at "
                             + cn + ":" + line);
                 } else if (matchingStatements.size() > 1) {
-                    String cn = className;
-                    LOG.fine(() -> "Found " + matchingStatements.size() + " statements for " + cn
-                            + ":" + line + "; adding suspiciousness to all of them");
+                    removeParentsOfLastElement(matchingStatements, ast);
+                    if (matchingStatements.size() > 1) {
+                        String cn = className;
+                        LOG.fine(() -> "Found " + matchingStatements.size() + " statements for " + cn
+                                + ":" + line + "; adding suspiciousness to all of them");
+                    }
                 }
                     
                 String cn = className;
@@ -101,7 +106,7 @@ public class FaultLocalization {
         }
         LOG.info(() -> suspiciousStatementCount.get() + " suspicious statements");
     }
-
+    
     private Map<String, Node> getFileNodesByClassName(Node ast) {
         Map<String, Node> classes = new HashMap<>(ast.childCount());
         for (Node file : ast.childIterator()) {
@@ -114,9 +119,26 @@ public class FaultLocalization {
         return classes;
     }
     
+    private void removeParentsOfLastElement(List<Node> nodes, Node root) {
+        Node last = nodes.get(nodes.size() - 1);
+        List<Node> parentsToRemove = root.getPath(last);
+        
+        for (int i = 0; i < nodes.size() - 1; i++) {
+            Node possibleParent = nodes.get(i);
+            for (Node parent : parentsToRemove) {
+                if (possibleParent == parent) {
+                    nodes.remove(i);
+                    i--;
+                    break;
+                }
+            }
+        }
+    }
+    
     public LinkedHashMap<Location, Double> measureSuspiciousness(List<TestResult> tests, Path classesDirectory,
             Node ast) throws TestExecutionException {
         
+        int skippedBelowThreshold = 0;
         try (Probe probe = Measurement.INSTANCE.start("fault-localization")) {
             Map<Location, Set<TestResult>> coverage = measureCoverage(tests, classesDirectory);
             annotateClassBasedCoverageOnAstNodes(coverage, ast);
@@ -148,11 +170,14 @@ public class FaultLocalization {
                 
                 double susValue = ochiaiFormula(nPassingNotExecuting, nFailingNotExecuting,
                         nPassingExecuting, nFailingExecuting);
-                if (susValue > 0) {
+                if (susValue > Configuration.INSTANCE.setup().getSuspiciousnessThreshold()) {
                     suspiciousness.put(coverageEntry.getKey(), susValue);
+                } else if (susValue > 0) {
+                    skippedBelowThreshold++;
                 }
             }
             
+            LOG.info("Removed " + skippedBelowThreshold + " suspicious locations below threshold");
             LinkedHashMap<Location, Double> sortedSuspiciousness = new LinkedHashMap<>(suspiciousness.size());
             suspiciousness.entrySet().stream()
                     .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))

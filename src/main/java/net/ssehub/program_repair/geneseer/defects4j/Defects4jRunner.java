@@ -80,25 +80,19 @@ public class Defects4jRunner {
             if (jsonResult.equals("FOUND_FAILING_TESTS") || jsonResult.equals("NO_FAILING_TESTS")) {
                 
                 @SuppressWarnings("unchecked")
-                List<Map<Object, Object>> failingTests = (List<Map<Object, Object>>) json.get("failingTests");
-                
-                Set<String> actualFailingTests = new HashSet<>(failingTests.size());
-                for (Map<Object, Object> failingTest : failingTests) {
-                    actualFailingTests.add(failingTest.get("class") + "::" + failingTest.get("method"));
-                }
-                
+                Set<String> failingTests = new HashSet<>((List<String>) json.get("failingTests"));
                 Set<String> expectedFailingTests = defects4j.getFailingTests(bug);
                 
-                if (expectedFailingTests.equals(actualFailingTests)) {
+                if (expectedFailingTests.equals(failingTests)) {
                     json.put("result", "MATCHING_DEFECTS4J");
                 } else {
                     json.put("result", "NOT_MATCHING_DEFECTS4J");
                     
                     List<String> missingFailing = new LinkedList<>(expectedFailingTests);
-                    missingFailing.removeAll(actualFailingTests);
+                    missingFailing.removeAll(failingTests);
                     json.put("missingFailing", missingFailing);
                     
-                    List<String> unexpectedFailing = new LinkedList<>(actualFailingTests);
+                    List<String> unexpectedFailing = new LinkedList<>(failingTests);
                     unexpectedFailing.removeAll(expectedFailingTests);
                     json.put("unexpectedFailing", unexpectedFailing);
                 }

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -92,11 +93,16 @@ public class Defects4jRunner {
                     json.put("result", "MATCHING_DEFECTS4J");
                 } else {
                     json.put("result", "NOT_MATCHING_DEFECTS4J");
+                    
+                    List<String> missingFailing = new LinkedList<>(expectedFailingTests);
+                    missingFailing.removeAll(actualFailingTests);
+                    json.put("missingFailing", missingFailing);
+                    
+                    List<String> unexpectedFailing = new LinkedList<>(actualFailingTests);
+                    unexpectedFailing.removeAll(expectedFailingTests);
+                    json.put("unexpectedFailing", unexpectedFailing);
                 }
                 result = gson.toJson(json);
-                
-            } else {
-                LOG.warning("Result from SETUP_TEST is neither FOUND_FAILING_TESTS nor NO_FAILING_TESTS");
             }
         } catch (JsonParseException | NullPointerException | IOException e) {
             LOG.log(Level.WARNING, "Could not determine if failing tests were correct", e);

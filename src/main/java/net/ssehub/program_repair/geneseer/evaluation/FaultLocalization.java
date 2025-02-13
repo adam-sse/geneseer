@@ -322,7 +322,7 @@ public class FaultLocalization {
             }
             
         } else {
-            LOG.info(() -> "Test class " + className + " contains failing tests; running " + tests.size()
+            LOG.fine(() -> "Test class " + className + " contains failing tests; running " + tests.size()
                     + " test methods individually");
             for (TestResult test : tests) {
                 measureCoverageForSingleTest(test, result, testExec, classesDirectory);

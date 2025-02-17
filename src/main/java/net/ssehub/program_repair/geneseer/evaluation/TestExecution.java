@@ -340,6 +340,10 @@ class TestExecution implements AutoCloseable {
             out.flush();
             
             TestResult result = readResult();
+            if (result == null) {
+                throw new TestIntegrityException("Did not get single result when running test " + className
+                        + "::" + methodName);
+            }
             if (!result.testClass().equals(className)) {
                 result = new TestResult(className, result.testMethod(), result.failureMessage(),
                         result.failureStacktrace());

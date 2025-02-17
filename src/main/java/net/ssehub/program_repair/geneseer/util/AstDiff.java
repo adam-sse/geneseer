@@ -20,8 +20,8 @@ public class AstDiff {
         Path aDir = tempDirManager.createTemporaryDirectory();
         Path bDir = tempDirManager.createTemporaryDirectory();
         
-        Writer.write(ast1, null, aDir, encoding);
-        Writer.write(ast2, null, bDir, encoding);
+        Writer.write(ast1, aDir, encoding);
+        Writer.write(ast2, bDir, encoding);
         
         return getDiff(aDir, bDir, encoding, null);
     }

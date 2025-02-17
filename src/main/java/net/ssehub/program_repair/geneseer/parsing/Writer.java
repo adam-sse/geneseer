@@ -9,25 +9,23 @@ import java.util.Stack;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
-import net.ssehub.program_repair.geneseer.util.FileUtils;
 
 public class Writer {
 
     private Writer() {
     }
     
-    public static void write(Node parseTree, Path sourceDirectory, Path outputDirectory, Charset encoding)
-            throws IOException {
+    public static void write(Node parseTree, Path outputDirectory, Charset encoding) throws IOException {
         for (Node compilationUnit : parseTree.childIterator()) {
-            Path file = outputDirectory.resolve((Path) compilationUnit.getMetadata(Metadata.FILE_NAME));
-            Files.createDirectories(file.getParent());
-            
-            Files.writeString(file, toText(compilationUnit), encoding);
+            writeSingleFile(compilationUnit, outputDirectory, encoding);
         }
+    }
+    
+    public static void writeSingleFile(Node singleFileAst, Path outputDirectory, Charset encoding) throws IOException {
+        Path file = outputDirectory.resolve((Path) singleFileAst.getMetadata(Metadata.FILE_NAME));
+        Files.createDirectories(file.getParent());
         
-        if (sourceDirectory != null) {
-            FileUtils.copyAllNonJavaSourceFiles(sourceDirectory, outputDirectory);
-        }
+        Files.writeString(file, toText(singleFileAst), encoding);
     }
     
     private static String toText(Node root) {

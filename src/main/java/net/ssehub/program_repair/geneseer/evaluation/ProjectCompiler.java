@@ -2,18 +2,25 @@ package net.ssehub.program_repair.geneseer.evaluation;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
-import net.ssehub.program_repair.geneseer.util.FileUtils;
+import net.ssehub.program_repair.geneseer.parsing.Writer;
+import net.ssehub.program_repair.geneseer.parsing.model.Node;
+import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
@@ -26,16 +33,33 @@ class ProjectCompiler {
     
     private Charset encoding;
     
+    private Path sourceDirectory;
+    
+    private Path outputDirectory;
+    
     private boolean logOutput;
     
-    public ProjectCompiler(List<Path> classpath, Charset encoding) {
+    private Node previousWrittenAst;
+    
+    public ProjectCompiler(List<Path> classpath, Charset encoding, Path sourceDirectory, Path outputDirectory) {
         this.classpath = classpath;
         this.encoding = encoding;
+        this.sourceDirectory = sourceDirectory;
+        this.outputDirectory = outputDirectory;
+    }
+    
+    public Path getSourceDirectory() {
+        return sourceDirectory;
+    }
+    
+    public Path getOutputDirectory() {
+        return outputDirectory;
     }
 
-    public void compile(Path sourceDirectory, Path outputDirectory) throws CompilationException {
+    public void compile(Node ast) throws CompilationException {
         try (Probe probe = Measurement.INSTANCE.start("compilation")) {
-            List<String> command = buildCommand(sourceDirectory, outputDirectory, classpath);
+            Set<Path> filesToCompile = writeModifiedFiles(ast);
+            List<String> command = buildCommand(filesToCompile);
             
             LOG.finer(() -> {
                 String log;
@@ -64,12 +88,6 @@ class ProjectCompiler {
                 }
             }
             
-            try {
-                FileUtils.copyAllNonJavaSourceFiles(sourceDirectory, outputDirectory);
-            } catch (IOException e) {
-                LOG.log(Level.WARNING, "Failed to copy non-Java source files", e);
-            }
-            
             if (process.getExitCode() != 0) {
                 throw new CompilationException("Compiler exited with " + process.getExitCode());
             }
@@ -80,7 +98,81 @@ class ProjectCompiler {
         }
     }
     
-    private List<String> buildCommand(Path sourceDirectory, Path outputDirectory, List<Path> classpath)
+    private Set<Path> writeModifiedFiles(Node newAst) throws CompilationException {
+        Set<Path> modifiedFiles;
+    
+        try {
+            if (previousWrittenAst == null || !getFilePaths(newAst).equals(getFilePaths(previousWrittenAst))) {
+                deleteAllClassFiles(outputDirectory);
+                Writer.write(newAst, sourceDirectory, encoding);
+                modifiedFiles = Files.walk(sourceDirectory)
+                        .filter(Files::isRegularFile)
+                        .map(p -> sourceDirectory.relativize(p))
+                        .filter(file -> file.getFileName().toString().endsWith(".java"))
+                        .collect(Collectors.toSet());
+                if (previousWrittenAst == null) {
+                    LOG.fine(() -> "Initially compiling all " + modifiedFiles.size() + " files in source tree: "
+                            + modifiedFiles);
+                } else {
+                    LOG.fine(() -> "File name set changed, compiling all " + modifiedFiles.size()
+                            + " files in source tree: " + modifiedFiles);
+                }
+                
+            } else {
+                Map<Path, Node> previousFilesByPath = new HashMap<>();
+                for (Node fileNode : previousWrittenAst.childIterator()) {
+                    previousFilesByPath.put((Path) fileNode.getMetadata(Metadata.FILE_NAME), fileNode);
+                }
+                
+                modifiedFiles = new HashSet<>();
+                for (int i = 0; i < newAst.childCount(); i++) {
+                    Node newFile = newAst.get(i);
+                    Path path = (Path) newFile.getMetadata(Metadata.FILE_NAME);
+                    if (!newFile.equals(previousFilesByPath.get(path))) {
+                        Writer.writeSingleFile(newFile, sourceDirectory, encoding);
+                        modifiedFiles.add(path);
+                    }
+                }
+                
+                LOG.fine(() -> "Only compiling " + modifiedFiles.size() + " modified files: " + modifiedFiles);
+            }
+            
+        } catch (IOException e) {
+            LOG.log(Level.SEVERE, "Failed to run compiler process", e);
+            previousWrittenAst = null;
+            throw new CompilationException("Failed to write source files", e);
+        }
+        
+        previousWrittenAst = newAst;
+        return modifiedFiles;
+    }
+
+    private static void deleteAllClassFiles(Path directory) throws IOException {
+        try {
+            Files.walk(directory)
+                    .filter(Files::isRegularFile)
+                    .filter(file -> file.getFileName().toString().endsWith(".class"))
+                    .forEach(file -> {
+                        try {
+                            Files.delete(file);
+                        } catch (IOException e) {
+                            throw new UncheckedIOException(e);
+                        }
+                    });
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
+        }
+    }
+    
+    private static Set<Path> getFilePaths(Node ast) {
+        Set<Path> paths = new HashSet<>(ast.childCount());
+        for (Node fileNode : ast.childIterator()) {
+            paths.add((Path) fileNode.getMetadata(Metadata.FILE_NAME));
+        }
+        return paths;
+    }
+    
+    private List<String> buildCommand(Set<Path> filesToCompile)
             throws IOException {
         List<String> command = new LinkedList<>();
         command.add(Configuration.INSTANCE.setup().javaCompilerBinaryPath());
@@ -95,14 +187,13 @@ class ProjectCompiler {
         
         if (!classpath.isEmpty()) {
             command.add("-cp");
-            command.add(classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+            command.add(outputDirectory.toString() + File.pathSeparator + classpath.stream()
+                    .map(Path::toString)
+                    .collect(Collectors.joining(File.pathSeparator)));
         }
         
-        Files.walk(sourceDirectory)
-                .filter(Files::isRegularFile)
-                .map(p -> sourceDirectory.relativize(p))
+        filesToCompile.stream()
                 .map(Path::toString)
-                .filter(file -> file.endsWith(".java"))
                 .forEach(command::add);
         
         return command;

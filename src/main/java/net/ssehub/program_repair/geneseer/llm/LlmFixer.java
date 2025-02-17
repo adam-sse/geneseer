@@ -57,7 +57,7 @@ public class LlmFixer {
 
     public Optional<Node> createVariant(Node original, List<TestResult> failingTests) throws IOException {
         Path sourceDir = tempDirManager.createTemporaryDirectory();
-        Writer.write(original, null, sourceDir, encoding);
+        Writer.write(original, sourceDir, encoding);
         
         List<CodeSnippet> codeSnippets = selectMostSuspiciousMethods(original, sourceDir);
         

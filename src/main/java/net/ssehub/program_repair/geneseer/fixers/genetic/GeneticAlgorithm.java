@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
@@ -41,25 +42,24 @@ public class GeneticAlgorithm implements IFixer {
     
     private int numInsertions;
     private int numDeletions;
+    private int numFailedMutations;
     private int numSuccessfulCrossovers;
     private int numFailedCrossovers;
-    private int numLlmCalls;
     private int numLlmCallsOnUnmodified;
-    private int numLlmCallsWithPreviousModifications;
+    private int numLlmCallsOnMutated;
+    private int numUnusableLlmAnswers;
     
     public GeneticAlgorithm(LlmFixer llmfixer) {
         this.llmFixer = llmfixer;
     }
     
-    public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) throws IOException {
+    @Override
+    public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) {
         try (Probe measure = Measurement.INSTANCE.start("genetic-algorithm")) {
             this.unmodifiedVariant = new Variant(ast);
             this.fitnessEvaluator = new FitnessEvaluator(testSuite, this.unmodifiedVariant);
             
             return runInternal(result);
-        } catch (IOException e) {
-            result.put("generation", generation);
-            throw e;
         }
     }
     
@@ -67,7 +67,7 @@ public class GeneticAlgorithm implements IFixer {
         this.random = random;
     }
     
-    private Node runInternal(Map<String, Object> result) throws IOException {
+    private Node runInternal(Map<String, Object> result) {
         Map<String, Object> fitnessResult = new HashMap<>();
         result.put("fitness", fitnessResult);
         fitnessResult.put("original", unmodifiedVariant.getFitness());
@@ -83,11 +83,12 @@ public class GeneticAlgorithm implements IFixer {
         Map<String, Integer> mutationStats = new HashMap<>();
         mutationStats.put("insertions", numInsertions);
         mutationStats.put("deletions", numDeletions);
+        mutationStats.put("failedMutations", numFailedMutations);
         mutationStats.put("successfulCrossovers", numSuccessfulCrossovers);
         mutationStats.put("failedCrossovers", numFailedCrossovers);
-        mutationStats.put("llmCalls", numLlmCalls);
         mutationStats.put("llmCallsOnUnmodified", numLlmCallsOnUnmodified);
-        mutationStats.put("llmCallsWithPreviousModifications", numLlmCallsWithPreviousModifications);
+        mutationStats.put("llmCallsOnMutated", numLlmCallsOnMutated);
+        mutationStats.put("unusableLlmAnswers", numUnusableLlmAnswers);
         
         result.put("mutationStats", mutationStats);
         result.put("generation", generation);
@@ -109,7 +110,7 @@ public class GeneticAlgorithm implements IFixer {
         return fitnessEvaluator.getBestVariant().getAst();
     }
 
-    private List<Variant> createInitialPopulation() throws IOException {
+    private List<Variant> createInitialPopulation() {
         LOG.info("Creating initial population of  " + Configuration.INSTANCE.genetic().populationSize() + " variants");
         List<Variant> population = new ArrayList<>(Configuration.INSTANCE.genetic().populationSize());
         for (int i = 0; i < Configuration.INSTANCE.genetic().populationSize(); i++) {
@@ -121,7 +122,7 @@ public class GeneticAlgorithm implements IFixer {
         return population;
     }
 
-    private void singleGeneration(List<Variant> population) throws IOException {
+    private void singleGeneration(List<Variant> population) {
         LOG.info(() -> "Generation " + generation);
         
         List<Variant> viable = population.stream()
@@ -185,7 +186,7 @@ public class GeneticAlgorithm implements IFixer {
                 .toList());
     }
 
-    private Variant newVariant(boolean withMutation) throws IOException {
+    private Variant newVariant(boolean withMutation) {
         Variant variant = new Variant(unmodifiedVariant.getAst());
         if (withMutation) {
             mutate(variant);
@@ -196,56 +197,65 @@ public class GeneticAlgorithm implements IFixer {
         return variant;
     }
     
-    private void mutate(Variant variant) throws IOException {
+    private void mutate(Variant variant) {
         boolean needsFitnessReevaluation = false;
         boolean needsFaultLocalization = false;
         
         Node astRoot = variant.getAst();
+        List<Node> suspiciousStatements = astRoot.stream()
+                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                .sorted(Node.DESCENDING_SUSPICIOUSNESS)
+                .toList();
         
-        if (random.nextDouble() < Configuration.INSTANCE.genetic().llmMutationProbability()) {
-            LOG.info(() -> "Using LLM to mutate " + variant.getName());
-            if (!variant.hasFitness()) {
-                LOG.fine(() -> "Running tests on variant as it has no fitness and thus no failing tests yet");
-                fitnessEvaluator.measureFitness(variant, false);
-            }
-            
-            try (Probe measure = Measurement.INSTANCE.start("llm-mutation")) {
-                numLlmCalls++;
-                if (variant.getMutations().isEmpty()) {
-                    numLlmCallsOnUnmodified++;
-                } else {
-                    numLlmCallsWithPreviousModifications++;
+        if (!suspiciousStatements.isEmpty()) {
+            if (random.nextDouble() < Configuration.INSTANCE.genetic().llmMutationProbability()) {
+                LOG.info(() -> "Using LLM to mutate " + variant.getName());
+                if (!variant.hasFitness()) {
+                    LOG.fine(() -> "Running tests on variant as it has no fitness and thus no failing tests yet");
+                    fitnessEvaluator.measureFitness(variant, false);
                 }
-                Optional<Node> result = llmFixer.createVariant(astRoot, variant.getFailingTests());
-                if (result.isPresent()) {
-                    astRoot = result.get();
-                    variant.setAst(astRoot);
-                    variant.addMutation("LLM");
-                    needsFitnessReevaluation = true;
-                    needsFaultLocalization = true;
-                } else {
-                    LOG.fine(() -> "Got no (usable) result from LLM...");
+                
+                try (Probe measure = Measurement.INSTANCE.start("llm-mutation")) {
+                    if (variant.getMutations().isEmpty()) {
+                        numLlmCallsOnUnmodified++;
+                    } else {
+                        numLlmCallsOnMutated++;
+                    }
+                    try {
+                        Optional<Node> result = llmFixer.createVariant(astRoot, variant.getFailingTests());
+                        if (result.isPresent()) {
+                            astRoot = result.get();
+                            variant.setAst(astRoot);
+                            variant.addMutation("LLM");
+                            needsFitnessReevaluation = true;
+                            needsFaultLocalization = true;
+                        } else {
+                            numUnusableLlmAnswers++;
+                            LOG.info(() -> "Got no usable result from LLM");
+                        }
+                    } catch (IOException e) {
+                        LOG.log(Level.WARNING, "IOException while querying LLM", e);
+                        numUnusableLlmAnswers++;
+                    }
                 }
+                
+            } else {
+                List<Double> probabilities = calculateCummulativeProbabilityDistribution(suspiciousStatements.stream()
+                        .map(s -> (Double) s.getMetadata(Metadata.SUSPICIOUSNESS))
+                        .toList());
+                
+                double randomValue = random.nextDouble();
+                int selected = 0;
+                while (randomValue > probabilities.get(selected) && selected < suspiciousStatements.size()) {
+                    selected++;
+                }
+                
+                Node suspicious = suspiciousStatements.get(selected);
+                needsFitnessReevaluation = singleMutation(variant, astRoot, suspicious);
             }
-            
         } else {
-            List<Node> suspiciousStatements = astRoot.stream()
-                    .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                    .sorted(Node.DESCENDING_SUSPICIOUSNESS)
-                    .toList();
-            
-            List<Double> probabilities = calculateCummulativeProbabilityDistribution(suspiciousStatements.stream()
-                    .map(s -> (Double) s.getMetadata(Metadata.SUSPICIOUSNESS))
-                    .toList());
-            
-            double randomValue = random.nextDouble();
-            int selected = 0;
-            while (randomValue > probabilities.get(selected) && selected < suspiciousStatements.size()) {
-                selected++;
-            }
-            
-            Node suspicious = suspiciousStatements.get(selected);
-            needsFitnessReevaluation = singleMutation(variant, astRoot, suspicious);
+            numFailedMutations++;
+            LOG.warning(() -> "Failed to muate " + variant.getName() + " because it has no suspicious statements");
         }
         
         if (!needsFitnessReevaluation) {

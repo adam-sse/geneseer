@@ -142,11 +142,11 @@ if applicable):
   "mutationStats": {
     "insertions": 40,
     "deletions": 45,
+    "failedMutations": 0,
     "successfulCrossovers": 3,
     "failedCrossovers": 7,
-    "llmCalls": 0,
     "llmCallsOnUnmodified": 0,
-    "llmCallsWithPreviousModifications": 0
+    "llmCallsOnMutated": 0
   },
   "timings": { // timing measurements in ms
     "genetic-algorithm": 32793,

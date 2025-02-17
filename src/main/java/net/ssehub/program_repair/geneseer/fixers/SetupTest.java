@@ -1,6 +1,5 @@
 package net.ssehub.program_repair.geneseer.fixers;
 
-import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -15,7 +14,7 @@ public class SetupTest implements IFixer {
     private static final Logger LOG = Logger.getLogger(SetupTest.class.getName());
     
     @Override
-    public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) throws IOException {
+    public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) {
         LOG.info(() -> testSuite.getInitialFailingTestResults().size() + " failing tests:");
         List<String> failingTests = new LinkedList<>();
         for (TestResult testResult : testSuite.getInitialTestResults()) {

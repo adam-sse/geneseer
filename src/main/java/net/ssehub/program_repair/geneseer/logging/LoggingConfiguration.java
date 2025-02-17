@@ -7,6 +7,8 @@ import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 public class LoggingConfiguration {
+    
+    private static final CountingHandler COUNTING_HANDLER = new CountingHandler();
 
     public LoggingConfiguration() {
         defaultLoggingConfiguration();
@@ -31,8 +33,13 @@ public class LoggingConfiguration {
         console.setLevel(Level.ALL);
         
         Logger rootLogger = manager.getLogger("");
+        rootLogger.addHandler(COUNTING_HANDLER);
         rootLogger.addHandler(console);
         rootLogger.setLevel(Level.CONFIG);
+    }
+    
+    public static int getMessageCount(Level level) {
+        return COUNTING_HANDLER.getMessageCount(level);
     }
     
 }

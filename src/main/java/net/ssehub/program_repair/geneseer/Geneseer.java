@@ -129,20 +129,12 @@ public class Geneseer {
                     evaluationStats.put("compilations", testSuite.getNumCompilations());
                     evaluationStats.put("testSuiteRuns", testSuite.getNumTestSuiteRuns());
                 }
-                LOG.info("Timing measurements:");
-                Map<String, Object> timings = new HashMap<>();
-                StreamSupport.stream(Measurement.INSTANCE.finishedProbes().spliterator(), false)
-                        .sorted((e1, e2) -> e1.getKey().compareTo(e2.getKey()))
-                        .forEach(e -> {
-                            LOG.info(() -> "    " + e.getKey() + ": " + e.getValue() + " ms");
-                            timings.put(e.getKey(), e.getValue());
-                        });
-                result.put("timings", timings);
+                addTimingsAndLogStats(result);
                 System.out.println(JsonUtils.GSON.toJson(result));
             }
         }
     }
-    
+
     private static IFixer createFixer(Project project, TemporaryDirectoryManager tempDirManager) {
         IFixer result;
         switch (Configuration.INSTANCE.setup().fixer()) {
@@ -233,6 +225,28 @@ public class Geneseer {
         }
         diffResult.put("addedLines", countAdd);
         diffResult.put("removedLines", countRemove);
+    }
+
+    private static void addTimingsAndLogStats(Map<String, Object> result) {
+        LOG.info("Timing measurements:");
+        Map<String, Object> timings = new HashMap<>();
+        StreamSupport.stream(Measurement.INSTANCE.finishedProbes().spliterator(), false)
+                .sorted((e1, e2) -> e1.getKey().compareTo(e2.getKey()))
+                .forEach(e -> {
+                    LOG.info(() -> "    " + e.getKey() + ": " + e.getValue() + " ms");
+                    timings.put(e.getKey(), e.getValue());
+                });
+        result.put("timings", timings);
+        
+        Map<String, Integer> logStats = new HashMap<>();
+        logStats.put("SEVERE", LoggingConfiguration.getMessageCount(Level.SEVERE));
+        logStats.put("WARNING", LoggingConfiguration.getMessageCount(Level.WARNING));
+        logStats.put("INFO", LoggingConfiguration.getMessageCount(Level.INFO));
+        logStats.put("CONFIG", LoggingConfiguration.getMessageCount(Level.CONFIG));
+        logStats.put("FINE", LoggingConfiguration.getMessageCount(Level.FINE));
+        logStats.put("FINER", LoggingConfiguration.getMessageCount(Level.FINER));
+        logStats.put("FINEST", LoggingConfiguration.getMessageCount(Level.FINEST));
+        result.put("logLines", logStats);
     }
     
 }

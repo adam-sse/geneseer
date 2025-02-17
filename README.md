@@ -146,17 +146,27 @@ if applicable):
     "successfulCrossovers": 3,
     "failedCrossovers": 7,
     "llmCallsOnUnmodified": 0,
-    "llmCallsOnMutated": 0
+    "llmCallsOnMutated": 0,
+    "unusableLlmAnswers": 0
   },
   "timings": { // timing measurements in ms
-    "genetic-algorithm": 32793,
-    "compilation": 29222, // total time spent compiling
-    "fault-localization": 1763, // total time spent for fault localization (usually just once initially)
-    "junit-evaluation": 1804, // total time spent running tests (excluding coverage for fault-localization)
-    "llm-query": 879 // total time spent querying the LLM for patches
+    "genetic-algorithm": 16033,
+    "compilation": 14725, // total time spent compiling
+    "fault-localization": 2254, // total time spent for fault localization (usually just once initially)
+    "junit-evaluation": 1906, // total time spent running tests (excluding coverage for fault-localization)
+    "llm-query": 0 // total time spent querying the LLM for patches
     // ...
   },
-  "exception": "exception message" // only present for IO_EXCEPTION
+  "logLines": { // number of log lines per level
+    "SEVERE": 0,
+    "WARNING": 6,
+    "INFO": 57,
+    "CONFIG": 34,
+    "FINE": 0,
+    "FINER": 0,
+    "FINEST": 0
+  },
+  "exception": "exception message" // only present when applicable
 }
 ```
 The meaning of the `result` types is:

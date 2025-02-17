@@ -29,7 +29,7 @@ import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
-public class FaultLocalization {
+class FaultLocalization {
     
     private static final Logger LOG = Logger.getLogger(FaultLocalization.class.getName());
 

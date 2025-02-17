@@ -153,7 +153,7 @@ class Defects4jWrapper {
         }
     }
 
-    private void checkForError(ProcessRunner process, String message) throws IOException {
+    private static void checkForError(ProcessRunner process, String message) throws IOException {
         if (process.getExitCode() != 0) {
             String stdout = new String(process.getStdout());
             String stderr = new String(process.getStderr());
@@ -194,7 +194,7 @@ class Defects4jWrapper {
         return new String(process.getStdout()).split("\n");
     }
     
-    private List<Path> normalizeAndRemoveBinDirectory(List<Path> classpath, Path absoluteBinDirectory,
+    private static List<Path> normalizeAndRemoveBinDirectory(List<Path> classpath, Path absoluteBinDirectory,
             Path checkoutDirectory) {
         return classpath.stream()
                 .map(p -> checkoutDirectory.resolve(p))
@@ -203,7 +203,7 @@ class Defects4jWrapper {
                 .collect(Collectors.toList());
     }
     
-    private List<Path> removeJunit(List<Path> classpath) {
+    private static List<Path> removeJunit(List<Path> classpath) {
         return classpath.stream()
                 .filter(entry -> {
                     String name = entry.getFileName().toString();
@@ -245,7 +245,7 @@ class Defects4jWrapper {
             compilationClasspath.add(defects4jResource("framework/projects/lib/junit-4.11.jar"));
             compilationClasspath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
             testExecutionClassPath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
-            addIfExists(Path.of("build/classes/main"), checkoutDirectory, testExecutionClassPath);
+            addIfExists(checkoutDirectory, Path.of("build/classes/main"), testExecutionClassPath);
             break;
             
         case "Math":
@@ -267,7 +267,7 @@ class Defects4jWrapper {
         }
     }
     
-    private void addIfExists(Path dir, Path toAdd, List<Path> list) {
+    private static void addIfExists(Path dir, Path toAdd, List<Path> list) {
         if (Files.exists(dir.resolve(toAdd))) {
             list.add(toAdd);
         }
@@ -277,7 +277,7 @@ class Defects4jWrapper {
         return defects4jHome.resolve(pathInDefects4jRoot).toAbsolutePath();
     }
 
-    private void copyTimeTzData(Bug bug, Path checkoutDirectory) {
+    private static void copyTimeTzData(Bug bug, Path checkoutDirectory) {
         Path from;
         if (bug.bug() <= 11) {
             from = checkoutDirectory.resolve("target/classes/org/joda/time/tz/data");

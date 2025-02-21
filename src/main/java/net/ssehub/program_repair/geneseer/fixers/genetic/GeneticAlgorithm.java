@@ -343,7 +343,7 @@ public class GeneticAlgorithm implements IFixer {
         }
         
         List<Node> allStatements = astRoot.stream()
-                .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+                .filter(n -> n.getType() == Type.STATEMENT)
                 .toList();
         Node otherStatement = allStatements.get(random.nextInt(allStatements.size()));
         return otherStatement;

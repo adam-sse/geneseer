@@ -104,7 +104,7 @@ public class Parser {
             result = Type.CONSTRUCTOR;
             break;
         case "BlockStatementContext":
-            result = Type.SINGLE_STATEMENT;
+            result = Type.STATEMENT;
             break;
         case "BlockContext":
             result = Type.COMPOSIT_STATEMENT;

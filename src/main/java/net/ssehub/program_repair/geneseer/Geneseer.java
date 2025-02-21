@@ -26,6 +26,7 @@ import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
+import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
 import net.ssehub.program_repair.geneseer.util.JsonUtils;
@@ -96,6 +97,9 @@ public class Geneseer {
             Map<String, Object> astStats = new HashMap<>();
             result.put("ast", astStats);
             astStats.put("nodes", ast.stream().count());
+            astStats.put("statements", ast.stream()
+                    .filter(n -> n.getType() == Type.STATEMENT)
+                    .count());
             
             testSuite = new TestSuite(project, ast, tempDirManager);
             astStats.put("suspicious", ast.stream()

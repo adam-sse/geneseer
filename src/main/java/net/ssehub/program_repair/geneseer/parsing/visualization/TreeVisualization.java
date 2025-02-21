@@ -122,7 +122,7 @@ public class TreeVisualization extends JComponent {
         
         int y = PADDING + level * (verticalGap + NODE_SIZE);
         
-        if (node.getType() == Type.SINGLE_STATEMENT) {
+        if (node.getType() == Type.STATEMENT) {
             currentGraphics.setColor(Color.MAGENTA);
             currentGraphics.fillOval(middle - NODE_SIZE / 2, y, NODE_SIZE, NODE_SIZE);
         }

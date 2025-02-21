@@ -60,7 +60,7 @@ class FaultLocalization {
             Node classNode = classes.get(className);
             if (classNode != null) {
                 List<Node> matchingStatements = classNode.stream()
-                        .filter(n -> n.getType() == Type.SINGLE_STATEMENT)
+                        .filter(n -> n.getType() == Type.STATEMENT)
                         .filter(n -> n.hasLine(line))
                         .collect(Collectors.toList());
                 

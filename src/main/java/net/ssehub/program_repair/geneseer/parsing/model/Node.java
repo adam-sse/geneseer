@@ -19,7 +19,7 @@ public abstract class Node implements Cloneable {
         CLASS,
         METHOD,
         CONSTRUCTOR,
-        SINGLE_STATEMENT,
+        STATEMENT,
         COMPOSIT_STATEMENT,
         LEAF,
         OTHER,

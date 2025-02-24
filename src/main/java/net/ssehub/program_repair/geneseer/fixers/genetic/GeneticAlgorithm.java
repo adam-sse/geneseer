@@ -42,6 +42,7 @@ public class GeneticAlgorithm implements IFixer {
     
     private int numInsertions;
     private int numDeletions;
+    private int numReplacements;
     private int numFailedMutations;
     private int numSuccessfulCrossovers;
     private int numFailedCrossovers;
@@ -83,6 +84,7 @@ public class GeneticAlgorithm implements IFixer {
         Map<String, Integer> mutationStats = new HashMap<>();
         mutationStats.put("insertions", numInsertions);
         mutationStats.put("deletions", numDeletions);
+        mutationStats.put("replacements", numReplacements);
         mutationStats.put("failedMutations", numFailedMutations);
         mutationStats.put("successfulCrossovers", numSuccessfulCrossovers);
         mutationStats.put("failedCrossovers", numFailedCrossovers);
@@ -322,7 +324,7 @@ public class GeneticAlgorithm implements IFixer {
         suspicious = astRoot.findEquivalentPath(oldAstRoot, suspicious);
         Node parent = astRoot.findParent(suspicious).get();
         
-        int rand = random.nextInt(2); // TODO: no swap yet
+        int rand = random.nextInt(3);
         if (rand == 0) {
             // delete
             boolean removed = parent.remove(suspicious);
@@ -341,19 +343,21 @@ public class GeneticAlgorithm implements IFixer {
             setSamePosition(suspicious, otherStatement);
             otherStatement.setMetadata(Metadata.SUSPICIOUSNESS,
                     suspicious.getMetadata(Metadata.SUSPICIOUSNESS));
+            int index = parent.indexOf(suspicious);
             
             if (rand == 1) {
                 // insert
-                int index = parent.indexOf(suspicious);
                 parent.add(index, otherStatement);
                 variant.addMutation("ins " + otherStatement.toString() + " before " + suspicious.toString());
                 numInsertions++;
                 success = true;
                 
             } else {
-                // swap
-                // TODO
-                success = false;
+                // replace
+                parent.set(index, otherStatement);
+                variant.addMutation("rep " + suspicious.toString() + " with " + otherStatement.toString());
+                numReplacements++;
+                success = true;
             }
         }
         

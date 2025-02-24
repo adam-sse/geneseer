@@ -115,6 +115,11 @@ public class GeneticAlgorithm implements IFixer {
         List<Variant> population = new ArrayList<>(Configuration.INSTANCE.genetic().populationSize());
         for (int i = 0; i < Configuration.INSTANCE.genetic().populationSize(); i++) {
             population.add(newVariant(i > 0));
+            if (fitnessEvaluator.hasFoundMaxFitness()) {
+                LOG.info("Skipping rest of initial population creation because variant with maximum fitness has been"
+                        + " found");
+                break;
+            }
         }
         LOG.info(() -> "Population fitness: " + population.stream()
                 .map(v -> v.getName() + "(" + v.getFitness() + ")")
@@ -129,11 +134,27 @@ public class GeneticAlgorithm implements IFixer {
                 .filter(v -> v.getFitness() > 0.0)
                 .sorted(Comparator.comparingDouble(Variant::getFitness).reversed())
                 .toList();
-        population.clear();
         LOG.info(() -> viable.size() + " viable: " + viable.stream()
                 .map(v -> v.getName() + "(" + v.getFitness() + ")")
                 .toList());
         
+        population.clear();
+        reproduction(viable, population);
+        
+        if (!fitnessEvaluator.hasFoundMaxFitness()) {
+            fillPopulation(population);
+        }
+
+        if (!fitnessEvaluator.hasFoundMaxFitness()) {
+            mutatePopulation(population);
+        }
+        
+        LOG.info(() -> "Population fitness: " + population.stream()
+                .map(v -> v.getName() + "(" + v.getFitness() + ")")
+                .toList());
+    }
+
+    private void reproduction(List<Variant> viable, List<Variant> newPopulation) {
         List<Double> cummulativeProbabilityDistribution = calculateCummulativeProbabilityDistribution(viable.stream()
                 .map(Variant::getFitness)
                 .toList());
@@ -158,32 +179,46 @@ public class GeneticAlgorithm implements IFixer {
                 
                 List<Variant> children = crossover(p1, p2);
                 
-                population.add(p1);
-                population.add(p2);
-                population.addAll(children);
+                newPopulation.add(p1);
+                newPopulation.add(p2);
+                newPopulation.addAll(children);
                 
             } else {
-                population.add(p1);
+                newPopulation.add(p1);
+            }
+            
+            if (fitnessEvaluator.hasFoundMaxFitness()) {
+                LOG.info("Skipping rest of reproduction because variant with maximum fitness has been found");
+                break;
             }
         }
-        
+    }
+
+    private void fillPopulation(List<Variant> population) {
         LOG.info(() -> "Filling up population with "
-                    + (Configuration.INSTANCE.genetic().populationSize() - population.size()) + " new variants");
+                + (Configuration.INSTANCE.genetic().populationSize() - population.size()) + " new variants");
         while (population.size() < Configuration.INSTANCE.genetic().populationSize()) {
             population.add(newVariant(true));
+            if (fitnessEvaluator.hasFoundMaxFitness()) {
+                LOG.info("Skipping further population filling because variant with maximum fitness has been found");
+                break;
+            }
         }
-        
+    }
+
+    private void mutatePopulation(List<Variant> population) {
         LOG.info("Mutating population");
         for (Variant variant : population) {
             if (random.nextDouble() < Configuration.INSTANCE.genetic().mutationProbability()) {
                 mutate(variant);
                 LOG.info(() -> "Mutated " + variant);
+                if (fitnessEvaluator.hasFoundMaxFitness()) {
+                    LOG.info("Skipping mutating rest of population because variant with maximum fitness has been"
+                            + " found");
+                    break;
+                }
             }
         }
-        
-        LOG.info(() -> "Population fitness: " + population.stream()
-                .map(v -> v.getName() + "(" + v.getFitness() + ")")
-                .toList());
     }
 
     private Variant newVariant(boolean withMutation) {

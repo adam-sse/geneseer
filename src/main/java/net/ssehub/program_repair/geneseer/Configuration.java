@@ -193,7 +193,7 @@ public class Configuration {
         private Option<Double> mutationProbability = new Option<>("mutationProbability",
                 "Mutation probability", 0.5, Double::parseDouble);
         private Option<Double> llmMutationProbability = new Option<>("llmMutationProbability",
-                "LLM-mutation probability", 0.1, Double::parseDouble);
+                "LLM-mutation probability", 0.0, Double::parseDouble);
         private Option<MutationScope> statementScope = new Option<>("statementScope",
                 "Statement Scope", MutationScope.GLOBAL, v -> MutationScope.valueOf(v.toUpperCase()));
         

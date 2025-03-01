@@ -60,6 +60,7 @@ class FaultLocalization {
             
             Node classNode = classes.get(className);
             if (classNode != null) {
+                String fileName = classNode.getMetadata(Metadata.FILE_NAME).toString();
                 List<Node> matchingStatements = classNode.stream()
                         .filter(n -> n.getType() == Type.STATEMENT)
                         .filter(n -> AstUtils.spansLine(classNode, n, line))
@@ -67,13 +68,11 @@ class FaultLocalization {
                 
                 if (matchingStatements.isEmpty()) {
                     // these are usually implicit returns at the end of void methods, at the line of the closing }
-                    String cn = className;
-                    LOG.fine(() -> "Found no statements for suspicious " + susValue + " at " + cn + ":" + line);
+                    LOG.fine(() -> "Found no statements for suspicious " + susValue + " at " + fileName + ":" + line);
                 } else if (matchingStatements.size() > 1) {
                     removeParentsOfLastElement(matchingStatements, ast);
                     if (matchingStatements.size() > 1) {
-                        String cn = className;
-                        LOG.fine(() -> "Found " + matchingStatements.size() + " statements for " + cn
+                        LOG.fine(() -> "Found " + matchingStatements.size() + " statements for " + fileName
                                 + ":" + line + "; adding suspiciousness to all of them");
                     }
                 }
@@ -81,8 +80,7 @@ class FaultLocalization {
                 for (Node stmt : matchingStatements) {
                     if (stmt.getMetadata(Metadata.SUSPICIOUSNESS) == null
                             || ((double) stmt.getMetadata(Metadata.SUSPICIOUSNESS)) < susValue) {
-                        String cn = className;
-                        LOG.fine(() -> "Suspicious " + susValue + " at " + cn + ":" + line
+                        LOG.fine(() -> "Suspicious " + susValue + " at " + fileName + ":" + line
                                 + " '" + stmt.getText() + "'");
                         stmt.setMetadata(Metadata.SUSPICIOUSNESS, susValue);
                     }

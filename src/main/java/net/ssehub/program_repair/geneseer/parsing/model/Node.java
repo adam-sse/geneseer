@@ -95,11 +95,11 @@ public abstract class Node implements Cloneable {
         String result;
         if (locked) {
             if (textCache == null) {
-                textCache = getTextImpl();
+                textCache = getTextImpl().trim();
             }
             result = textCache;
         } else {
-            result = getTextImpl();
+            result = getTextImpl().trim();
         }
         return result;
     }

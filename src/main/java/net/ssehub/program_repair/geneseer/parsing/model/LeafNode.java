@@ -33,8 +33,8 @@ public final class LeafNode extends Node {
     }
     
     @Override
-    public String getTextImpl() {
-        return text;
+    protected String getTextImpl() {
+        return (prefixSpaces + prefixNewlines > 0 ? " " : "") + text;
     }
 
     @Override

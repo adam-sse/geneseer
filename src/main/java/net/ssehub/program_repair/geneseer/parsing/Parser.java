@@ -26,16 +26,17 @@ import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
-import net.ssehub.program_repair.geneseer.parsing.model.Position;
 
 public class Parser {
     
     private static final Logger LOG = Logger.getLogger(Parser.class.getName());
 
-    private Parser() {
+    private Token previousToken;
+    
+    public Parser() {
     }
     
-    public static Node parse(Path sourceDirectory, Charset encoding) throws IOException {
+    public Node parse(Path sourceDirectory, Charset encoding) throws IOException {
         Node parseTree = new InnerNode(Type.OTHER);
         
         try {
@@ -55,7 +56,7 @@ public class Parser {
         return parseTree;
     }
     
-    public static Node parseSingleFile(Path sourceFile, Charset encoding) throws IOException {
+    public Node parseSingleFile(Path sourceFile, Charset encoding) throws IOException {
         try {
             Node file = parseFile(sourceFile, encoding);
             fix(file);
@@ -66,7 +67,7 @@ public class Parser {
         }
     }
     
-    private static Node parseFile(Path file, Charset encoding) throws UncheckedIOException {
+    private Node parseFile(Path file, Charset encoding) throws UncheckedIOException {
         try {
             JavaLexer lexer = new JavaLexer(CharStreams.fromFileName(file.toString(), encoding));
             CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -80,6 +81,7 @@ public class Parser {
                 }
             });
             ParseTree antlrTree = parser.compilationUnit();
+            previousToken = null;
             return convert(antlrTree);
             
         } catch (IOException e) {
@@ -118,11 +120,25 @@ public class Parser {
         return result;
     }
     
-    private static Node convert(ParseTree antlrTree) {
+    private Node convert(ParseTree antlrTree) {
         Node result;
         if (antlrTree instanceof TerminalNode terminal) {
             Token token = terminal.getSymbol();
-            result = new LeafNode(terminal.getText(), new Position(token.getLine(), token.getCharPositionInLine()));
+            LeafNode newLeaf = new LeafNode(terminal.getText());
+            if (previousToken != null) {
+                newLeaf.setPrefixNewlines(token.getLine() - previousToken.getLine());
+                if (newLeaf.getPrefixNewlines() == 0) {
+                    newLeaf.setPrefixSpaces(token.getCharPositionInLine()
+                            - (previousToken.getCharPositionInLine() + previousToken.getText().length()));
+                } else {
+                    newLeaf.setPrefixSpaces(token.getCharPositionInLine());
+                }
+            } else {
+                newLeaf.setPrefixNewlines(token.getLine() - 1);
+                newLeaf.setPrefixSpaces(token.getCharPositionInLine());
+            }
+            result = newLeaf;
+            previousToken = token;
         } else {
             result = new InnerNode(getType(antlrTree.getClass().getSimpleName()));
             for (int i = 0; i < antlrTree.getChildCount(); i++) {

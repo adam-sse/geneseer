@@ -22,12 +22,11 @@ import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.llm.ChatGptMessage.Role;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.Writer;
-import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
-import net.ssehub.program_repair.geneseer.parsing.model.Position;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
+import net.ssehub.program_repair.geneseer.util.AstUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
@@ -88,7 +87,7 @@ public class LlmFixer {
                 writeModifiedFile(entry.getKey(), entry.getValue());
             }
 
-            Node variant = Parser.parse(sourceDir, encoding);
+            Node variant = new Parser().parse(sourceDir, encoding);
             result = Optional.of(variant);
             
             try {
@@ -113,7 +112,7 @@ public class LlmFixer {
         int codeSize = 0;
         for (Map.Entry<Node, Double> entry : methodSuspiciousness.entrySet()) {
             Node method = entry.getKey();
-            LineRange range = getRange(method);
+            LineRange range = getRange(original, method);
             
             if (selectedMethods.isEmpty() || codeSize + range.size() < Configuration.INSTANCE.llm().maxCodeContext()) {
                 selectedMethods.add(getSnippetForMethod(original, method, sourceDir));
@@ -166,7 +165,7 @@ public class LlmFixer {
             }
         }
         
-        LineRange range = getRange(method);
+        LineRange range = getRange(root, method);
 
         Path file = fileOrSourceDir;
         if (!Files.isRegularFile(fileOrSourceDir)) {
@@ -183,21 +182,10 @@ public class LlmFixer {
         }
         
     }
-    private LineRange getRange(Node node) {
-        Node firstLeaf = node;
-        while (firstLeaf.getType() != Type.LEAF) {
-            firstLeaf = firstLeaf.get(0);
-        }
-        Node lastLeaf = node;
-        while (lastLeaf.getType() != Type.LEAF) {
-            lastLeaf = lastLeaf.get(lastLeaf.childCount() - 1);
-        }
-        
-        Position start = ((LeafNode) firstLeaf).getPosition();
-        Position end = ((LeafNode) lastLeaf).getPosition();
-        
-        // TODO: end can be null here?
-        return new LineRange(start.line(), end.line());
+    private LineRange getRange(Node root, Node node) {
+        int start = AstUtils.getLine(root, node);
+        int end = start + AstUtils.getAdditionalLineCount(node);
+        return new LineRange(start, end);
     }
 
     private List<String> getTestMethodContext(TestResult failingTest) {
@@ -232,7 +220,7 @@ public class LlmFixer {
     private List<String> findTestMethodInFile(TestResult failingTest, Path testFile)
             throws IOException {
         
-        Node file = Parser.parseSingleFile(testFile, encoding);
+        Node file = new Parser().parseSingleFile(testFile, encoding);
         Optional<Node> method = file.stream()
                 .filter(n -> n.getType() == Type.METHOD)
                 .filter(n -> n.getMetadata(Metadata.METHOD_NAME).equals(failingTest.testMethod()))

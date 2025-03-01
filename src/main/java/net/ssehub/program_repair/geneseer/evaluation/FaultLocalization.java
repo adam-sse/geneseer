@@ -26,6 +26,7 @@ import net.ssehub.program_repair.geneseer.evaluation.TestExecution.TestResultWit
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
+import net.ssehub.program_repair.geneseer.util.AstUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
@@ -61,7 +62,7 @@ class FaultLocalization {
             if (classNode != null) {
                 List<Node> matchingStatements = classNode.stream()
                         .filter(n -> n.getType() == Type.STATEMENT)
-                        .filter(n -> n.hasLine(line))
+                        .filter(n -> AstUtils.spansLine(classNode, n, line))
                         .collect(Collectors.toList());
                 
                 if (matchingStatements.isEmpty()) {

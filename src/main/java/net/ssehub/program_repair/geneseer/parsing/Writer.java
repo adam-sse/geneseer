@@ -29,9 +29,6 @@ public class Writer {
     }
     
     private static String toText(Node root) {
-        int currentLine = 1;
-        int currentColumn = 0;
-        
         Stack<Node> nodes = new Stack<>();
         nodes.push(root);
         
@@ -41,19 +38,14 @@ public class Writer {
             Node currentNode = nodes.pop();
             
             if (currentNode instanceof LeafNode leaf) {
-                while (leaf.getPosition().line() > currentLine) {
+                for (int i = 0; i < leaf.getPrefixNewlines(); i++) {
                     str.append('\n');
-                    currentLine++;
-                    currentColumn = 0;
                 }
-                while (leaf.getPosition().column() > currentColumn) {
+                for (int i = 0; i < leaf.getPrefixSpaces(); i++) {
                     str.append(' ');
-                    currentColumn++;
                 }
-                    
                 
                 String text = leaf.getText();
-                currentColumn += text.length();
                 str.append(text);
                 
             } else {
@@ -63,6 +55,7 @@ public class Writer {
             }
         }
         
+        str.append('\n');
         return str.toString();
     }
     

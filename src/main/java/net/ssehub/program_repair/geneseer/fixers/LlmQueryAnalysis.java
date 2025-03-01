@@ -19,11 +19,10 @@ import com.google.gson.reflect.TypeToken;
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.llm.ChangedArea;
-import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
-import net.ssehub.program_repair.geneseer.parsing.model.Position;
+import net.ssehub.program_repair.geneseer.util.AstUtils;
 
 public class LlmQueryAnalysis implements IFixer {
 
@@ -95,7 +94,7 @@ public class LlmQueryAnalysis implements IFixer {
         int codeSize = 0;
         for (Map.Entry<Node, Double> entry : methodSuspiciousness.entrySet()) {
             Node method = entry.getKey();
-            LineRange range = getRange(method);
+            LineRange range = getRange(original, method);
             
             if (selectedMethods.isEmpty() || codeSize + range.size() < Configuration.INSTANCE.llm().maxCodeContext()) {
                 selectedMethods.add(getSnippetForMethod(original, method));
@@ -162,7 +161,7 @@ public class LlmQueryAnalysis implements IFixer {
             }
         }
         
-        LineRange range = getRange(method);
+        LineRange range = getRange(root, method);
 
         return new CodeSnippet(filename, range);
     }
@@ -173,20 +172,10 @@ public class LlmQueryAnalysis implements IFixer {
         }
         
     }
-    private LineRange getRange(Node node) {
-        Node firstLeaf = node;
-        while (firstLeaf.getType() != Type.LEAF) {
-            firstLeaf = firstLeaf.get(0);
-        }
-        Node lastLeaf = node;
-        while (lastLeaf.getType() != Type.LEAF) {
-            lastLeaf = lastLeaf.get(lastLeaf.childCount() - 1);
-        }
-        
-        Position start = ((LeafNode) firstLeaf).getPosition();
-        Position end = ((LeafNode) lastLeaf).getPosition();
-        
-        return new LineRange(start.line(), end.line());
+    private LineRange getRange(Node root, Node node) {
+        int start = AstUtils.getLine(root, node);
+        int end = start + AstUtils.getAdditionalLineCount(node);
+        return new LineRange(start, end);
     }
 
 }

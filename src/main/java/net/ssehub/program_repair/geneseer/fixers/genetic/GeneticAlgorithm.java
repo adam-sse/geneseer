@@ -23,7 +23,7 @@ import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
-import net.ssehub.program_repair.geneseer.parsing.model.Position;
+import net.ssehub.program_repair.geneseer.util.AstUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
@@ -305,15 +305,12 @@ public class GeneticAlgorithm implements IFixer {
     }
     
     private static void setSamePosition(Node from, Node to) {
-        Node firstLeaf = from;
-        while (firstLeaf.getType() != Type.LEAF) {
-            firstLeaf = firstLeaf.get(0);
-        }
+        LeafNode fromLeaf = AstUtils.getFirstLeafNode(from);
+        LeafNode toLeaf = AstUtils.getFirstLeafNode(to);
         
-        Position position = ((LeafNode) firstLeaf).getPosition();
-        to.stream()
-                .filter(n -> n.getType() == Type.LEAF)
-                .forEach(n -> ((LeafNode) n).setPosition(position));
+        toLeaf.setPrefixNewlines(fromLeaf.getPrefixNewlines());
+        toLeaf.setPrefixSpaces(fromLeaf.getPrefixSpaces());
+        fromLeaf.setPrefixNewlines(1);
     }
 
     private boolean singleMutation(Variant variant, Node astRoot, Node suspicious) {

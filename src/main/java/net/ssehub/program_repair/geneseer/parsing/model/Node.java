@@ -198,8 +198,6 @@ public abstract class Node implements Cloneable {
         return result;
     }
     
-    public abstract boolean hasLine(int lineNumber);
-    
     public Node findEquivalentPath(Node otherRoot, Node toFind) throws IllegalArgumentException {
         Node result;
         

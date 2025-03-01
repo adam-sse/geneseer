@@ -7,25 +7,31 @@ public final class LeafNode extends Node {
 
     private final String text;
     
-    private Position position;
+    private int prefixNewlines;
     
-    public LeafNode(String text, Position position) {
+    private int prefixSpaces;
+    
+    public LeafNode(String text) {
         super(Type.LEAF);
         this.text = text;
-        this.position = position;
     }
     
-    public Position getPosition() {
-        return position;
+    public int getPrefixNewlines() {
+        return prefixNewlines;
     }
     
-    public void setPosition(Position position) {
-        if (locked) {
-            throw new IllegalStateException("Node is locked");
-        }
-        this.position = position;
+    public void setPrefixNewlines(int prefixNewlines) {
+        this.prefixNewlines = prefixNewlines;
+    }
+    
+    public int getPrefixSpaces() {
+        return prefixSpaces;
     }
 
+    public void setPrefixSpaces(int prefixSpaces) {
+        this.prefixSpaces = prefixSpaces;
+    }
+    
     @Override
     public String getTextImpl() {
         return text;
@@ -42,9 +48,11 @@ public final class LeafNode extends Node {
     }
 
     @Override
-    public Node clone() {
-        Node clone = new LeafNode(text, position);
+    public LeafNode clone() {
+        LeafNode clone = new LeafNode(text);
         clone.copyMetadataFromNode(this);
+        clone.prefixNewlines = this.prefixNewlines;
+        clone.prefixSpaces = this.prefixSpaces;
         return clone;
     }
 
@@ -53,9 +61,4 @@ public final class LeafNode extends Node {
         throw new UnsupportedOperationException();
     }
     
-    @Override
-    public boolean hasLine(int lineNumber) {
-        return position != null ? position.line() == lineNumber : false;
-    }
-
 }

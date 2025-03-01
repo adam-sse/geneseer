@@ -90,7 +90,7 @@ public class Geneseer {
         boolean oom = false;
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
-            Node ast = Parser.parse(project.getSourceDirectoryAbsolute(), project.getEncoding());
+            Node ast = new Parser().parse(project.getSourceDirectoryAbsolute(), project.getEncoding());
             ast.lock();
             LOG.fine(() -> ast.stream().count() + " nodes in AST");
             

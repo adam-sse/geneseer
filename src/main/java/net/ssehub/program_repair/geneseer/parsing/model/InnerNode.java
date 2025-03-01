@@ -58,9 +58,4 @@ public final class InnerNode extends Node {
         return clone;
     }
     
-    @Override
-    public boolean hasLine(int lineNumber) {
-        return children.stream().filter(n -> n.hasLine(lineNumber)).findAny().isPresent();
-    }
-
 }

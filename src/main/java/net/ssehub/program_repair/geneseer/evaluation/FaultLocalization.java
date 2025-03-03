@@ -26,7 +26,7 @@ import net.ssehub.program_repair.geneseer.evaluation.TestExecution.TestResultWit
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
 import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
-import net.ssehub.program_repair.geneseer.util.AstUtils;
+import net.ssehub.program_repair.geneseer.util.AstLocations;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
@@ -52,6 +52,10 @@ class FaultLocalization {
         LinkedHashMap<Location, Double> suspiciousness = measureSuspiciousness(tests, variantBinDir, ast);
         
         Map<String, Node> classes = getFileNodesByClassName(ast);
+        Map<String, AstLocations> locations = new HashMap<>(classes.size());
+        for (Map.Entry<String, Node> entry : classes.entrySet()) {
+            locations.put(entry.getKey(), new AstLocations(entry.getValue()));
+        }
         
         for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
             String className = getClassNameWithoutDollar(entry.getKey().className());
@@ -63,7 +67,7 @@ class FaultLocalization {
                 String fileName = classNode.getMetadata(Metadata.FILE_NAME).toString();
                 List<Node> matchingStatements = classNode.stream()
                         .filter(n -> n.getType() == Type.STATEMENT)
-                        .filter(n -> AstUtils.spansLine(classNode, n, line))
+                        .filter(n -> locations.get(className).getStatementsAtLine(line).contains(n))
                         .collect(Collectors.toList());
                 
                 if (matchingStatements.isEmpty()) {

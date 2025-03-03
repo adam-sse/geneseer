@@ -46,15 +46,4 @@ public class AstUtils {
                 .sum();
     }
     
-    public static boolean spansLine(Node fileOrRootNode, Node childNode, int targetLine) {
-        int line = getLine(fileOrRootNode, childNode);
-        boolean contained;
-        if (targetLine > line) {
-            contained = targetLine <= line + getAdditionalLineCount(childNode);
-        } else {
-            contained = line == targetLine;
-        }
-        return contained;
-    }
-    
 }

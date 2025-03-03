@@ -31,6 +31,7 @@ import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
 import net.ssehub.program_repair.geneseer.util.JsonUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
+import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
 public class Geneseer {
@@ -88,7 +89,8 @@ public class Geneseer {
         Map<String, Integer> evaluationStats = new HashMap<>();
         result.put("evaluation", evaluationStats);
         boolean oom = false;
-        try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
+        try (Probe measure = Measurement.INSTANCE.start("total");
+                TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
             
             Node ast = new Parser().parse(project.getSourceDirectoryAbsolute(), project.getEncoding());
             ast.lock();

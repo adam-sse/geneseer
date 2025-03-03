@@ -150,10 +150,11 @@ if applicable):
     "unusableLlmAnswers": 0
   },
   "timings": { // timing measurements in ms
-    "genetic-algorithm": 16033,
-    "compilation": 14725, // total time spent compiling
-    "fault-localization": 2254, // total time spent for fault localization (usually just once initially)
-    "junit-evaluation": 1906, // total time spent running tests (excluding coverage for fault-localization)
+    "total": 4679, // (almost) complete runtime of geneseer, including initial evaluation of unmodified variant
+    "genetic-algorithm": 1867, // runtime of genetic  algorithm, after unmodified variant is evaluated
+    "compilation": 2284, // total time spent compiling
+    "fault-localization": 1757, // total time spent for fault localization (usually just once initially)
+    "junit-evaluation": 257, // total time spent running tests (excluding coverage for fault-localization)
     "llm-query": 0 // total time spent querying the LLM for patches
     // ...
   },

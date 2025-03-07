@@ -37,10 +37,6 @@ public class Defects4jRunner {
         this.defects4j = new Defects4jWrapper(defects4jHome);
     }
     
-    public List<Bug> getBugsOfProject(String project) throws IllegalArgumentException, IOException {
-        return defects4j.getBugsOfProject(project);
-    }
-    
     public void setBug(Bug bug) {
         this.bug = bug;
     }

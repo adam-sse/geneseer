@@ -170,6 +170,18 @@ class Defects4jWrapper {
     public Path getRelativeSourceDirectory(Path checkoutDirectory) throws IOException {
         return Path.of(exportProperty(checkoutDirectory, "dir.src.classes")[0]);
     }
+    
+    public Path getRelativeBinDirectory(Path checkoutDirectory) throws IOException {
+        return Path.of(exportProperty(checkoutDirectory, "dir.bin.classes")[0]);
+    }
+    
+    public Path getRelativeTestSourceDirectory(Path checkoutDirectory) throws IOException {
+        return Path.of(exportProperty(checkoutDirectory, "dir.src.tests")[0]);
+    }
+    
+    public Path getRelativeTestBinDirectory(Path checkoutDirectory) throws IOException {
+        return Path.of(exportProperty(checkoutDirectory, "dir.bin.tests")[0]);
+    }
 
     private List<Path> getMultiplePathsProperty(Path checkoutDirectory, String propertyName)
             throws IOException {

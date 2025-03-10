@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
-
 public class ProcessManager {
 
     public static final ProcessManager INSTANCE = new ProcessManager();
@@ -32,7 +30,6 @@ public class ProcessManager {
     }
     
     private synchronized void killAllRemainingProcesses() {
-        new LoggingConfiguration();
         logInShutdownHook("Cleaning up any remaining child processes");
         
         boolean anyAlive = false;

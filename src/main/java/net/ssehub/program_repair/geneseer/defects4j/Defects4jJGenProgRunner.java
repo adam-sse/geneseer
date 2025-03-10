@@ -164,11 +164,13 @@ public class Defects4jJGenProgRunner {
 
     private int runProcess(Project config, List<String> args) throws IOException {
         try (TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager("jgenprog")) {
-            args.add(3, "-Djava.io.tmpdir=" + tempDirManager.createTemporaryDirectory().toString());
+            Path tempDir = tempDirManager.createTemporaryDirectory();
+            args.add(3, "-Djava.io.tmpdir=" + tempDir);
             
             ProcessBuilder pb = new ProcessBuilder(args);
             pb.directory(config.getProjectDirectory().toFile());
             pb.redirectErrorStream(true);
+            pb.environment().put("_JAVA_OPTIONS", "-Djava.io.tmpdir=" + tempDir);
             Process p = pb.start();
             ProcessManager.INSTANCE.trackProcess(p);
             p.getOutputStream().close();

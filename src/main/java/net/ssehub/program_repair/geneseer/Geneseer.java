@@ -15,8 +15,8 @@ import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.fixers.IFixer;
 import net.ssehub.program_repair.geneseer.fixers.LlmQueryAnalysis;
 import net.ssehub.program_repair.geneseer.fixers.OnlyDelete;
-import net.ssehub.program_repair.geneseer.fixers.SingleLlm;
 import net.ssehub.program_repair.geneseer.fixers.SetupTest;
+import net.ssehub.program_repair.geneseer.fixers.SingleLlm;
 import net.ssehub.program_repair.geneseer.fixers.genetic.GeneticAlgorithm;
 import net.ssehub.program_repair.geneseer.llm.ChatGptConnection;
 import net.ssehub.program_repair.geneseer.llm.DummyChatGptConnection;
@@ -76,6 +76,8 @@ public class Geneseer {
     }
     
     public static void main(Project project) {
+        LOG.info(() -> "Geneseer " + VersionInfo.VERSION + " (" + VersionInfo.GIT_COMMIT
+                + (VersionInfo.GIT_DIRTY ? " dirty" : "") + ")");
         LOG.config("Project:");
         LOG.config("    base directory: " + project.getProjectDirectory());
         LOG.config("    source directory: " + project.getSourceDirectory());

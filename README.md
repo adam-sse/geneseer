@@ -6,7 +6,7 @@ A search-based program-repair tool for Java.
 
 Start a JVM with geneseer and all its dependencies on the classpath. We recommend to simply use the
 `jar-with-dependencies` of geneseer, then you only need to provide that single jar file. The main class is
-`net.ssehub.program_repair.geneseer.Geneseer`.
+`net.ssehub.program_repair.geneseer.Geneseer`; it is also set as the main class in the jar, so `-jar` can be used to start it.
 
 The following command line arguments must be specified, each with a following value:
 
@@ -31,7 +31,7 @@ specified, the default encoding of the operating system is used.
 The classpaths (`--test-classpath` and `--compile-classpath`) can be specified with the platform-specific file separator
 character (`;` on Windows, `:` on Unix-likes). If `;` does not occur, then `:` may also be used on Windows.
 
-By default, the CONFIG level and above is logged. To change this, add the this JVM argument:
+By default, the CONFIG level and above is logged. To change this, add this JVM argument:
 `-Djava.util.logging.config.file=logging.properties`. Note that this is *not* a command line argument for this program,
 it needs to be specified before the main class or `-jar` parameter. `logging.properties` should point to the
 configuration file for the Java logging facility (e.g. see the file included in this repository); if it is not available
@@ -39,7 +39,7 @@ in the working directory where you launch this program, copy it there or specify
 
 As an example, a full execution of geneseer may look like this:
 ```
-java -Djava.util.logging.config.file=logging.properties -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.Geneseer --project-directory /path/to/project-to-fix --source-directory src/main/java --encoding ISO-8859-1 --compile-classpath lib/some-lib.jar:lib/other-lib.jar --test-classpath target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar --test-classes com.example.TestClass1:com.example.TestClass2
+java -Djava.util.logging.config.file=logging.properties -jar geneseer-jar-with-dependencies.jar --project-directory /path/to/project-to-fix --source-directory src/main/java --encoding ISO-8859-1 --compile-classpath lib/some-lib.jar:lib/other-lib.jar --test-classpath target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar --test-classes com.example.TestClass1:com.example.TestClass2
 ```
 
 ### Defects4j

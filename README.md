@@ -178,10 +178,8 @@ variant with improved fitness may have been found, but some test cases are still
 * `IO_EXCEPTION`: An IOException occurred during the execution.
 * `OUT_OF_MEMORY`: The JVM threw an OutOfMemoryError. No further values are present.
 
-Geneseer outputs logging information to stderr. This contains much more detailed information on the execution. For
-example, it contains the best found variant and it's modifications compared to the original code. It may also hint at
-problems in the setup (e.g. when classpath elements are specified that do not exist) and contains detailed timing
-measurements of different areas in the execution.
+Geneseer outputs logging information to stderr. This contains much more detailed information on the execution. It may
+also hint at problems in the setup (e.g. when classpath elements are specified that do not exist).
 
 ## Compiling
 

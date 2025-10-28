@@ -41,6 +41,8 @@ public class SingleLlm implements IFixer {
                 result.put("modifiedFailingTests", failingTests);
                 
                 int initialFailingTests = testSuite.getInitialFailingTestResults().size();
+                LOG.info(() -> "Variant has " + failingTests + " failing test cases (original had "
+                            + initialFailingTests + ")");
                 if (failingTests == 0) {
                     resultString = "FOUND_FIX";
                 } else if (failingTests < initialFailingTests) {
@@ -52,12 +54,14 @@ public class SingleLlm implements IFixer {
                 }
                 
             } catch (CompilationException e) {
+                LOG.info("Variant did not compile");
                 resultString = "VARIANT_UNFIT";
             } catch (EvaluationException e) {
                 LOG.log(Level.WARNING, "Failed to evaluate", e);
                 resultString = "VARIANT_UNFIT";
             }
         } else {
+            LOG.info("Could not create a variant with LLM");
             patched = null;
             resultString = "VARIANT_CREATION_FAILED";
         }

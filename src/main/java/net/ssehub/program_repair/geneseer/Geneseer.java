@@ -43,6 +43,9 @@ public class Geneseer {
     private static final Logger LOG = Logger.getLogger(Geneseer.class.getName());
     
     public static void main(String[] args) {
+        LOG.info(() -> "Geneseer " + VersionInfo.VERSION + " (" + VersionInfo.GIT_COMMIT
+                + (VersionInfo.GIT_DIRTY ? " dirty" : "") + ")");
+        
         Project project = null;
         try {
             project = initializeProjectsAndConfiguration(args);
@@ -76,8 +79,6 @@ public class Geneseer {
     }
     
     public static void main(Project project) {
-        LOG.info(() -> "Geneseer " + VersionInfo.VERSION + " (" + VersionInfo.GIT_COMMIT
-                + (VersionInfo.GIT_DIRTY ? " dirty" : "") + ")");
         LOG.config("Project:");
         LOG.config("    base directory: " + project.getProjectDirectory());
         LOG.config("    source directory: " + project.getSourceDirectory());

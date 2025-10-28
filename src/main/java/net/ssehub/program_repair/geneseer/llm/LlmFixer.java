@@ -66,8 +66,7 @@ public class LlmFixer {
         
         LOG.fine(() -> "Got answer:\n" + answer);
         
-        
-        Optional<Node> result;
+        Node variant = original.clone();
         try {
             parseAnswerSnippets(answer, codeSnippets);
             
@@ -83,13 +82,28 @@ public class LlmFixer {
             
             LOG.fine(() -> "Answer has modified " + codeSnippets.stream().filter(s -> s.newLines != null).count()
                     + " snippets in " + modifiedSnippetsByFile.size() + " files");
+            Parser parser = new Parser();
             for (Map.Entry<Path, List<CodeSnippet>> entry : modifiedSnippetsByFile.entrySet()) {
                 writeModifiedFile(entry.getKey(), entry.getValue());
+                
+                Path modifiedFilePath = sourceDir.relativize(entry.getKey());
+                Node originalFileNode = null;
+                int originalIndex = -1;
+                for (int i = 0; i < variant.childCount(); i++) {
+                    if (variant.get(i).getMetadata(Metadata.FILE_NAME).equals(modifiedFilePath)) {
+                        originalIndex = i;
+                        originalFileNode = variant.get(originalIndex);
+                    }
+                }
+                if (originalIndex == -1) {
+                    throw new AnswerDoesNotApplyException("Can't find modified file " + modifiedFilePath + " in AST");
+                }
+                
+                Node modifiedFileNode = parser.parseSingleFile(entry.getKey(), encoding);
+                modifiedFileNode.copyMetadataFromNode(originalFileNode);
+                variant.set(originalIndex, modifiedFileNode);
             }
 
-            Node variant = new Parser().parse(sourceDir, encoding);
-            result = Optional.of(variant);
-            
             try {
                 String astDiff = AstDiff.getDiff(original, variant, tempDirManager, encoding);
                 LOG.info(() -> "Diff of created variant:\n" + astDiff);
@@ -99,11 +113,11 @@ public class LlmFixer {
                 
         } catch (AnswerDoesNotApplyException e) {
             LOG.log(Level.WARNING, "Answer cannot be applied to variant", e);
-            result = Optional.empty();
+            variant = null;
         }
         tempDirManager.deleteTemporaryDirectory(sourceDir);
         
-        return result;
+        return Optional.ofNullable(variant);
     }
 
     private List<CodeSnippet> selectMostSuspiciousMethods(Node original, Path sourceDir) throws IOException {

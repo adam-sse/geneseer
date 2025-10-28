@@ -476,7 +476,7 @@ public class GeneticAlgorithm implements IFixer {
     private void findMatchingModifiedBlocks(Node node1, Node node2, List<Node> blocks1, List<Node> blocks2) {
         boolean matched = false;
         if (containsSuspiciousChild(node1) || containsSuspiciousChild(node2)) {
-            if (!node1.getText().equals(node2.getText())) {
+            if (!node1.contentEquals(node2)) {
                 blocks1.add(node1);
                 blocks2.add(node2);
                 matched = true;

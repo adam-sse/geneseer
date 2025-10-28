@@ -214,7 +214,7 @@ public class TestSuite {
         for (Path file : newAstFiles.keySet()) {
             Node newFile = newAstFiles.get(file);
             Node oldFile = oldAstFiles.get(file);
-            if (!oldFile.equals(newFile)) {
+            if (!oldFile.contentEquals(newFile)) {
                 modifiedFiles.add(newFile);
             }
         }

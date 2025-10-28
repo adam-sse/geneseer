@@ -268,4 +268,6 @@ public abstract class Node implements Cloneable {
         return children().get(index);
     }
     
+    public abstract boolean contentEquals(Node other);
+    
 }

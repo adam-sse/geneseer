@@ -61,4 +61,13 @@ public final class LeafNode extends Node {
         throw new UnsupportedOperationException();
     }
     
+    @Override
+    public boolean contentEquals(Node other) {
+        boolean result = false;
+        if (other instanceof LeafNode otherLeaf) {
+            result = this.text.equals(otherLeaf.text);
+        }
+        return result;
+    }
+    
 }

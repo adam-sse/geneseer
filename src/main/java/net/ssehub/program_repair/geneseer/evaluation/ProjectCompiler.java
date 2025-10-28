@@ -128,7 +128,7 @@ class ProjectCompiler {
                 for (int i = 0; i < newAst.childCount(); i++) {
                     Node newFile = newAst.get(i);
                     Path path = (Path) newFile.getMetadata(Metadata.FILE_NAME);
-                    if (!newFile.equals(previousFilesByPath.get(path))) {
+                    if (!newFile.contentEquals(previousFilesByPath.get(path))) {
                         Writer.writeSingleFile(newFile, sourceDirectory, encoding);
                         modifiedFiles.add(path);
                     }

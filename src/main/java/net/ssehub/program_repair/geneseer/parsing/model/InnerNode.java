@@ -53,4 +53,19 @@ public final class InnerNode extends Node {
         return clone;
     }
     
+    @Override
+    public boolean contentEquals(Node other) {
+        boolean result = false;
+        if (other instanceof InnerNode otherInner && this.children.size() == otherInner.children.size()) {
+            result = true;
+            for (int i = 0; i < this.children.size(); i++) {
+                if (!this.children.get(i).contentEquals(otherInner.children.get(i))) {
+                    result = false;
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+    
 }

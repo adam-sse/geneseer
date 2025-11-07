@@ -235,7 +235,7 @@ public class GeneticAlgorithm implements IFixer {
     }
     
     private void mutate(Variant variant) {
-        boolean needsFitnessReevaluation = false;
+        boolean mutationAdded = false;
         boolean needsFaultLocalization = false;
         
         Node astRoot = variant.getAst();
@@ -264,8 +264,10 @@ public class GeneticAlgorithm implements IFixer {
                             astRoot = result.get();
                             variant.setAst(astRoot);
                             variant.addMutation("LLM");
-                            needsFitnessReevaluation = true;
-                            needsFaultLocalization = true;
+                            mutationAdded = true;
+                            if (generation < Configuration.INSTANCE.genetic().generationLimit()) {
+                                needsFaultLocalization = true;
+                            }
                         } else {
                             numUnusableLlmAnswers++;
                             LOG.info(() -> "Got no usable result from LLM");
@@ -288,18 +290,17 @@ public class GeneticAlgorithm implements IFixer {
                 }
                 
                 Node suspicious = suspiciousStatements.get(selected);
-                needsFitnessReevaluation = singleMutation(variant, astRoot, suspicious);
+                mutationAdded = singleMutation(variant, astRoot, suspicious);
             }
         } else {
             numFailedMutations++;
             LOG.warning(() -> "Failed to muate " + variant.getName() + " because it has no suspicious statements");
         }
         
-        if (!needsFitnessReevaluation) {
+        if (!mutationAdded) {
             LOG.info(() -> "No new mutation added to " + variant.getName());
         }
-        
-        if (needsFitnessReevaluation || !variant.hasFitness()) {
+        if (mutationAdded || !variant.hasFitness()) {
             fitnessEvaluator.measureFitness(variant, needsFaultLocalization);
         }
     }

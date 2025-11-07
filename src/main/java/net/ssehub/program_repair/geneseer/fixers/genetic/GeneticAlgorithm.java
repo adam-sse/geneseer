@@ -225,10 +225,9 @@ public class GeneticAlgorithm implements IFixer {
 
     private Variant newVariant(boolean withMutation) {
         Variant variant = new Variant(unmodifiedVariant.getAst());
+        variant.setFitness(unmodifiedVariant.getFitness(), unmodifiedVariant.getFailingTests());
         if (withMutation) {
             mutate(variant);
-        } else {
-            variant.setFitness(unmodifiedVariant.getFitness(), unmodifiedVariant.getFailingTests());
         }
         LOG.info("Created new " + variant);
         return variant;

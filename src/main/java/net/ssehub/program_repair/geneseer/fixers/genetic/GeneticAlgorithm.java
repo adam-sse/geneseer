@@ -265,7 +265,7 @@ public class GeneticAlgorithm implements IFixer {
                             variant.setAst(astRoot);
                             variant.addMutation("LLM");
                             mutationAdded = true;
-                            if (generation < Configuration.INSTANCE.genetic().generationLimit()) {
+                            if (generation <= Configuration.INSTANCE.genetic().generationLimit()) {
                                 needsFaultLocalization = true;
                             }
                         } else {

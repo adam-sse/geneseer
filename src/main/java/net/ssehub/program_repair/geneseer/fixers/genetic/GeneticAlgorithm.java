@@ -474,16 +474,12 @@ public class GeneticAlgorithm implements IFixer {
     }
 
     private void findMatchingModifiedBlocks(Node node1, Node node2, List<Node> blocks1, List<Node> blocks2) {
-        boolean matched = false;
-        if (containsSuspiciousChild(node1) || containsSuspiciousChild(node2)) {
-            if (!node1.contentEquals(node2)) {
-                blocks1.add(node1);
-                blocks2.add(node2);
-                matched = true;
-            }
-        }
-        
-        if (!matched) {
+        boolean bothBlocks = node1.getType() == Type.COMPOSIT_STATEMENT && node2.getType() == Type.COMPOSIT_STATEMENT;
+        if (bothBlocks && (containsSuspiciousChild(node1) || containsSuspiciousChild(node2))
+                && !node1.contentEquals(node2)) {
+            blocks1.add(node1);
+            blocks2.add(node2);
+        } else {
             for (int i = 0; i < Math.min(node1.childCount(), node2.childCount()); i++) {
                 findMatchingModifiedBlocks(node1.get(i), node2.get(i), blocks1, blocks2);
             }

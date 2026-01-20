@@ -1,7 +1,7 @@
 package net.ssehub.program_repair.geneseer.fixers;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -28,12 +28,9 @@ public class LlmQueryAnalysis implements IFixer {
 
     private static final Logger LOG = Logger.getLogger(LlmQueryAnalysis.class.getName());
     
-    private Charset encoding;
-    
     private Path projectRoot;
     
-    public LlmQueryAnalysis(Charset encoding, Path projectRoot) {
-        this.encoding = encoding;
+    public LlmQueryAnalysis(Path projectRoot) {
         this.projectRoot = projectRoot;
     }
 
@@ -45,7 +42,7 @@ public class LlmQueryAnalysis implements IFixer {
         java.lang.reflect.Type listType = new TypeToken<List<ChangedArea>>() {
         }.getType();
         List<ChangedArea> changedByHumanPatch = new Gson().fromJson(
-                Files.readString(changedAreasFile, encoding), listType);
+                Files.readString(changedAreasFile, StandardCharsets.UTF_8), listType);
         
         List<ChangedArea> in = new LinkedList<>();
         List<ChangedArea> out = new LinkedList<>();
@@ -108,12 +105,12 @@ public class LlmQueryAnalysis implements IFixer {
         List<Node> methods = original.stream().filter(n -> n.getType() == Type.METHOD).toList();
         Map<Node, Double> methodSuspiciousness = new HashMap<>(methods.size());
         for (Node method : methods) {
-            double suspiciousnessSum = method.stream()
+            double suspiciousnessMax = method.stream()
                     .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                     .mapToDouble(n -> (double) n.getMetadata(Metadata.SUSPICIOUSNESS))
                     .max().orElse(0.0);
-            if (suspiciousnessSum > 0) {
-                methodSuspiciousness.put(method, suspiciousnessSum);
+            if (suspiciousnessMax > 0) {
+                methodSuspiciousness.put(method, suspiciousnessMax);
             }
         }
         
@@ -135,7 +132,7 @@ public class LlmQueryAnalysis implements IFixer {
 
         public boolean contains(ChangedArea changedArea) {
             return file.equals(Path.of(changedArea.file())) && lineRange.start() <= changedArea.start()
-                    && lineRange.end() >= changedArea.start() + changedArea.size();
+                    && lineRange.end() >= changedArea.end();
         }
 
         @Override

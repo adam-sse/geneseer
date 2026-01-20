@@ -140,12 +140,12 @@ public class LlmFixer {
         List<Node> methods = original.stream().filter(n -> n.getType() == Type.METHOD).toList();
         Map<Node, Double> methodSuspiciousness = new HashMap<>(methods.size());
         for (Node method : methods) {
-            double suspiciousnessSum = method.stream()
+            double suspiciousnessMax = method.stream()
                     .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                     .mapToDouble(n -> (double) n.getMetadata(Metadata.SUSPICIOUSNESS))
                     .max().orElse(0.0);
-            if (suspiciousnessSum > 0) {
-                methodSuspiciousness.put(method, suspiciousnessSum);
+            if (suspiciousnessMax > 0) {
+                methodSuspiciousness.put(method, suspiciousnessMax);
             }
         }
         

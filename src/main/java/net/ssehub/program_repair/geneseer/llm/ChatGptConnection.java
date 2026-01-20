@@ -205,6 +205,7 @@ public class ChatGptConnection implements IChatGptConnection {
             ChatGptMessage message = choice.message();
             if (message.getRole() == Role.ASSISTANT) {
                 int index = message.getContent().lastIndexOf(reasoningDelimiter);
+                LOG.fine(() -> "Stripping " + index + " characters of reasoning trace");
                 if (index != -1) {
                     message.setContent(message.getContent().substring(index + reasoningDelimiter.length()));
                 }

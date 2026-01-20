@@ -182,12 +182,9 @@ public class Geneseer {
             chatGpt = new DummyChatGptConnection();
         } else {
             chatGpt = new ChatGptConnection(Configuration.INSTANCE.llm().apiUrl());
-            if (Configuration.INSTANCE.llm().apiToken() != null) {
-                ((ChatGptConnection) chatGpt).setToken(Configuration.INSTANCE.llm().apiToken());
-            }
-            if (Configuration.INSTANCE.llm().apiUserHeader() != null) {
-                ((ChatGptConnection) chatGpt).setUserHeader(Configuration.INSTANCE.llm().apiUserHeader());
-            }
+            ((ChatGptConnection) chatGpt).setToken(Configuration.INSTANCE.llm().apiToken());
+            ((ChatGptConnection) chatGpt).setUserHeader(Configuration.INSTANCE.llm().apiUserHeader());
+            ((ChatGptConnection) chatGpt).setReasoningDelimiter(Configuration.INSTANCE.llm().reasoningDelimiter());
         }
         
         LlmFixer llmFixer = new LlmFixer(chatGpt, tempDirManager, project.getEncoding(),

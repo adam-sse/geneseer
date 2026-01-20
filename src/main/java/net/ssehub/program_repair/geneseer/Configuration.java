@@ -257,6 +257,8 @@ public class Configuration {
                 "Temperature", Double::parseDouble);
         private Option<Long> seed = new Option<>("seed",
                 "Seed", Long::parseLong);
+        private Option<String> reasoningDelimiter = new Option<>("reasoningDelimiter",
+                "Reasoning Delimiter", null, Function.identity());
         private Option<URL> apiUrl = new Option<URL>("apiUrl",
                 "API URL", v -> {
                     try {
@@ -283,6 +285,7 @@ public class Configuration {
             super.options.add(maxCodeContext);
             super.options.add(temperature);
             super.options.add(seed);
+            super.options.add(reasoningDelimiter);
             super.options.add(apiUrl);
             super.options.add(apiToken);
             super.options.add(apiUserHeader);
@@ -302,6 +305,10 @@ public class Configuration {
         
         public Long seed() {
             return seed.getValue();
+        }
+        
+        public String reasoningDelimiter() {
+            return reasoningDelimiter.getValue();
         }
         
         public URL apiUrl() {

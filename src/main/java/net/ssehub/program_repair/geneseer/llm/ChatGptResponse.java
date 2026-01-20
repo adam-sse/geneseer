@@ -33,7 +33,7 @@ record ChatGptResponse(
     }
     
     public String getContent() {
-        return choices.get(0).message.content();
+        return choices.get(0).message.getContent();
     }
 
 }

@@ -16,6 +16,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 
 import net.ssehub.program_repair.geneseer.llm.ChatGptErrorResponse.ErrorContent;
+import net.ssehub.program_repair.geneseer.llm.ChatGptMessage.Role;
 import net.ssehub.program_repair.geneseer.llm.ChatGptResponse.Choice;
 import net.ssehub.program_repair.geneseer.llm.ChatGptResponse.FinishReason;
 
@@ -28,6 +29,8 @@ public class ChatGptConnection implements IChatGptConnection {
     private String token;
     
     private String userHeader;
+    
+    private String reasoningDelimiter;
     
     private Gson gson;
     
@@ -42,6 +45,10 @@ public class ChatGptConnection implements IChatGptConnection {
     
     public void setUserHeader(String userHeader) {
         this.userHeader = userHeader;
+    }
+    
+    public void setReasoningDelimiter(String reasoningDelimiter) {
+        this.reasoningDelimiter = reasoningDelimiter;
     }
     
     @Override
@@ -136,6 +143,9 @@ public class ChatGptConnection implements IChatGptConnection {
         ChatGptResponse response = gson.fromJson(content, ChatGptResponse.class);
         sanityChecks(response, request);
         LOG.info(() -> "ChatGPT response usage: " + response.usage());
+        if (reasoningDelimiter != null) {
+            removeReasoningTrace(response);
+        }
         return response;
     }
     
@@ -189,5 +199,17 @@ public class ChatGptConnection implements IChatGptConnection {
             }
         }
     }
-
+    
+    private void removeReasoningTrace(ChatGptResponse response) {
+        for (Choice choice : response.choices()) {
+            ChatGptMessage message = choice.message();
+            if (message.getRole() == Role.ASSISTANT) {
+                int index = message.getContent().lastIndexOf(reasoningDelimiter);
+                if (index != -1) {
+                    message.setContent(message.getContent().substring(index + reasoningDelimiter.length()));
+                }
+            }
+        }
+    }
+    
 }

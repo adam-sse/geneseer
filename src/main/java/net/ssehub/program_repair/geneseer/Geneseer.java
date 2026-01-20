@@ -15,6 +15,7 @@ import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.fixers.IFixer;
 import net.ssehub.program_repair.geneseer.fixers.LlmQueryAnalysis;
 import net.ssehub.program_repair.geneseer.fixers.OnlyDelete;
+import net.ssehub.program_repair.geneseer.fixers.Outliner;
 import net.ssehub.program_repair.geneseer.fixers.SetupTest;
 import net.ssehub.program_repair.geneseer.fixers.SingleLlm;
 import net.ssehub.program_repair.geneseer.fixers.genetic.GeneticAlgorithm;
@@ -162,7 +163,10 @@ public class Geneseer {
             result = new OnlyDelete();
             break;
         case "LLM_QUERY_ANALYSIS":
-            result = new LlmQueryAnalysis(project.getEncoding(), project.getProjectDirectory());
+            result = new LlmQueryAnalysis(project.getProjectDirectory());
+            break;
+        case "OUTLINER":
+            result = new Outliner(project.getProjectDirectory());
             break;
             
         default:

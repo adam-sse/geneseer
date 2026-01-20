@@ -34,9 +34,8 @@ public class LlmFixer {
 
     private static final Logger LOG = Logger.getLogger(LlmFixer.class.getName());
     
-    private static final String SYSTEM_MESSAGE = "You are an automated program repair tool. Write no explanations and"
-            + " only output the fixed code. Output the complete (fixed) code that is given to you, even if only a small"
-            + " part of it is changed.";
+    private static final String SYSTEM_MESSAGE = "You are an automated program repair tool for Java programs."
+            + " Write no explanations and only output the fixed code.";
     
     private IChatGptConnection llm;
     
@@ -281,9 +280,11 @@ public class LlmFixer {
             snippet.lines.stream().forEach(line -> query.append(line).append('\n'));
             query.append("```");
         }
-        query.append("\n\nYou must prefix your fixed code with \"Code snippet number <number>\" to clarify which "
-                + "code snippet you modified (you may modify multiple code snippets). Do not output code snippets"
-                + " that you did not modify.");
+        query.append("\n\nYou must prefix your fixed code with \"Code snippet number <number>\" to clarify which"
+                + " code snippet you modified (you may modify multiple code snippets). Do not output code snippets"
+                + " that you did not modify. Surround each code snippet with ``` markers (after the code snippet"
+                + " number). Output the complete fixed code that is given to you, even if only a small part of it"
+                + " is changed.");
         
         LOG.fine(() -> "Query:\n" + query);
         request.addMessage(new ChatGptMessage(query.toString(), Role.USER));
@@ -303,11 +304,9 @@ public class LlmFixer {
     private void parseAnswerSnippets(String answer, List<CodeSnippet> snippets) throws AnswerDoesNotApplyException {
         Pattern pattern = Pattern.compile("Code snippet number (?<number>\\d+)", Pattern.CASE_INSENSITIVE);
         
+        List<String> linesOutsideOfCode = new LinkedList<>();
         String[] answerLines = answer.split("\n");
         for (int i = 0; i < answerLines.length; i++) {
-            if (answerLines[i].isEmpty()) {
-                continue;
-            }
             Matcher m = pattern.matcher(answerLines[i]);
             if (!m.find()) {
                 boolean fixable = false;
@@ -322,10 +321,13 @@ public class LlmFixer {
                 }
                 
                 if (!fixable) {
-                    throw new AnswerDoesNotApplyException("missing proper code snippet heading in line: "
-                            + answerLines[i]);
+                    if (!answerLines[i].isEmpty()) {
+                        linesOutsideOfCode.add(answerLines[i]);
+                    }
+                    continue;
                 }
             }
+            
             int snippetNumber = Integer.parseInt(m.group("number"));
             if (snippetNumber <= 0 || snippetNumber > snippets.size()) {
                 throw new AnswerDoesNotApplyException("invalid snippet number " + snippetNumber);
@@ -333,7 +335,7 @@ public class LlmFixer {
             
             i++;
             if (i >= answerLines.length || !answerLines[i].startsWith("```")) {
-                throw new AnswerDoesNotApplyException("missing starting code block for snippet " + snippetNumber);
+                throw new AnswerDoesNotApplyException("missing code block start marker for snippet " + snippetNumber);
             }
             i++;
             
@@ -344,8 +346,16 @@ public class LlmFixer {
                 }
                 lines.add(answerLines[i]);
             }
+            if (i == answerLines.length) {
+                throw new AnswerDoesNotApplyException("missing code block end marker for snippet " + snippetNumber);
+            }
             
             snippets.get(snippetNumber - 1).newLines = lines;
+        }
+        
+        if (!linesOutsideOfCode.isEmpty()) {
+            LOG.warning(() -> "Found answer lines outside of code blocks:\n"
+                    + linesOutsideOfCode.stream().collect(Collectors.joining("\n")));
         }
     }
     

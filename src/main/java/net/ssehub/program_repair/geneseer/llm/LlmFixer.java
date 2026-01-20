@@ -34,8 +34,7 @@ public class LlmFixer {
 
     private static final Logger LOG = Logger.getLogger(LlmFixer.class.getName());
     
-    private static final String SYSTEM_MESSAGE = "You are an automated program repair tool for Java programs."
-            + " Write no explanations and only output the fixed code.";
+    private static final String SYSTEM_MESSAGE = "You are an automated program repair tool for Java programs.";
     
     private IChatGptConnection llm;
     

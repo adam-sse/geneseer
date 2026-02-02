@@ -10,6 +10,9 @@ import java.util.Map;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.knuddels.jtokkit.Encodings;
+import com.knuddels.jtokkit.api.Encoding;
+import com.knuddels.jtokkit.api.EncodingType;
 
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.llm.ChangedArea;
@@ -35,6 +38,7 @@ public class Outliner implements IFixer {
             String file,
             int lineStart,
             int lineEnd,
+            int tokens,
             int numStatements,
             boolean modifiedByHumanPatch,
             int suspiciousCount,
@@ -56,11 +60,13 @@ public class Outliner implements IFixer {
         List<ChangedArea> changedByHumanPatch = new Gson().fromJson(
                 Files.readString(changedAreasFile, StandardCharsets.UTF_8), listType);
         
+        Encoding tokenEncoding = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.CL100K_BASE);
+        
         List<Method> methods = ast.stream()
-                .filter(n -> n.getType() == Type.METHOD)
+                .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
                 .map(method -> {
                     String methodName = (String) method.getMetadata(Metadata.METHOD_NAME);
-                    String signature = methodSignature(method);
+                    String signature = AstUtils.getMethodSignature(method);
                     
                     List<Node> parents = ast.getPath(method);
                     int classIndex = parents.size() - 2;
@@ -77,6 +83,8 @@ public class Outliner implements IFixer {
                     
                     int lineStart =  AstUtils.getLine(ast, method);
                     int lineEnd = lineStart + AstUtils.getAdditionalLineCount(method);
+                    
+                    int numTokens = tokenEncoding.countTokensOrdinary(AstUtils.getFormattedText(method));
                     
                     int numStatements = (int) method.stream()
                             .filter(n -> n.getType() == Type.STATEMENT)
@@ -96,7 +104,7 @@ public class Outliner implements IFixer {
                     double avgSus = stats.getCount() > 0 ? maxSus / stats.getCount() : 0.0;
                     
                     return new Method(className, methodName, signature,
-                            file, lineStart, lineEnd, numStatements, modifiedByHumanPatch,
+                            file, lineStart, lineEnd, numTokens, numStatements, modifiedByHumanPatch,
                             (int) stats.getCount(), maxSus, stats.getSum(), avgSus);
                 })
                 .toList();
@@ -108,13 +116,4 @@ public class Outliner implements IFixer {
         return null;
     }
     
-    private static String methodSignature(Node methodNode) {
-        methodNode = methodNode.cheapClone(methodNode);
-        List<Node> blocks = methodNode.stream().filter(n -> n.getType() == Type.COMPOSIT_STATEMENT).toList();
-        for (Node block : blocks) {
-            methodNode.remove(block);
-        }
-        return methodNode.getText();
-    }
-
 }

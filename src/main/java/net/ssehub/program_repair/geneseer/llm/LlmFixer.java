@@ -57,7 +57,7 @@ public class LlmFixer {
         List<CodeSnippet> codeSnippets = selectMostSuspiciousMethods(original);
         
         String answer = query(failingTests.stream().map(TestResult::failureMessage).toList(),
-                failingTests.stream().map(this::getTestMethodCode).toList(),
+                failingTests.stream().map(this::getTestMethodContext).toList(),
                 codeSnippets);
         
         LOG.fine(() -> "Got answer:\n" + answer);
@@ -201,27 +201,38 @@ public class LlmFixer {
         int end = start + AstUtils.getAdditionalLineCount(node);
         return new LineRange(start, end);
     }
+    
+    private static record TestMethodContext(String code, String testClassName) {
+    }
 
-    private String getTestMethodCode(TestResult failingTest) {
+    private TestMethodContext getTestMethodContext(TestResult failingTest) {
         String testFileName = failingTest.testClass().substring(failingTest.testClass().lastIndexOf('.') + 1) + ".java";
         
-        String result = null;
+        TestMethodContext result = null;
         try {
             List<Path> testFiles = Files.walk(projectRoot)
                     .filter(p -> p.getFileName().toString().equals(testFileName))
                     .filter(p -> Files.isRegularFile(p))
                     .toList();
             
+            List<TestMethodContext> found = new LinkedList<>();
             for (Path testFile : testFiles) {
-                result = findTestMethodInFile(failingTest, testFile);
+                TestMethodContext ctx = findTestMethodInFile(failingTest, testFile);
+                if (ctx != null) {
+                    found.add(ctx);
+                }
             }
             
-            if (result == null) {
+            if (found.size() == 1) {
+                result = found.get(0);
+            } else {
                 if (testFiles.isEmpty()) {
                     LOG.warning(() -> "Could not find test file for test class " + failingTest.testClass());
-                } else {
+                } else if (found.isEmpty()) {
                     LOG.warning(() -> "Could not find test method " + failingTest.testMethod() + " in any of these"
                             + " test files: " + testFiles);
+                } else {
+                    LOG.warning(() -> "Found test method " + failingTest.testMethod() + " more than once");
                 }
             }
                 
@@ -231,7 +242,7 @@ public class LlmFixer {
         return result;
     }
 
-    private String findTestMethodInFile(TestResult failingTest, Path testFile)
+    private TestMethodContext findTestMethodInFile(TestResult failingTest, Path testFile)
             throws IOException {
         
         Node file = new Parser().parseSingleFile(testFile, encoding);
@@ -240,28 +251,42 @@ public class LlmFixer {
                 .filter(n -> n.getMetadata(Metadata.METHOD_NAME).equals(failingTest.testMethod()))
                 .findAny();
         
-        String result = null;
+        TestMethodContext result = null;
         if (method.isPresent()) {
-            result = AstUtils.getFormattedText(method.get());
+            String code = AstUtils.getFormattedText(method.get());
+            List<Node> path = file.getPath(method.get());
+            String testClassName = null;
+            for (int i = path.size() - 1; i >= 0; i--) {
+                if (path.get(i).getMetadata(Metadata.CLASS_NAME) != null) {
+                    testClassName = (String) path.get(i).getMetadata(Metadata.CLASS_NAME);
+                    break;
+                }
+            }
+            
+            result = new TestMethodContext(code, testClassName);
         }
         
         return result;
     }
 
-    private String query(List<String> failureMessages, List<String> testMethodCode,
+    private String query(List<String> failureMessages, List<TestMethodContext> testMethodContext,
             List<CodeSnippet> codeSnippets) throws IOException {
         ChatGptRequest request = new ChatGptRequest(Configuration.INSTANCE.llm().model());
         request.addMessage(new ChatGptMessage(SYSTEM_MESSAGE, Role.SYSTEM));
         
         StringBuilder query = new StringBuilder();
         for (int i = 0; i < failureMessages.size(); i++) {
-            if (testMethodCode.get(i) != null) {
-                query.append("Test code");
+            if (testMethodContext.get(i) != null) {
+                TestMethodContext context = testMethodContext.get(i);
+                query.append("Failing test method");
                 if (failureMessages.size() > 1) {
                     query.append(' ').append(i + 1);
                 }
+                if (context.testClassName() != null) {
+                    query.append(" in test class ").append(context.testClassName());
+                }
                 query.append(":\n```java\n");
-                query.append(testMethodCode.get(i));
+                query.append(context.code);
                 query.append("\n```\n");
             }
             query.append("Failure message");
@@ -274,7 +299,9 @@ public class LlmFixer {
         query.append("Here are " + codeSnippets.size() + " code snippets that may need to be fixed:");
         int index = 1;
         for (CodeSnippet snippet : codeSnippets) {
-            query.append("\n\nCode snippet number " + (index++) + ":\n```java\n");
+            query.append("\n\n");
+            query.append("File ").append(snippet.file).append('\n');
+            query.append("Code snippet number ").append(index++).append(":\n```java\n");
             snippet.lines.stream().forEach(line -> query.append(line).append('\n'));
             query.append("```");
         }

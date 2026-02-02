@@ -135,7 +135,9 @@ public class LlmFixer {
     }
 
     private LinkedHashMap<Node, Double> getSuspiciousnessByMethod(Node original) {
-        List<Node> methods = original.stream().filter(n -> n.getType() == Type.METHOD).toList();
+        List<Node> methods = original.stream()
+                .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
+                .toList();
         Map<Node, Double> methodSuspiciousness = new HashMap<>(methods.size());
         for (Node method : methods) {
             double suspiciousnessMax = method.stream()

@@ -5,7 +5,10 @@ import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
@@ -18,9 +21,9 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaLexer;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser;
+import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.ClassBodyDeclarationContext;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.ClassDeclarationContext;
-import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.ConstructorDeclarationContext;
-import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.MethodDeclarationContext;
+import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.MemberDeclarationContext;
 import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
 import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
 import net.ssehub.program_repair.geneseer.parsing.model.Node;
@@ -99,12 +102,6 @@ public class Parser {
         case "ClassDeclarationContext":
             result = Type.CLASS;
             break;
-        case "MethodDeclarationContext":
-            result = Type.METHOD;
-            break;
-        case "ConstructorDeclarationContext":
-            result = Type.CONSTRUCTOR;
-            break;
         case "BlockStatementContext":
             result = Type.STATEMENT;
             break;
@@ -140,23 +137,59 @@ public class Parser {
             result = newLeaf;
             previousToken = token;
         } else {
-            result = new InnerNode(getType(antlrTree.getClass().getSimpleName()));
+            Type nodeType = getType(antlrTree.getClass().getSimpleName());
+            String methodName = null;
+            if (antlrTree instanceof ClassBodyDeclarationContext decl) {
+                if (decl.memberDeclaration() != null) {
+                    MemberDeclarationContext memberDecl = decl.memberDeclaration();
+                    if (memberDecl.methodDeclaration() != null) {
+                        nodeType = Type.METHOD;
+                        methodName = memberDecl.methodDeclaration().identifier().getText();
+                    } else if (memberDecl.genericMethodDeclaration() != null) {
+                        nodeType = Type.METHOD;
+                        methodName = memberDecl.genericMethodDeclaration().methodDeclaration().identifier().getText();
+                    } else if (memberDecl.constructorDeclaration() != null) {
+                        nodeType = Type.CONSTRUCTOR;
+                        methodName = memberDecl.constructorDeclaration().identifier().getText();
+                    } else if (memberDecl.genericConstructorDeclaration() != null) {
+                        nodeType = Type.CONSTRUCTOR;
+                        methodName = memberDecl.genericConstructorDeclaration().constructorDeclaration()
+                                .identifier().getText();
+                    }
+                }
+            }
+            
+            result = new InnerNode(nodeType);
             for (int i = 0; i < antlrTree.getChildCount(); i++) {
-                result.add(convert(antlrTree.getChild(i)));
+                if ((nodeType == Type.METHOD || nodeType == Type.CONSTRUCTOR)
+                        && antlrTree.getChild(i) instanceof MemberDeclarationContext memberDecl) {
+                    // do not convert memberDecl as normal child, but skip directly to nested rule, so that we get a
+                    // flat method head in the tree
+                    memberDecl.children.stream()
+                            .flatMap(Parser::streamOfChildreen)
+                            .forEach(child -> result.add(convert(child)));
+                    
+                } else {
+                    result.add(convert(antlrTree.getChild(i)));
+                }
             }
             
             if (antlrTree instanceof ClassDeclarationContext classDecl) {
                 String className = classDecl.identifier().getText();
                 result.setMetadata(Metadata.CLASS_NAME, className);
-            } else if (antlrTree instanceof MethodDeclarationContext method) {
-                String methodName = method.identifier().getText();
+            } else if (nodeType == Type.METHOD || nodeType == Type.CONSTRUCTOR) {
                 result.setMetadata(Metadata.METHOD_NAME, methodName);
-            } else if (antlrTree instanceof ConstructorDeclarationContext constructor) {
-                String constructorName = constructor.identifier().getText();
-                result.setMetadata(Metadata.CONSTRUCTOR_NAME, constructorName);
             }
         }
         return result;
+    }
+
+    private static Stream<? extends ParseTree> streamOfChildreen(ParseTree child) {
+        List<ParseTree> children = new LinkedList<>();
+        for (int j = 0; j < child.getChildCount(); j++) {
+            children.add(child.getChild(j));
+        }
+        return children.stream();
     }
     
     private static void fix(Node compilationUnit) {

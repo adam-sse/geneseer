@@ -29,7 +29,6 @@ public abstract class Node implements Cloneable {
         FILE_NAME,
         CLASS_NAME,
         METHOD_NAME,
-        CONSTRUCTOR_NAME,
         SUSPICIOUSNESS,
         COVERED_BY
     }

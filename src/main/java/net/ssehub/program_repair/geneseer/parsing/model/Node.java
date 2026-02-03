@@ -16,9 +16,10 @@ public abstract class Node implements Cloneable {
     
     public enum Type {
         COMPILATION_UNIT,
-        CLASS,
+        TYPE,
         METHOD,
         CONSTRUCTOR,
+        ATTRIBUTE,
         STATEMENT,
         COMPOSIT_STATEMENT,
         LEAF,
@@ -27,7 +28,7 @@ public abstract class Node implements Cloneable {
     
     public enum Metadata {
         FILE_NAME,
-        CLASS_NAME,
+        TYPE_NAME,
         METHOD_NAME,
         SUSPICIOUSNESS,
         COVERED_BY

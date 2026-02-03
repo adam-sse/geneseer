@@ -47,13 +47,22 @@ public class AstUtils {
                 .sum();
     }
     
-    public static String getMethodSignature(Node methodNode) {
-        methodNode = methodNode.cheapClone(methodNode);
-        List<Node> blocks = methodNode.stream().filter(n -> n.getType() == Type.COMPOSIT_STATEMENT).toList();
-        for (Node block : blocks) {
-            methodNode.remove(block);
+    public static String getSignature(Node typeOrMethodNode) {
+        typeOrMethodNode = typeOrMethodNode.clone();
+        List<Node> blocks;
+        if (typeOrMethodNode.getType() == Type.METHOD || typeOrMethodNode.getType() == Type.CONSTRUCTOR) {
+            blocks = typeOrMethodNode.stream().filter(n -> n.getType() == Type.COMPOSIT_STATEMENT).toList();
+        } else {
+            blocks = typeOrMethodNode.stream()
+                    .filter(n -> n.childCount() > 0
+                            && n.get(0).getType() == Type.LEAF && n.get(0).getText().equals("{"))
+                    .toList();
         }
-        return methodNode.getText();
+        for (Node block : blocks) {
+            typeOrMethodNode.findParent(block)
+                    .ifPresent(parent -> parent.remove(block));
+        }
+        return typeOrMethodNode.getText();
     }
     
     public static String getFormattedText(Node node) {

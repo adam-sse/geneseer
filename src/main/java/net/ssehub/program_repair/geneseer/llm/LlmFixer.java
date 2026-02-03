@@ -58,7 +58,7 @@ public class LlmFixer {
         
         String answer = query(failingTests.stream().map(TestResult::failureMessage).toList(),
                 failingTests.stream().map(this::getTestMethodContext).toList(),
-                codeSnippets);
+                codeSnippets, createProjectOutline(original));
         
         LOG.fine(() -> "Got answer:\n" + answer);
         
@@ -257,8 +257,8 @@ public class LlmFixer {
             List<Node> path = file.getPath(method.get());
             String testClassName = null;
             for (int i = path.size() - 1; i >= 0; i--) {
-                if (path.get(i).getMetadata(Metadata.CLASS_NAME) != null) {
-                    testClassName = (String) path.get(i).getMetadata(Metadata.CLASS_NAME);
+                if (path.get(i).getMetadata(Metadata.TYPE_NAME) != null) {
+                    testClassName = (String) path.get(i).getMetadata(Metadata.TYPE_NAME);
                     break;
                 }
             }
@@ -268,9 +268,59 @@ public class LlmFixer {
         
         return result;
     }
+    
+    private String createProjectOutline(Node astRoot) {
+        StringBuilder outline = new StringBuilder();
+        recurseProjectOutline(astRoot, outline, "");
+        return outline.toString();
+    }
+    
+    private void recurseProjectOutline(Node node, StringBuilder outline, String indentation) {
+        switch (node.getType()) {
+        case TYPE:
+            outline.append(indentation).append(AstUtils.getSignature(node)).append(" {\n");
+            for (Node child : node.childIterator()) {
+                recurseProjectOutline(child, outline, indentation + "    ");
+            }
+            outline.append(indentation).append("}\n");
+            if (indentation.isEmpty()) {
+                outline.append("\n");
+            }
+            break;
+            
+        case METHOD:
+        case CONSTRUCTOR:
+            outline.append(indentation).append(AstUtils.getSignature(node));
+            if (node.stream().filter(n -> n.getType() == Type.COMPOSIT_STATEMENT).findAny().isPresent()) {
+                outline.append(" {/*...*/}");
+            }
+            outline.append("\n");
+            break;
+            
+        case ATTRIBUTE:
+            outline.append(indentation).append(node.getText()).append("\n");
+            break;
+            
+        case COMPILATION_UNIT:
+            if (node.childCount() > 0 && node.get(0).childCount() > 0
+                    && node.get(0).get(0).getType() == Type.LEAF && node.get(0).get(0).getText().equals("package")) {
+                outline.append(indentation).append(node.get(0).getText()).append("\n");
+            }
+            for (Node child : node.childIterator()) {
+                recurseProjectOutline(child, outline, indentation);
+            }
+            break;
+            
+        default:
+            for (Node child : node.childIterator()) {
+                recurseProjectOutline(child, outline, indentation);
+            }
+            break;
+        }
+    }
 
     private String query(List<String> failureMessages, List<TestMethodContext> testMethodContext,
-            List<CodeSnippet> codeSnippets) throws IOException {
+            List<CodeSnippet> codeSnippets, String projectOutline) throws IOException {
         ChatGptRequest request = new ChatGptRequest(Configuration.INSTANCE.llm().model());
         request.addMessage(new ChatGptMessage(SYSTEM_MESSAGE, Role.SYSTEM));
         
@@ -294,6 +344,12 @@ public class LlmFixer {
                 query.append(' ').append(i + 1);
             }
             query.append(":\n```\n").append(failureMessages.get(i)).append("\n```\n\n");
+        }
+        
+        if (projectOutline != null) {
+            query.append("Here is an overview of the whole project:\n\n");
+            query.append(projectOutline);
+            query.append("\n");
         }
         
         query.append("Here are " + codeSnippets.size() + " code snippets that may need to be fixed:");

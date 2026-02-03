@@ -66,14 +66,14 @@ public class Outliner implements IFixer {
                 .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
                 .map(method -> {
                     String methodName = (String) method.getMetadata(Metadata.METHOD_NAME);
-                    String signature = AstUtils.getMethodSignature(method);
+                    String signature = AstUtils.getSignature(method);
                     
                     List<Node> parents = ast.getPath(method);
                     int classIndex = parents.size() - 2;
-                    while (parents.get(classIndex).getMetadata(Metadata.CLASS_NAME) == null && classIndex > 0) {
+                    while (parents.get(classIndex).getMetadata(Metadata.TYPE_NAME) == null && classIndex > 0) {
                         classIndex--;
                     }
-                    String className = (String) parents.get(classIndex).getMetadata(Metadata.CLASS_NAME);
+                    String className = (String) parents.get(classIndex).getMetadata(Metadata.TYPE_NAME);
                     
                     int fileIndex = parents.size() - 2;
                     while (parents.get(fileIndex).getMetadata(Metadata.FILE_NAME) == null && fileIndex > 0) {

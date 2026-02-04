@@ -327,10 +327,10 @@ public class GeneticAlgorithm implements IFixer {
             boolean removed = parent.remove(suspicious);
             if (!removed) {
                 Node s = suspicious;
-                LOG.warning(() -> "Failed to delete statement " + s.toString());
+                LOG.warning(() -> "Failed to delete statement " + s.getTextSingleLine());
                 success = false;
             } else {
-                variant.addMutation("del " + suspicious.toString());
+                variant.addMutation("del " + suspicious.getTextSingleLine());
                 numDeletions++;
                 success = true;
             }
@@ -345,14 +345,16 @@ public class GeneticAlgorithm implements IFixer {
             if (rand == 1) {
                 // insert
                 parent.add(index, otherStatement);
-                variant.addMutation("ins " + otherStatement.toString() + " before " + suspicious.toString());
+                variant.addMutation("ins " + otherStatement.getTextSingleLine()
+                        + " before " + suspicious.getTextSingleLine());
                 numInsertions++;
                 success = true;
                 
             } else {
                 // replace
                 parent.set(index, otherStatement);
-                variant.addMutation("rep " + suspicious.toString() + " with " + otherStatement.toString());
+                variant.addMutation("rep " + suspicious.getTextSingleLine()
+                        + " with " + otherStatement.getTextSingleLine());
                 numReplacements++;
                 success = true;
             }

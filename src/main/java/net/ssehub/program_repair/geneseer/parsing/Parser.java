@@ -20,6 +20,8 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import net.ssehub.program_repair.geneseer.parsing.Node.Metadata;
+import net.ssehub.program_repair.geneseer.parsing.Node.Type;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaLexer;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.ClassBodyDeclarationContext;
@@ -27,11 +29,6 @@ import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.InterfaceBody
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.InterfaceMemberDeclarationContext;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.MemberDeclarationContext;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.TypeDeclarationContext;
-import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
-import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
-import net.ssehub.program_repair.geneseer.parsing.model.Node;
-import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
-import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
 
 public class Parser {
     

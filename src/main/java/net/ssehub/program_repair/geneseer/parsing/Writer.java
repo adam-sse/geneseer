@@ -6,9 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Stack;
 
-import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
-import net.ssehub.program_repair.geneseer.parsing.model.Node;
-import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
+import net.ssehub.program_repair.geneseer.parsing.Node.Metadata;
 
 public class Writer {
 

@@ -12,7 +12,7 @@ import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
-import net.ssehub.program_repair.geneseer.parsing.model.Node;
+import net.ssehub.program_repair.geneseer.parsing.Node;
 
 public class SingleLlm implements IFixer {
 

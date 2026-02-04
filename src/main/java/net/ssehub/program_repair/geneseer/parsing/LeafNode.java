@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer.parsing.model;
+package net.ssehub.program_repair.geneseer.parsing;
 
 import java.util.Collections;
 import java.util.List;

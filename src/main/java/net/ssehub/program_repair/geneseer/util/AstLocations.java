@@ -7,9 +7,10 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
-import net.ssehub.program_repair.geneseer.parsing.model.Node;
-import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
+import net.ssehub.program_repair.geneseer.parsing.AstUtils;
+import net.ssehub.program_repair.geneseer.parsing.LeafNode;
+import net.ssehub.program_repair.geneseer.parsing.Node;
+import net.ssehub.program_repair.geneseer.parsing.Node.Type;
 
 public class AstLocations {
 

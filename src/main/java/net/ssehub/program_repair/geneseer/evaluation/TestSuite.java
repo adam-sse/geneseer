@@ -13,8 +13,8 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Project;
-import net.ssehub.program_repair.geneseer.parsing.model.Node;
-import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
+import net.ssehub.program_repair.geneseer.parsing.Node;
+import net.ssehub.program_repair.geneseer.parsing.Node.Metadata;
 import net.ssehub.program_repair.geneseer.util.FileUtils;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 

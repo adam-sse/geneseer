@@ -20,13 +20,13 @@ import java.util.stream.Collectors;
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.llm.ChatGptMessage.Role;
+import net.ssehub.program_repair.geneseer.parsing.AstUtils;
+import net.ssehub.program_repair.geneseer.parsing.Node;
 import net.ssehub.program_repair.geneseer.parsing.Parser;
 import net.ssehub.program_repair.geneseer.parsing.Writer;
-import net.ssehub.program_repair.geneseer.parsing.model.Node;
-import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
-import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
+import net.ssehub.program_repair.geneseer.parsing.Node.Metadata;
+import net.ssehub.program_repair.geneseer.parsing.Node.Type;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
-import net.ssehub.program_repair.geneseer.util.AstUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 

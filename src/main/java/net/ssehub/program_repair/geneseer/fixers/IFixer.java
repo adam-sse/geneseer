@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
-import net.ssehub.program_repair.geneseer.parsing.model.Node;
+import net.ssehub.program_repair.geneseer.parsing.Node;
 
 public interface IFixer {
 

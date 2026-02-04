@@ -15,9 +15,9 @@ import java.util.stream.IntStream;
 
 import javax.swing.JComponent;
 
-import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
-import net.ssehub.program_repair.geneseer.parsing.model.Node;
-import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
+import net.ssehub.program_repair.geneseer.parsing.InnerNode;
+import net.ssehub.program_repair.geneseer.parsing.Node;
+import net.ssehub.program_repair.geneseer.parsing.Node.Type;
 
 public class TreeVisualization extends JComponent {
 

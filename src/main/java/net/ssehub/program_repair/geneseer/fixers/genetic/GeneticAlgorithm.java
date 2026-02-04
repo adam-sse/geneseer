@@ -18,12 +18,12 @@ import net.ssehub.program_repair.geneseer.Configuration.GeneticConfiguration.Mut
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.fixers.IFixer;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
-import net.ssehub.program_repair.geneseer.parsing.model.InnerNode;
-import net.ssehub.program_repair.geneseer.parsing.model.LeafNode;
-import net.ssehub.program_repair.geneseer.parsing.model.Node;
-import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
-import net.ssehub.program_repair.geneseer.parsing.model.Node.Type;
-import net.ssehub.program_repair.geneseer.util.AstUtils;
+import net.ssehub.program_repair.geneseer.parsing.AstUtils;
+import net.ssehub.program_repair.geneseer.parsing.InnerNode;
+import net.ssehub.program_repair.geneseer.parsing.LeafNode;
+import net.ssehub.program_repair.geneseer.parsing.Node;
+import net.ssehub.program_repair.geneseer.parsing.Node.Metadata;
+import net.ssehub.program_repair.geneseer.parsing.Node.Type;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 

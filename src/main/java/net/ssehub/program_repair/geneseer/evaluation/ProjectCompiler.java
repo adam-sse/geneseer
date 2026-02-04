@@ -18,9 +18,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
+import net.ssehub.program_repair.geneseer.parsing.Node;
 import net.ssehub.program_repair.geneseer.parsing.Writer;
-import net.ssehub.program_repair.geneseer.parsing.model.Node;
-import net.ssehub.program_repair.geneseer.parsing.model.Node.Metadata;
+import net.ssehub.program_repair.geneseer.parsing.Node.Metadata;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;

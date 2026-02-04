@@ -6,8 +6,8 @@ import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
 
+import net.ssehub.program_repair.geneseer.parsing.Node;
 import net.ssehub.program_repair.geneseer.parsing.Writer;
-import net.ssehub.program_repair.geneseer.parsing.model.Node;
 
 public class AstDiff {
     

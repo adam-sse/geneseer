@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer.parsing.visualization;
+package net.ssehub.program_repair.geneseer.code.visualization;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -15,9 +15,9 @@ import java.util.stream.IntStream;
 
 import javax.swing.JComponent;
 
-import net.ssehub.program_repair.geneseer.parsing.InnerNode;
-import net.ssehub.program_repair.geneseer.parsing.Node;
-import net.ssehub.program_repair.geneseer.parsing.Node.Type;
+import net.ssehub.program_repair.geneseer.code.InnerNode;
+import net.ssehub.program_repair.geneseer.code.Node;
+import net.ssehub.program_repair.geneseer.code.Node.Type;
 
 public class TreeVisualization extends JComponent {
 

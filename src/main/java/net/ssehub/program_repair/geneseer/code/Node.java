@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer.parsing;
+package net.ssehub.program_repair.geneseer.code;
 
 import java.util.Comparator;
 import java.util.HashMap;

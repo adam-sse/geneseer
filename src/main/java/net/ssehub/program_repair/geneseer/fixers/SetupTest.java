@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
+import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
-import net.ssehub.program_repair.geneseer.parsing.Node;
 
 public class SetupTest implements IFixer {
     

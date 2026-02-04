@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer.parsing;
+package net.ssehub.program_repair.geneseer.code;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -6,7 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Stack;
 
-import net.ssehub.program_repair.geneseer.parsing.Node.Metadata;
+import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 
 public class Writer {
 

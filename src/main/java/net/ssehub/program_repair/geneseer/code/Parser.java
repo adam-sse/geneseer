@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer.parsing;
+package net.ssehub.program_repair.geneseer.code;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -20,8 +20,8 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import net.ssehub.program_repair.geneseer.parsing.Node.Metadata;
-import net.ssehub.program_repair.geneseer.parsing.Node.Type;
+import net.ssehub.program_repair.geneseer.code.Node.Metadata;
+import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaLexer;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.ClassBodyDeclarationContext;

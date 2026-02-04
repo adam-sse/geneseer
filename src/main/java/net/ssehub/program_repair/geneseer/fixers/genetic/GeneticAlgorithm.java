@@ -15,15 +15,15 @@ import java.util.stream.IntStream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Configuration.GeneticConfiguration.MutationScope;
+import net.ssehub.program_repair.geneseer.code.AstUtils;
+import net.ssehub.program_repair.geneseer.code.InnerNode;
+import net.ssehub.program_repair.geneseer.code.LeafNode;
+import net.ssehub.program_repair.geneseer.code.Node;
+import net.ssehub.program_repair.geneseer.code.Node.Metadata;
+import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.fixers.IFixer;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
-import net.ssehub.program_repair.geneseer.parsing.AstUtils;
-import net.ssehub.program_repair.geneseer.parsing.InnerNode;
-import net.ssehub.program_repair.geneseer.parsing.LeafNode;
-import net.ssehub.program_repair.geneseer.parsing.Node;
-import net.ssehub.program_repair.geneseer.parsing.Node.Metadata;
-import net.ssehub.program_repair.geneseer.parsing.Node.Type;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 

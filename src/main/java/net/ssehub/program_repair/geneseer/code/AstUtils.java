@@ -1,9 +1,9 @@
-package net.ssehub.program_repair.geneseer.parsing;
+package net.ssehub.program_repair.geneseer.code;
 
 import java.util.List;
 
-import net.ssehub.program_repair.geneseer.parsing.Node.Metadata;
-import net.ssehub.program_repair.geneseer.parsing.Node.Type;
+import net.ssehub.program_repair.geneseer.code.Node.Metadata;
+import net.ssehub.program_repair.geneseer.code.Node.Type;
 
 public class AstUtils {
 

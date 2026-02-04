@@ -3,8 +3,8 @@ package net.ssehub.program_repair.geneseer.fixers;
 import java.io.IOException;
 import java.util.Map;
 
+import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
-import net.ssehub.program_repair.geneseer.parsing.Node;
 
 public interface IFixer {
 

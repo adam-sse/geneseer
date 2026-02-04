@@ -1,4 +1,4 @@
-package net.ssehub.program_repair.geneseer.parsing.visualization;
+package net.ssehub.program_repair.geneseer.code.visualization;
 
 import java.awt.BorderLayout;
 
@@ -6,7 +6,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 
-import net.ssehub.program_repair.geneseer.parsing.Node;
+import net.ssehub.program_repair.geneseer.code.Node;
 
 public class TreeVisualizationFrame extends JFrame {
 

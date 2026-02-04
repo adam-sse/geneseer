@@ -22,10 +22,10 @@ import org.jacoco.core.analysis.IMethodCoverage;
 import org.jacoco.core.data.ExecutionDataStore;
 
 import net.ssehub.program_repair.geneseer.Configuration;
+import net.ssehub.program_repair.geneseer.code.Node;
+import net.ssehub.program_repair.geneseer.code.Node.Metadata;
+import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.evaluation.TestExecution.TestResultWithCoverage;
-import net.ssehub.program_repair.geneseer.parsing.Node;
-import net.ssehub.program_repair.geneseer.parsing.Node.Metadata;
-import net.ssehub.program_repair.geneseer.parsing.Node.Type;
 import net.ssehub.program_repair.geneseer.util.AstLocations;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;

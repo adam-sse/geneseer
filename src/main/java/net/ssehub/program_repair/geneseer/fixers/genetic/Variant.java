@@ -6,8 +6,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
+import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
-import net.ssehub.program_repair.geneseer.parsing.Node;
 
 class Variant {
 

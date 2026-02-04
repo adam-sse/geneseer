@@ -17,12 +17,12 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import net.ssehub.program_repair.geneseer.Configuration;
+import net.ssehub.program_repair.geneseer.code.AstUtils;
+import net.ssehub.program_repair.geneseer.code.Node;
+import net.ssehub.program_repair.geneseer.code.Node.Metadata;
+import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.llm.ChangedArea;
-import net.ssehub.program_repair.geneseer.parsing.AstUtils;
-import net.ssehub.program_repair.geneseer.parsing.Node;
-import net.ssehub.program_repair.geneseer.parsing.Node.Metadata;
-import net.ssehub.program_repair.geneseer.parsing.Node.Type;
 
 public class LlmQueryAnalysis implements IFixer {
 

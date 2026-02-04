@@ -48,11 +48,11 @@ public abstract class Node implements Cloneable {
         setType(type);
     }
     
-    public Type getType() {
+    public final Type getType() {
         return type;
     }
     
-    void setType(Type type) {
+    final void setType(Type type) {
         if (locked) {
             throw new IllegalStateException("Node is locked");
         }
@@ -74,7 +74,7 @@ public abstract class Node implements Cloneable {
         return metadata != null ? metadata.get(key) : null;
     }
     
-    public void copyMetadataFromNode(Node other) {
+    public final void copyMetadataFromNode(Node other) {
         if (other.metadata != null) {
             this.metadata = new HashMap<>(other.metadata);
         }
@@ -93,7 +93,7 @@ public abstract class Node implements Cloneable {
         return locked;
     }
     
-    private String getTextFormattedImpl() {
+    private final String getTextFormattedImpl() {
         String text = Writer.toText(this, n -> true);
         
         int lastPrefixNewline = -1;
@@ -123,7 +123,7 @@ public abstract class Node implements Cloneable {
         return text;
     }
     
-    public String getTextFormatted() {
+    public final String getTextFormatted() {
         String result;
         if (locked) {
             if (textCacheFormatted == null) {
@@ -140,7 +140,7 @@ public abstract class Node implements Cloneable {
         return Writer.toText(this, n -> true).trim().replaceAll("\\s+", " ");
     }
     
-    public String getTextSingleLine() {
+    public final String getTextSingleLine() {
         String result;
         if (locked) {
             if (textCacheSingleLine == null) {
@@ -154,7 +154,7 @@ public abstract class Node implements Cloneable {
     }
     
     @Override
-    public String toString() {
+    public final String toString() {
         return getTextFormatted();
     }
     
@@ -168,11 +168,11 @@ public abstract class Node implements Cloneable {
     
     protected abstract List<Node> children();
     
-    public Stream<Node> stream() {
+    public final Stream<Node> stream() {
         return Stream.concat(Stream.of(this), children().stream().flatMap(Node::stream));
     }
     
-    public Node cheapClone(Node modifiableAt) {
+    public final Node cheapClone(Node modifiableAt) {
         Node clone;
         
         if (modifiableAt == this) {
@@ -204,7 +204,7 @@ public abstract class Node implements Cloneable {
     
     protected abstract Node cloneWithGivenChildren(List<Node> clonedChildren);
     
-    public Optional<Node> findParent(Node child) {
+    public final Optional<Node> findParent(Node child) {
         Optional<Node> result;
         
         if (children().contains(child)) {
@@ -223,7 +223,7 @@ public abstract class Node implements Cloneable {
         return result;
     }
     
-    public List<Node> getPath(Node child) {
+    public final List<Node> getPath(Node child) {
         List<Node> result;
         
         if (children().contains(child)) {
@@ -245,7 +245,7 @@ public abstract class Node implements Cloneable {
         return result;
     }
     
-    public Node findEquivalentPath(Node otherRoot, Node toFind) throws IllegalArgumentException {
+    public final Node findEquivalentPath(Node otherRoot, Node toFind) throws IllegalArgumentException {
         Node result;
         
         if (otherRoot == toFind) {
@@ -264,54 +264,54 @@ public abstract class Node implements Cloneable {
         return result;
     }
 
-    public Iterable<Node> childIterator() {
+    public final Iterable<Node> childIterator() {
         return children();
     }
     
-    public int childCount() {
+    public final int childCount() {
         return children().size();
     }
     
-    public boolean remove(Node child) {
+    public final boolean remove(Node child) {
         if (locked) {
             throw new IllegalStateException("Node is locked");
         }
         return children().remove(child);
     }
     
-    public void add(int index, Node child) {
+    public final void add(int index, Node child) {
         if (locked) {
             throw new IllegalStateException("Node is locked");
         }
         children().add(index, child);
     }
     
-    public void add(Node child) {
+    public final void add(Node child) {
         if (locked) {
             throw new IllegalStateException("Node is locked");
         }
         children().add(child);
     }
     
-    public void set(int index, Node child) {
+    public final void set(int index, Node child) {
         if (locked) {
             throw new IllegalStateException("Node is locked");
         }
         children().set(index, child);
     }
     
-    public void remove(int index) {
+    public final void remove(int index) {
         if (locked) {
             throw new IllegalStateException("Node is locked");
         }
         children().remove(index);
     }
     
-    public int indexOf(Node child) {
+    public final int indexOf(Node child) {
         return children().indexOf(child);
     }
     
-    public Node get(int index) {
+    public final Node get(int index) {
         return children().get(index);
     }
     

@@ -163,7 +163,7 @@ public class Geneseer {
             result = new OnlyDelete();
             break;
         case "LLM_QUERY_ANALYSIS":
-            result = new LlmQueryAnalysis(project.getProjectDirectory());
+            result = new LlmQueryAnalysis(project.getProjectDirectory(), createLlmFixer(project, tempDirManager));
             break;
         case "OUTLINER":
             result = new Outliner(project.getProjectDirectory());

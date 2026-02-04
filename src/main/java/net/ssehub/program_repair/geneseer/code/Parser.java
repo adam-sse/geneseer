@@ -5,15 +5,11 @@ import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
@@ -183,18 +179,7 @@ public class Parser {
         
         result = new InnerNode(nodeType);
         for (int i = 0; i < antlrTree.getChildCount(); i++) {
-            if ((nodeType == Type.METHOD || nodeType == Type.CONSTRUCTOR)
-                    && (antlrTree.getChild(i) instanceof MemberDeclarationContext
-                    || antlrTree.getChild(i) instanceof InterfaceMemberDeclarationContext)) {
-                // do not convert memberDecl as normal child, but skip directly to nested rule, so that we get a
-                // flat method head in the tree
-                ((ParserRuleContext) antlrTree.getChild(i)).children.stream()
-                        .flatMap(Parser::streamOfChildreen)
-                        .forEach(child -> result.add(convert(child)));
-                
-            } else {
-                result.add(convert(antlrTree.getChild(i)));
-            }
+            result.add(convert(antlrTree.getChild(i)));
         }
         
         if (antlrTree instanceof TypeDeclarationContext typeDecl) {
@@ -223,17 +208,10 @@ public class Parser {
         return typeName;
     }
 
-    private static Stream<? extends ParseTree> streamOfChildreen(ParseTree child) {
-        List<ParseTree> children = new LinkedList<>();
-        for (int j = 0; j < child.getChildCount(); j++) {
-            children.add(child.getChild(j));
-        }
-        return children.stream();
-    }
-    
     private static void fix(Node compilationUnit) {
         removeEof(compilationUnit);
         removeOneChildCascade(compilationUnit);
+        makeTypeAndMethodHeaderFlat(compilationUnit);
     }
     
     private static void removeEof(Node compilationUnit) {
@@ -265,5 +243,32 @@ public class Parser {
             removeOneChildCascade(child);
         }
     }
+    
+    private static void makeTypeAndMethodHeaderFlat(Node node) {
+        if (node.getType() == Type.METHOD || node.getType() == Type.CONSTRUCTOR || node.getType() == Type.TYPE
+                && node.childCount() > 1) {
+            Node last = node.get(node.childCount() - 1);
+            boolean lastIsNested = last.getType() == Type.OTHER;
+            boolean allOthersAreLeaf = true;
+            for (int i = 0; i < node.childCount() - 1; i++) {
+                if (node.get(i).getType() != Type.LEAF) {
+                    allOthersAreLeaf = false;
+                    break;
+                }
+            }
+            
+            if (lastIsNested && allOthersAreLeaf) {
+                node.remove(node.childCount() - 1);
+                for (Node child : last.childIterator()) {
+                    node.add(child);
+                }
+            }
+        }
+        
+        for (Node child : node.childIterator()) {
+            makeTypeAndMethodHeaderFlat(child);
+        }
+    }
+    
     
 }

@@ -232,6 +232,7 @@ public class Parser {
                 if (childType == Type.OTHER || childChildType == Type.OTHER) {
                     if (childChildType == Type.OTHER) {
                         childChild.setType(childType);
+                        childChild.copyMetadataFromNode(child);
                     }
                     node.set(i, childChild);
                     i--;

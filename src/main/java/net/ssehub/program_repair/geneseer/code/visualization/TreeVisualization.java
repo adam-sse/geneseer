@@ -97,7 +97,7 @@ public class TreeVisualization extends JComponent {
             }
         }
 
-        return String.valueOf(closestNode != null ? closestNode.getText() : "");
+        return String.valueOf(closestNode != null ? closestNode.getTextSingleLine() : "");
     }
     
     @Override

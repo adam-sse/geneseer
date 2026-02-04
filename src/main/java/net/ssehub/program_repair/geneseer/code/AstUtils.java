@@ -1,6 +1,7 @@
 package net.ssehub.program_repair.geneseer.code;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
@@ -45,51 +46,15 @@ public class AstUtils {
     }
     
     public static String getSignature(Node typeOrMethodNode) {
-        typeOrMethodNode = typeOrMethodNode.clone();
-        List<Node> blocks;
+        Predicate<Node> filter;
         if (typeOrMethodNode.getType() == Type.METHOD || typeOrMethodNode.getType() == Type.CONSTRUCTOR) {
-            blocks = typeOrMethodNode.stream().filter(n -> n.getType() == Type.COMPOSIT_STATEMENT).toList();
+            filter = n -> n.getType() != Type.COMPOSIT_STATEMENT;
         } else {
-            blocks = typeOrMethodNode.stream()
-                    .filter(n -> n.childCount() > 0
-                            && n.get(0).getType() == Type.LEAF && n.get(0).getText().equals("{"))
-                    .toList();
+            filter = Predicate.not(
+                    n -> n.childCount() > 0
+                    && n.get(0) instanceof LeafNode leaf && leaf.getText().equals("{"));
         }
-        for (Node block : blocks) {
-            typeOrMethodNode.findParent(block)
-                    .ifPresent(parent -> parent.remove(block));
-        }
-        return typeOrMethodNode.getText();
-    }
-    
-    public static String getFormattedText(Node node) {
-        String text = Writer.toText(node);
-        
-        int lastPrefixNewline = -1;
-        for (int i = 0; i < text.length(); i++) {
-            if (!Character.isWhitespace(text.charAt(i))) {
-                break;
-            }
-            if (text.charAt(i) == '\n') {
-                lastPrefixNewline = i;
-            }
-        }
-        if (lastPrefixNewline != -1) {
-            text = text.substring(lastPrefixNewline + 1);
-        }
-        
-        int firstSuffixWhiespace = -1;
-        for (int i = text.length() - 1; i >= 0; i--) {
-            if (!Character.isWhitespace(text.charAt(i))) {
-                break;
-            }
-            firstSuffixWhiespace = i;
-        }
-        if (firstSuffixWhiespace != -1) {
-            text = text.substring(0, firstSuffixWhiespace);
-        }
-        
-        return text;
+        return Writer.toText(typeOrMethodNode, filter).trim().replaceAll("\\s+", " ");
     }
     
 }

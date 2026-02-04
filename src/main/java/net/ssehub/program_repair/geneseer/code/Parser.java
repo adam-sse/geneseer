@@ -237,8 +237,9 @@ public class Parser {
     }
     
     private static void removeEof(Node compilationUnit) {
-        if (compilationUnit.get(compilationUnit.childCount() - 1).getText().equals("<EOF>")) {
-            compilationUnit.remove(compilationUnit.childCount() - 1);
+        if (compilationUnit.get(compilationUnit.childCount() - 1) instanceof LeafNode lastNode
+                && lastNode.getText().equals("<EOF>")) {
+            compilationUnit.remove(lastNode);
         }
     }
     

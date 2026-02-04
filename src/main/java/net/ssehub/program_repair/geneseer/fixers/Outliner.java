@@ -84,7 +84,7 @@ public class Outliner implements IFixer {
                     int lineStart =  AstUtils.getLine(ast, method);
                     int lineEnd = lineStart + AstUtils.getAdditionalLineCount(method);
                     
-                    int numTokens = tokenEncoding.countTokensOrdinary(AstUtils.getFormattedText(method));
+                    int numTokens = tokenEncoding.countTokensOrdinary(method.getTextFormatted());
                     
                     int numStatements = (int) method.stream()
                             .filter(n -> n.getType() == Type.STATEMENT)

@@ -85,7 +85,7 @@ class FaultLocalization {
                     if (stmt.getMetadata(Metadata.SUSPICIOUSNESS) == null
                             || ((double) stmt.getMetadata(Metadata.SUSPICIOUSNESS)) < susValue) {
                         LOG.fine(() -> "Suspicious " + susValue + " at " + fileName + ":" + line
-                                + " '" + stmt.getText() + "'");
+                                + " '" + stmt.getTextSingleLine() + "'");
                         stmt.setMetadata(Metadata.SUSPICIOUSNESS, susValue);
                     }
                 }

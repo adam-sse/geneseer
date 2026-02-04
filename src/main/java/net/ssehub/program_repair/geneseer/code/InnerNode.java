@@ -13,15 +13,6 @@ public final class InnerNode extends Node {
     }
 
     @Override
-    protected String getTextImpl() {
-        StringBuilder sb = new StringBuilder();
-        for (Node child : children) {
-            sb.append(child.getTextImpl());
-        }
-        return sb.toString();
-    }
-
-    @Override
     public List<Node> children() {
         return children;
     }

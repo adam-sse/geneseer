@@ -16,6 +16,10 @@ public final class LeafNode extends Node {
         this.text = text;
     }
     
+    public String getText() {
+        return text;
+    }
+    
     public int getPrefixNewlines() {
         return prefixNewlines;
     }
@@ -32,11 +36,6 @@ public final class LeafNode extends Node {
         this.prefixSpaces = prefixSpaces;
     }
     
-    @Override
-    protected String getTextImpl() {
-        return (prefixSpaces + prefixNewlines > 0 ? " " : "") + text;
-    }
-
     @Override
     public List<Node> children() {
         return Collections.emptyList();

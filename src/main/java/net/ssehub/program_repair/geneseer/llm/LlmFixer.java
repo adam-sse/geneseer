@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.code.AstUtils;
+import net.ssehub.program_repair.geneseer.code.LeafNode;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Parser;
 import net.ssehub.program_repair.geneseer.code.Writer;
@@ -185,7 +186,7 @@ public class LlmFixer {
         }
         
         LineRange range = getRange(root, method);
-        List<String> lines = Arrays.asList(AstUtils.getFormattedText(method).split("\n"));
+        List<String> lines = Arrays.asList(method.getTextFormatted().split("\n"));
         
         return new CodeSnippet(filename, range, lines);
     }
@@ -253,7 +254,7 @@ public class LlmFixer {
         
         TestMethodContext result = null;
         if (method.isPresent()) {
-            String code = AstUtils.getFormattedText(method.get());
+            String code = method.get().getTextFormatted();
             List<Node> path = file.getPath(method.get());
             String testClassName = null;
             for (int i = path.size() - 1; i >= 0; i--) {
@@ -298,13 +299,13 @@ public class LlmFixer {
             break;
             
         case ATTRIBUTE:
-            outline.append(indentation).append(node.getText()).append("\n");
+            outline.append(indentation).append(node.getTextSingleLine()).append("\n");
             break;
             
         case COMPILATION_UNIT:
             if (node.childCount() > 0 && node.get(0).childCount() > 0
-                    && node.get(0).get(0).getType() == Type.LEAF && node.get(0).get(0).getText().equals("package")) {
-                outline.append(indentation).append(node.get(0).getText()).append("\n");
+                    && node.get(0).get(0) instanceof LeafNode leaf && leaf.getText().equals("package")) {
+                outline.append(indentation).append(node.get(0).getTextSingleLine()).append("\n");
             }
             for (Node child : node.childIterator()) {
                 recurseProjectOutline(child, outline, indentation);

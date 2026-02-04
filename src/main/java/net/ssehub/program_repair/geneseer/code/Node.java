@@ -40,7 +40,9 @@ public abstract class Node implements Cloneable {
     
     private Map<Metadata, Object> metadata;
     
-    private String textCache;
+    private String textCacheSingleLine;
+    
+    private String textCacheFormatted;
     
     public Node(Type type) {
         setType(type);
@@ -91,24 +93,69 @@ public abstract class Node implements Cloneable {
         return locked;
     }
     
-    public final String getText() {
+    private String getTextFormattedImpl() {
+        String text = Writer.toText(this, n -> true);
+        
+        int lastPrefixNewline = -1;
+        for (int i = 0; i < text.length(); i++) {
+            if (!Character.isWhitespace(text.charAt(i))) {
+                break;
+            }
+            if (text.charAt(i) == '\n') {
+                lastPrefixNewline = i;
+            }
+        }
+        if (lastPrefixNewline != -1) {
+            text = text.substring(lastPrefixNewline + 1);
+        }
+        
+        int firstSuffixWhiespace = -1;
+        for (int i = text.length() - 1; i >= 0; i--) {
+            if (!Character.isWhitespace(text.charAt(i))) {
+                break;
+            }
+            firstSuffixWhiespace = i;
+        }
+        if (firstSuffixWhiespace != -1) {
+            text = text.substring(0, firstSuffixWhiespace);
+        }
+        
+        return text;
+    }
+    
+    public String getTextFormatted() {
         String result;
         if (locked) {
-            if (textCache == null) {
-                textCache = getTextImpl().trim();
+            if (textCacheFormatted == null) {
+                textCacheFormatted = getTextFormattedImpl();
             }
-            result = textCache;
+            result = textCacheFormatted;
         } else {
-            result = getTextImpl().trim();
+            result = getTextFormattedImpl();
         }
         return result;
     }
     
-    protected abstract String getTextImpl();
+    private final String getTextSingleLineImpl() {
+        return Writer.toText(this, n -> true).trim().replaceAll("\\s+", " ");
+    }
+    
+    public String getTextSingleLine() {
+        String result;
+        if (locked) {
+            if (textCacheSingleLine == null) {
+                textCacheSingleLine = getTextSingleLineImpl();
+            }
+            result = textCacheSingleLine;
+        } else {
+            result = getTextSingleLineImpl();
+        }
+        return result;
+    }
     
     @Override
     public String toString() {
-        return getText();
+        return getTextFormatted();
     }
     
     public final String dumpTree() {

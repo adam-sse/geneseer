@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Stack;
+import java.util.function.Predicate;
 
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 
@@ -23,12 +24,14 @@ public class Writer {
         Path file = outputDirectory.resolve((Path) singleFileAst.getMetadata(Metadata.FILE_NAME));
         Files.createDirectories(file.getParent());
         
-        Files.writeString(file, toText(singleFileAst), encoding);
+        Files.writeString(file, toText(singleFileAst, n -> true), encoding);
     }
     
-    static String toText(Node root) {
+    static String toText(Node root, Predicate<Node> filter) {
         Stack<Node> nodes = new Stack<>();
-        nodes.push(root);
+        if (filter.test(root)) {
+            nodes.push(root);
+        }
         
         StringBuilder str = new StringBuilder();
         
@@ -48,7 +51,9 @@ public class Writer {
                 
             } else {
                 for (int i = currentNode.childCount() - 1; i >= 0; i--) {
-                    nodes.push(currentNode.get(i));
+                    if (filter.test(currentNode.get(i))) {
+                        nodes.push(currentNode.get(i));
+                    }
                 }
             }
         }

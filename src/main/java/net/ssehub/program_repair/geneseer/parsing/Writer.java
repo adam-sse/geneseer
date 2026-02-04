@@ -26,7 +26,7 @@ public class Writer {
         Files.writeString(file, toText(singleFileAst), encoding);
     }
     
-    public static String toText(Node root) {
+    static String toText(Node root) {
         Stack<Node> nodes = new Stack<>();
         nodes.push(root);
         

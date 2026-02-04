@@ -50,7 +50,7 @@ public abstract class Node implements Cloneable {
         return type;
     }
     
-    public void setType(Type type) {
+    void setType(Type type) {
         if (locked) {
             throw new IllegalStateException("Node is locked");
         }

@@ -85,7 +85,7 @@ public class LlmQueryAnalysis implements IFixer {
         analyzeQuery(result, tokenEncoding, codeSnippets, irrelevant, queryText);
         
         Path queryJson = projectRoot.resolve("geneseer-llm-query.json");
-        Files.writeString(queryJson, new Gson().toJson(query), StandardCharsets.UTF_8);
+        Files.write(queryJson, new Gson().toJson(query).getBytes(StandardCharsets.UTF_8));
         
         return null;
     }

@@ -190,9 +190,11 @@ public class LlmFixer {
             Node method = entry.getKey();
             LineRange range = getRange(original, method);
             
-            if (selectedMethods.isEmpty() || codeSize + range.size() < Configuration.INSTANCE.llm().maxCodeContext()) {
+            if (codeSize + range.size() < Configuration.INSTANCE.llm().maxCodeContext()) {
                 selectedMethods.add(getSnippetForMethod(original, method));
                 codeSize += range.size();
+            } else {
+                break;
             }
         }
         return selectedMethods;

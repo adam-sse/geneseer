@@ -21,10 +21,10 @@ import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.LeafNode;
 import net.ssehub.program_repair.geneseer.code.Node;
-import net.ssehub.program_repair.geneseer.code.Parser;
-import net.ssehub.program_repair.geneseer.code.Writer;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
+import net.ssehub.program_repair.geneseer.code.Parser;
+import net.ssehub.program_repair.geneseer.code.Writer;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.llm.ChatGptMessage.Role;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
@@ -123,7 +123,7 @@ public class LlmFixer {
     public ChatGptRequest createQuery(Node code, List<TestResult> failingTests, List<CodeSnippet> codeSnippets) {
         List<String> failureMessages = failingTests.stream().map(TestResult::failureMessage).toList();
         List<TestMethodContext> testMethodContext = failingTests.stream().map(this::getTestMethodContext).toList();
-        String projectOutline = createProjectOutline(code);
+        String projectOutline = createProjectOutline(code, codeSnippets);
         
         ChatGptRequest request = new ChatGptRequest(Configuration.INSTANCE.llm().model());
         request.addMessage(new ChatGptMessage(SYSTEM_MESSAGE, Role.SYSTEM));
@@ -151,9 +151,9 @@ public class LlmFixer {
         }
         
         if (projectOutline != null) {
-            query.append("Here is an overview of the whole project:\n\n");
+            query.append("Here is a partial overview of the project:\n```java\n");
             query.append(projectOutline);
-            query.append("\n\n");
+            query.append("```\n\n");
         }
         
         query.append("Here are " + codeSnippets.size() + " code snippets that may need to be fixed:");
@@ -343,9 +343,27 @@ public class LlmFixer {
         return result;
     }
     
-    private String createProjectOutline(Node astRoot) {
+    private String createProjectOutline(Node astRoot, List<CodeSnippet> codeSnippets) {
         StringBuilder outline = new StringBuilder();
-        recurseProjectOutline(astRoot, outline, "");
+        
+        for (Node file : astRoot.childIterator()) {
+            if (file.getType() != Type.COMPILATION_UNIT || file.getMetadata(Metadata.FILE_NAME) == null) {
+                throw new RuntimeException("Node under AST root is not a compilation unit: " + file);
+            }
+            Path fileName = (Path) file.getMetadata(Metadata.FILE_NAME);
+            if (codeSnippets.stream()
+                    .filter(snippet -> snippet.file.equals(fileName))
+                    .findAny().isPresent()) {
+                if (file.childCount() > 0 && file.get(0).childCount() > 0
+                        && file.get(0).get(0) instanceof LeafNode leaf && leaf.getText().equals("package")) {
+                    outline.append(file.get(0).getTextSingleLine()).append("\n");
+                }
+                recurseProjectOutline(file, outline, "");
+            } else {
+                LOG.finer(() -> "Filtering out " + fileName + " from outline because no code snippet references it");
+            }
+        }
+        
         return outline.toString();
     }
     
@@ -373,16 +391,6 @@ public class LlmFixer {
             
         case ATTRIBUTE:
             outline.append(indentation).append(node.getTextSingleLine()).append("\n");
-            break;
-            
-        case COMPILATION_UNIT:
-            if (node.childCount() > 0 && node.get(0).childCount() > 0
-                    && node.get(0).get(0) instanceof LeafNode leaf && leaf.getText().equals("package")) {
-                outline.append(indentation).append(node.get(0).getTextSingleLine()).append("\n");
-            }
-            for (Node child : node.childIterator()) {
-                recurseProjectOutline(child, outline, indentation);
-            }
             break;
             
         default:

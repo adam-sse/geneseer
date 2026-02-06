@@ -81,7 +81,7 @@ public class LlmQueryAnalysis implements IFixer {
         ChatGptRequest query = llmFixer.createQuery(original,
                 new ArrayList<>(testSuite.getInitialFailingTestResults()), codeSnippets);
         String queryText = query.getMessages().get(query.getMessages().size() - 1).getContent();
-        LOG.info(() -> "Query:" + queryText);
+        LOG.info(() -> "Query:\n" + queryText);
         analyzeQuery(result, tokenEncoding, codeSnippets, irrelevant, queryText);
         
         Path queryJson = projectRoot.resolve("geneseer-llm-query.json");

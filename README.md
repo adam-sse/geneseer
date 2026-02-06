@@ -32,14 +32,12 @@ The classpaths (`--test-classpath` and `--compile-classpath`) can be specified w
 character (`;` on Windows, `:` on Unix-likes). If `;` does not occur, then `:` may also be used on Windows.
 
 By default, the CONFIG level and above is logged. To change this, add this JVM argument:
-`-Djava.util.logging.config.file=logging.properties`. Note that this is *not* a command line argument for this program,
-it needs to be specified before the main class or `-jar` parameter. `logging.properties` should point to the
-configuration file for the Java logging facility (e.g. see the file included in this repository); if it is not available
-in the working directory where you launch this program, copy it there or specify the full path to it in the JVM argument.
+`-Dgeneseer.logLevel=<level>` (`<level>` can be for example `FINE`). Note that this is *not* a command line argument
+for this program, it needs to be specified before the main class or `-jar` parameter.
 
 As an example, a full execution of geneseer may look like this:
 ```
-java -Djava.util.logging.config.file=logging.properties -jar geneseer-jar-with-dependencies.jar --project-directory /path/to/project-to-fix --source-directory src/main/java --encoding ISO-8859-1 --compile-classpath lib/some-lib.jar:lib/other-lib.jar --test-classpath target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar --test-classes com.example.TestClass1:com.example.TestClass2
+java -jar geneseer-jar-with-dependencies.jar --project-directory /path/to/project-to-fix --source-directory src/main/java --encoding ISO-8859-1 --compile-classpath lib/some-lib.jar:lib/other-lib.jar --test-classpath target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar --test-classes com.example.TestClass1:com.example.TestClass2
 ```
 
 ### Defects4j
@@ -65,7 +63,7 @@ After the command line arguments, you must specify on which Defects4j bug genese
 For example, an execution of the Defects4j runner may look like this:
 
 ```
-java -Djava.util.logging.config.file=logging.properties -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.defects4j.Defects4jRunner --defects4j ../defects4j --config.geneseer.llmMutationProbability 0 Cli/11
+java -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.defects4j.Defects4jRunner --defects4j ../defects4j --config.geneseer.llmMutationProbability 0 Cli/11
 ```
 
 Note that Defects4j typically requires a specific Java version on the path (for Defects4j 2.0.0, this is Java 1.8). Due

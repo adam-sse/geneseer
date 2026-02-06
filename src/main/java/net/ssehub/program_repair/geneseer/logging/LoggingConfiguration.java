@@ -1,6 +1,5 @@
 package net.ssehub.program_repair.geneseer.logging;
 
-import java.io.IOException;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
@@ -12,16 +11,6 @@ public class LoggingConfiguration {
 
     public LoggingConfiguration() {
         defaultLoggingConfiguration();
-        
-        if (System.getProperty("java.util.logging.config.file") != null) {
-            try {
-                LogManager.getLogManager().updateConfiguration(null);
-            } catch (IOException e) {
-                Logger log = Logger.getLogger(LoggingConfiguration.class.getName());
-                log.log(Level.SEVERE, "Failed to read logger configuration file "
-                        + System.getProperty("java.util.logging.config.file"), e);
-            }
-        }
     }
     
     public static void defaultLoggingConfiguration() {
@@ -36,6 +25,17 @@ public class LoggingConfiguration {
         rootLogger.addHandler(COUNTING_HANDLER);
         rootLogger.addHandler(console);
         rootLogger.setLevel(Level.CONFIG);
+        
+        String logLevelProperty = System.getProperty("geneseer.logLevel"); 
+        if (logLevelProperty != null) {
+            try {
+                Level level = Level.parse(logLevelProperty);
+                Logger.getLogger("net.ssehub.program_repair.geneseer").setLevel(level);
+            } catch (IllegalArgumentException e) {
+                Logger.getLogger(LoggingConfiguration.class.getName())
+                        .warning(() -> "Invalid log level specified as system property: " + logLevelProperty);
+            }
+        }
     }
     
     public static int getMessageCount(Level level) {

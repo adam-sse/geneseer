@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>net.ssehub.program-repair</groupId>
@@ -63,7 +64,9 @@
                             <includeArtifactIds>geneseer-test-driver</includeArtifactIds>
                             <classifier>jar-with-dependencies</classifier>
                             <failOnMissingClassifierArtifact>true</failOnMissingClassifierArtifact>
-                            <outputDirectory>src/main/resources/net/ssehub/program_repair/geneseer/evaluation</outputDirectory>
+                            <outputDirectory>
+                                ${project.build.resources[0].directory}/net/ssehub/program_repair/geneseer/evaluation
+                            </outputDirectory>
                             <stripVersion>true</stripVersion>
                             <stripClassifier>true</stripClassifier>
                         </configuration>
@@ -78,7 +81,9 @@
                             <includeArtifactIds>org.jacoco.agent</includeArtifactIds>
                             <classifier>runtime</classifier>
                             <failOnMissingClassifierArtifact>true</failOnMissingClassifierArtifact>
-                            <outputDirectory>src/main/resources/net/ssehub/program_repair/geneseer/evaluation</outputDirectory>
+                            <outputDirectory>
+                                ${project.build.resources[0].directory}/net/ssehub/program_repair/geneseer/evaluation
+                            </outputDirectory>
                             <stripVersion>true</stripVersion>
                             <stripClassifier>true</stripClassifier>
                         </configuration>
@@ -232,16 +237,16 @@
             <groupId>net.ssehub.program-repair</groupId>
             <artifactId>geneseer-test-driver</artifactId>
             <version>2.2.4</version>
-            <!-- don't include in compile or runtime classpath; only make it available for the maven-dependency-plugin to copy it 
-                to the resource folder -->
+            <!-- don't include in compile or runtime classpath; only make it available for the maven-dependency-plugin
+            to copy it to the resource folder -->
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.jacoco</groupId>
             <artifactId>org.jacoco.agent</artifactId>
             <version>0.8.14</version>
-            <!-- don't include in compile or runtime classpath; only make it available for the maven-dependency-plugin to copy it 
-                to the resource folder -->
+            <!-- don't include in compile or runtime classpath; only make it available for the maven-dependency-plugin
+            to copy it to the resource folder -->
             <scope>provided</scope>
         </dependency>
 
@@ -250,25 +255,25 @@
             <artifactId>org.jacoco.core</artifactId>
             <version>0.8.14</version>
         </dependency>
-        
+
         <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>antlr4-runtime</artifactId>
             <version>4.13.2</version>
         </dependency>
-        
+
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.13.2</version>
         </dependency>
-        
+
         <dependency>
             <groupId>com.knuddels</groupId>
             <artifactId>jtokkit</artifactId>
             <version>1.1.0</version>
         </dependency>
-        
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>

@@ -31,13 +31,14 @@ specified, the default encoding of the operating system is used.
 The classpaths (`--test-classpath` and `--compile-classpath`) can be specified with the platform-specific file separator
 character (`;` on Windows, `:` on Unix-likes). If `;` does not occur, then `:` may also be used on Windows.
 
-By default, the CONFIG level and above is logged. To change this, add this JVM argument:
-`-Dgeneseer.logLevel=<level>` (`<level>` can be for example `FINE`). Note that this is *not* a command line argument
-for this program, it needs to be specified before the main class or `-jar` parameter.
+By default, messages in the `CONFIG` level and above are logged. To change this, add this JVM argument:
+`-Dgeneseer.logLevel=<level>` (`<level>` can be one of `OFF`, `SEVERE`, `WARNING`, `INFO`, `CONFIG`, `FINE`, `FINER`,
+`FINEST`, `ALL`). Note that this is *not* a command line argument for this program, it needs to be specified before the
+main class or `-jar` parameter.
 
 As an example, a full execution of geneseer may look like this:
 ```
-java -jar geneseer-jar-with-dependencies.jar --project-directory /path/to/project-to-fix --source-directory src/main/java --encoding ISO-8859-1 --compile-classpath lib/some-lib.jar:lib/other-lib.jar --test-classpath target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar --test-classes com.example.TestClass1:com.example.TestClass2
+java -Dgeneseer.logLevel=FINE -jar geneseer-jar-with-dependencies.jar --project-directory /path/to/project-to-fix --source-directory src/main/java --encoding ISO-8859-1 --compile-classpath lib/some-lib.jar:lib/other-lib.jar --test-classpath target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar --test-classes com.example.TestClass1:com.example.TestClass2
 ```
 
 ### Defects4j
@@ -55,7 +56,7 @@ The following command line argument is mandatory (with a following value):
 
 The following optional command line arguments can be specified (each with a following value):
 
-* `--config.*`: All configuration options are passed the geneseer execution, see below.
+* `--config.*`: All configuration options are passed to the geneseer execution, see below.
 
 After the command line arguments, you must specify on which Defects4j bug geneseer should be run. This is in the format
 `<project name>/<bug number>` (e.g. `Closure/1`).  

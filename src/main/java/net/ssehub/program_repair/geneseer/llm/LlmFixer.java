@@ -153,7 +153,7 @@ public class LlmFixer {
         if (projectOutline != null) {
             query.append("Here is an overview of the whole project:\n\n");
             query.append(projectOutline);
-            query.append("\n");
+            query.append("\n\n");
         }
         
         query.append("Here are " + codeSnippets.size() + " code snippets that may need to be fixed:");

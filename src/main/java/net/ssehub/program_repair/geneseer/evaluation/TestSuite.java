@@ -85,7 +85,7 @@ public class TestSuite {
                 throw new TestIntegrityException("Got unknown test class as evaluation result: " + tr.testClass());
             }
             if (tr.isTimeout()) {
-                throw new TestIntegrityException("Got timeout in original evalution (in class " + tr.testClass()
+                throw new TestIntegrityException("Got timeout in original evaluation (in class " + tr.testClass()
                         + ")");
             }
             testMethods.get(tr.testClass()).add(tr.testMethod());

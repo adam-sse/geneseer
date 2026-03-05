@@ -102,8 +102,10 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.llm.maxCodeContext`             | `100`                | The maximum number of lines of code to supply as code context in a query to the LLM. This does not include test code. |
 | `--config.llm.temperature`                | not set              | If set, this defines the temperature to pass to the LLM API. |
 | `--config.llm.seed`                       | not set              | If set, this defines the seed to pass to the LLM API. |
-| `--config.llm.reasoningDelimiter`         | not set              | If set, everything up to the last occurence of this sequence in the model output will be considered a reasoning trace and discarded (for instances where the API does not differentiate between reasoning and answer). |
-| `--config.llm.apiUrl`                     | not set              | The API endpoint of the LLM. |
+| `--config.llm.thinkingDelimiter`          | not set              | If set, everything up to the last occurence of this sequence in the model output will be considered a thinking/reasoning trace and discarded (for instances where the API does not differentiate between thinking and answer). |
+| `--config.llm.think`                      | not set              | Only for ollama: the thinking level to pass to the model. "true" or "false" for most models, "low", "medium", or "high" for others. |
+| `--config.llm.contextSize`                | not set              | Only for ollama: the context window size of the model (in tokens). |
+| `--config.llm.apiUrl`                     | not set              | The API endpoint of the LLM. Must start with "openai:" or "ollama:", depending on which API format should be used, followed by the full URL to the API endpoint (usually ending with "/api/chat" for "ollama:" and "/v1/chat/completions" for "openai:"). |
 | `--config.llm.apiToken`                   | not set              | If set, this is added as a `Bearer` token in the `Authorization` header for API calls. |
 | `--config.llm.apiUserHeader`              | not set              | If set, this is added as the `x-user` header for API calls. |
 

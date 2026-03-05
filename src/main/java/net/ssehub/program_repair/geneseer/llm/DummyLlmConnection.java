@@ -1,15 +1,13 @@
 package net.ssehub.program_repair.geneseer.llm;
 
 import java.io.IOException;
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.logging.Logger;
 
-import net.ssehub.program_repair.geneseer.llm.ChatGptMessage.Role;
-import net.ssehub.program_repair.geneseer.llm.ChatGptResponse.FinishReason;
-import net.ssehub.program_repair.geneseer.llm.ChatGptResponse.Usage;
+import net.ssehub.program_repair.geneseer.llm.LlmMessage.Role;
+import net.ssehub.program_repair.geneseer.llm.openai.ChatGptConnection;
 
-public class DummyChatGptConnection implements IChatGptConnection {
+public class DummyLlmConnection implements ILlmApiConnection {
 
     private static final Logger LOG = Logger.getLogger(ChatGptConnection.class.getName());
     
@@ -49,21 +47,26 @@ Code snippet number 1:
 ```
             """;
     
-    private static int id = 0;
+    public static class DummyResponse implements ILlmResponse {
+
+        private List<LlmMessage> messages;
+        
+        public DummyResponse(List<LlmMessage> messages) {
+            this.messages = messages;
+        }
+        
+        @Override
+        public List<LlmMessage> getMessages() {
+            return messages;
+        }
+        
+    }
     
     @Override
-    public ChatGptResponse send(ChatGptRequest request) throws IOException {
-        LOG.fine(() -> "Got request: " + request);
+    public DummyResponse send(LlmQuery query) throws IOException {
+        LOG.fine(() -> "Got query: " + query);
         
-        return new ChatGptResponse(
-                String.format("dummy-%04d", id++),
-                List.of(new ChatGptResponse.Choice(
-                        FinishReason.STOP, 0, new ChatGptMessage(TEXT, Role.ASSISTANT), null)),
-                ZonedDateTime.now().toEpochSecond(),
-                request.getModel(),
-                "dummy",
-                "chat.completion",
-                new Usage(0, 0, 0));
+        return new DummyResponse(List.of(new LlmMessage(Role.ASSISTANT, TEXT)));
     }
     
 }

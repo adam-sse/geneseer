@@ -2,10 +2,6 @@ package net.ssehub.program_repair.geneseer;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -257,16 +253,11 @@ public class Configuration {
                 "Temperature", Double::parseDouble);
         private Option<Long> seed = new Option<>("seed",
                 "Seed", Long::parseLong);
-        private Option<String> reasoningDelimiter = new Option<>("reasoningDelimiter",
-                "Reasoning Delimiter", null, Function.identity());
-        private Option<URL> apiUrl = new Option<URL>("apiUrl",
-                "API URL", v -> {
-                    try {
-                        return new URI(v).toURL();
-                    } catch (URISyntaxException | MalformedURLException e) {
-                        throw new UncheckedIOException(new IOException(e));
-                    }
-                });
+        private Option<String> thinkingDelimiter = new Option<>("thinkingDelimiter",
+                "Thinking Delimiter", Function.identity());
+        private Option<String> think = new Option<>("think", "Thinking", Function.identity());
+        private Option<Long> contextSize = new Option<>("contextSize", "Context window size", Long::parseLong);
+        private Option<String> apiUrl = new Option<>("apiUrl", "API URL", Function.identity());
         private Option<String> apiToken = new Option<>("apiToken",
                 "API Token", Function.identity()) {
             
@@ -285,7 +276,9 @@ public class Configuration {
             super.options.add(maxCodeContext);
             super.options.add(temperature);
             super.options.add(seed);
-            super.options.add(reasoningDelimiter);
+            super.options.add(thinkingDelimiter);
+            super.options.add(think);
+            super.options.add(contextSize);
             super.options.add(apiUrl);
             super.options.add(apiToken);
             super.options.add(apiUserHeader);
@@ -307,11 +300,19 @@ public class Configuration {
             return seed.getValue();
         }
         
-        public String reasoningDelimiter() {
-            return reasoningDelimiter.getValue();
+        public String thinkingDelimiter() {
+            return thinkingDelimiter.getValue();
         }
         
-        public URL apiUrl() {
+        public String think() {
+            return think.getValue();
+        }
+        
+        public Long contextSize() {
+            return contextSize.getValue();
+        }
+        
+        public String apiUrl() {
             return apiUrl.getValue();
         }
         

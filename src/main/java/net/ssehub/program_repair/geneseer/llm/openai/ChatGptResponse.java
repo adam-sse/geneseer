@@ -1,8 +1,11 @@
-package net.ssehub.program_repair.geneseer.llm;
+package net.ssehub.program_repair.geneseer.llm.openai;
 
 import java.util.List;
 
 import com.google.gson.annotations.SerializedName;
+
+import net.ssehub.program_repair.geneseer.llm.ILlmResponse;
+import net.ssehub.program_repair.geneseer.llm.LlmMessage;
 
 record ChatGptResponse(
         String id,
@@ -11,29 +14,30 @@ record ChatGptResponse(
         String model,
         @SerializedName("system_fingerprint") String systemFingerprint,
         String object,
-        Usage usage) {
+        Usage usage) implements ILlmResponse {
 
-    public record Choice(
+    record Choice(
             @SerializedName("finish_reason") FinishReason finishReason,
             int index,
-            ChatGptMessage message,
+            LlmMessage message,
             Object logprobs) {
     }
     
-    public enum FinishReason {
+    enum FinishReason {
         @SerializedName("stop") STOP,
         @SerializedName("length") LENGTH,
         @SerializedName("content_filter") CONTENT_FILTER,
     }
     
-    public record Usage(
+    record Usage(
             @SerializedName("completion_tokens") int completionTokens,
             @SerializedName("prompt_tokens") int promptTokens,
             @SerializedName("total_tokens") int totalTokens) {
     }
     
-    public String getContent() {
-        return choices.get(0).message.getContent();
+    @Override
+    public List<LlmMessage> getMessages() {
+        return choices.stream().map(Choice::message).toList();
     }
-
+    
 }

@@ -4,17 +4,17 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-public class ChatGptRequest {
+public class LlmQuery {
 
     private String model;
     
-    private List<ChatGptMessage> messages;
+    private List<LlmMessage> messages;
     
     private Double temperature;
     
     private Long seed;
     
-    public ChatGptRequest(String model) {
+    public LlmQuery(String model) {
         this.model = model;
         messages = new LinkedList<>();
     }
@@ -23,11 +23,11 @@ public class ChatGptRequest {
         return model;
     }
 
-    public void addMessage(ChatGptMessage message) {
+    public void addMessage(LlmMessage message) {
         this.messages.add(message);
     }
     
-    public List<ChatGptMessage> getMessages() {
+    public List<LlmMessage> getMessages() {
         return Collections.unmodifiableList(messages);
     }
     
@@ -53,7 +53,7 @@ public class ChatGptRequest {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("ChatGptRequest[model=");
+        builder.append("LlmQuery[model=");
         builder.append(model);
         builder.append(", messages=");
         builder.append(messages);

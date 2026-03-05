@@ -26,7 +26,7 @@ import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.code.Parser;
 import net.ssehub.program_repair.geneseer.code.Writer;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
-import net.ssehub.program_repair.geneseer.llm.ChatGptMessage.Role;
+import net.ssehub.program_repair.geneseer.llm.LlmMessage.Role;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
@@ -37,7 +37,7 @@ public class LlmFixer {
     
     private static final String SYSTEM_MESSAGE = "You are an automated program repair tool for Java programs.";
     
-    private IChatGptConnection llm;
+    private ILlmApiConnection llm;
     
     private TemporaryDirectoryManager tempDirManager;
     
@@ -45,7 +45,7 @@ public class LlmFixer {
     
     private Path projectRoot;
 
-    public LlmFixer(IChatGptConnection llm, TemporaryDirectoryManager tempDirManager, Charset encoding,
+    public LlmFixer(ILlmApiConnection llm, TemporaryDirectoryManager tempDirManager, Charset encoding,
             Path projectRoot) {
         this.llm = llm;
         this.tempDirManager = tempDirManager;
@@ -55,7 +55,7 @@ public class LlmFixer {
 
     public Optional<Node> createVariant(Node original, List<TestResult> failingTests) throws IOException {
         List<CodeSnippet> codeSnippets = selectMostSuspiciousMethods(original);
-        ChatGptRequest query = createQuery(original, failingTests, codeSnippets);
+        LlmQuery query = createQuery(original, failingTests, codeSnippets);
         String answer = runQuery(query);
         LOG.fine(() -> "Got answer:\n" + answer);
         
@@ -120,66 +120,66 @@ public class LlmFixer {
         return Optional.ofNullable(variant);
     }
 
-    public ChatGptRequest createQuery(Node code, List<TestResult> failingTests, List<CodeSnippet> codeSnippets) {
+    public LlmQuery createQuery(Node code, List<TestResult> failingTests, List<CodeSnippet> codeSnippets) {
         List<String> failureMessages = failingTests.stream().map(TestResult::failureMessage).toList();
         List<TestMethodContext> testMethodContext = failingTests.stream().map(this::getTestMethodContext).toList();
         String projectOutline = createProjectOutline(code, codeSnippets);
         
-        ChatGptRequest request = new ChatGptRequest(Configuration.INSTANCE.llm().model());
-        request.addMessage(new ChatGptMessage(SYSTEM_MESSAGE, Role.SYSTEM));
+        LlmQuery query = new LlmQuery(Configuration.INSTANCE.llm().model());
+        query.addMessage(new LlmMessage(Role.SYSTEM, SYSTEM_MESSAGE));
         
-        StringBuilder query = new StringBuilder();
+        StringBuilder prompt = new StringBuilder();
         for (int i = 0; i < failureMessages.size(); i++) {
             if (testMethodContext.get(i) != null) {
                 TestMethodContext context = testMethodContext.get(i);
-                query.append("Failing test method");
+                prompt.append("Failing test method");
                 if (failureMessages.size() > 1) {
-                    query.append(' ').append(i + 1);
+                    prompt.append(' ').append(i + 1);
                 }
                 if (context.testClassName() != null) {
-                    query.append(" in test class ").append(context.testClassName());
+                    prompt.append(" in test class ").append(context.testClassName());
                 }
-                query.append(":\n```java\n");
-                query.append(context.code);
-                query.append("\n```\n");
+                prompt.append(":\n```java\n");
+                prompt.append(context.code);
+                prompt.append("\n```\n");
             }
-            query.append("Failure message");
+            prompt.append("Failure message");
             if (failureMessages.size() > 1) {
-                query.append(' ').append(i + 1);
+                prompt.append(' ').append(i + 1);
             }
-            query.append(":\n```\n").append(failureMessages.get(i)).append("\n```\n\n");
+            prompt.append(":\n```\n").append(failureMessages.get(i)).append("\n```\n\n");
         }
         
         if (projectOutline != null) {
-            query.append("Here is a partial overview of the project:\n```java\n");
-            query.append(projectOutline);
-            query.append("```\n\n");
+            prompt.append("Here is a partial overview of the project:\n```java\n");
+            prompt.append(projectOutline);
+            prompt.append("```\n\n");
         }
         
-        query.append("Here are " + codeSnippets.size() + " code snippets that may need to be fixed:");
+        prompt.append("Here are " + codeSnippets.size() + " code snippets that may need to be fixed:");
         int index = 1;
         for (CodeSnippet snippet : codeSnippets) {
-            query.append("\n\n");
-            query.append("File ").append(snippet.file).append('\n');
-            query.append("Code snippet number ").append(index++).append(":\n```java\n");
-            snippet.lines.stream().forEach(line -> query.append(line).append('\n'));
-            query.append("```");
+            prompt.append("\n\n");
+            prompt.append("File ").append(snippet.file).append('\n');
+            prompt.append("Code snippet number ").append(index++).append(":\n```java\n");
+            snippet.lines.stream().forEach(line -> prompt.append(line).append('\n'));
+            prompt.append("```");
         }
-        query.append("\n\nYou must prefix your fixed code with \"Code snippet number <number>\" to clarify which"
+        prompt.append("\n\nYou must prefix your fixed code with \"Code snippet number <number>\" to clarify which"
                 + " code snippet you modified (you may modify multiple code snippets). Do not output code snippets"
                 + " that you did not modify. Surround each code snippet with ``` markers (after the code snippet"
                 + " number). Output the complete fixed code that is given to you, even if only a small part of it"
                 + " is changed.");
         
-        LOG.fine(() -> "Query:\n" + query);
-        request.addMessage(new ChatGptMessage(query.toString(), Role.USER));
+        LOG.fine(() -> "Prompt:\n" + prompt);
+        query.addMessage(new LlmMessage(Role.USER, prompt.toString()));
         if (Configuration.INSTANCE.llm().temperature() != null) {
-            request.setTemperature(Configuration.INSTANCE.llm().temperature());
+            query.setTemperature(Configuration.INSTANCE.llm().temperature());
         }
         if (Configuration.INSTANCE.llm().seed() != null) {
-            request.setSeed(Configuration.INSTANCE.llm().seed());
+            query.setSeed(Configuration.INSTANCE.llm().seed());
         }
-        return request;
+        return query;
     }
 
     public List<CodeSnippet> selectMostSuspiciousMethods(Node original) {
@@ -401,9 +401,12 @@ public class LlmFixer {
         }
     }
 
-    private String runQuery(ChatGptRequest query) throws IOException {
+    private String runQuery(LlmQuery query) throws IOException {
         try (Measurement.Probe m = Measurement.INSTANCE.start("llm-query")) {
-            ChatGptResponse response = llm.send(query);
+            ILlmResponse response = llm.send(query);
+            if (response.getThinking() != null) {
+                LOG.fine(() -> "Got " + response.getThinking().length() + " characters of thinking trace");
+            }
             return response.getContent();
         }
     }

@@ -11,9 +11,9 @@ import java.util.logging.Logger;
 import java.util.stream.StreamSupport;
 
 import net.ssehub.program_repair.geneseer.code.Node;
-import net.ssehub.program_repair.geneseer.code.Parser;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
+import net.ssehub.program_repair.geneseer.code.Parser;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.fixers.IFixer;
@@ -23,9 +23,7 @@ import net.ssehub.program_repair.geneseer.fixers.Outliner;
 import net.ssehub.program_repair.geneseer.fixers.SetupTest;
 import net.ssehub.program_repair.geneseer.fixers.SingleLlm;
 import net.ssehub.program_repair.geneseer.fixers.genetic.GeneticAlgorithm;
-import net.ssehub.program_repair.geneseer.llm.ChatGptConnection;
-import net.ssehub.program_repair.geneseer.llm.DummyChatGptConnection;
-import net.ssehub.program_repair.geneseer.llm.IChatGptConnection;
+import net.ssehub.program_repair.geneseer.llm.LlmApiConnectionFactory;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
@@ -145,7 +143,8 @@ public class Geneseer {
         }
     }
 
-    private static IFixer createFixer(Project project, TemporaryDirectoryManager tempDirManager) {
+    private static IFixer createFixer(Project project, TemporaryDirectoryManager tempDirManager)
+            throws IllegalArgumentException {
         IFixer result;
         switch (Configuration.INSTANCE.setup().fixer()) {
         case "GENETIC_ALGORITHM":
@@ -175,19 +174,10 @@ public class Geneseer {
         return result;
     }
     
-    private static LlmFixer createLlmFixer(Project project, TemporaryDirectoryManager tempDirManager) {
-        IChatGptConnection chatGpt;
-        if (Configuration.INSTANCE.llm().model().equals("dummy")) {
-            LOG.warning("llm.model is set to \"dummy\"; not using a real LLM");
-            chatGpt = new DummyChatGptConnection();
-        } else {
-            chatGpt = new ChatGptConnection(Configuration.INSTANCE.llm().apiUrl());
-            ((ChatGptConnection) chatGpt).setToken(Configuration.INSTANCE.llm().apiToken());
-            ((ChatGptConnection) chatGpt).setUserHeader(Configuration.INSTANCE.llm().apiUserHeader());
-            ((ChatGptConnection) chatGpt).setReasoningDelimiter(Configuration.INSTANCE.llm().reasoningDelimiter());
-        }
-        
-        LlmFixer llmFixer = new LlmFixer(chatGpt, tempDirManager, project.getEncoding(),
+    private static LlmFixer createLlmFixer(Project project, TemporaryDirectoryManager tempDirManager)
+            throws IllegalArgumentException {
+        LlmApiConnectionFactory factory = new LlmApiConnectionFactory();
+        LlmFixer llmFixer = new LlmFixer(factory.create(), tempDirManager, project.getEncoding(),
                 project.getProjectDirectory());
         
         return llmFixer;

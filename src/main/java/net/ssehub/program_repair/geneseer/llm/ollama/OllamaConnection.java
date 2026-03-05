@@ -1,0 +1,107 @@
+package net.ssehub.program_repair.geneseer.llm.ollama;
+
+import java.net.URL;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Logger;
+
+import com.google.gson.JsonParseException;
+
+import net.ssehub.program_repair.geneseer.llm.AbstractLlmApiConnection;
+import net.ssehub.program_repair.geneseer.llm.LlmQuery;
+
+public class OllamaConnection extends AbstractLlmApiConnection {
+    
+    private static final Logger LOG = Logger.getLogger(OllamaConnection.class.getName());
+    
+    private String think;
+    
+    private Long contextSize;
+    
+    public OllamaConnection(URL apiUrl) {
+        super(apiUrl);
+    }
+    
+    public void setThink(String think) {
+        this.think = think;
+    }
+    
+    public void setContextSize(Long contextSize) {
+        this.contextSize = contextSize;
+    }
+    
+    @Override
+    protected Map<String, Object> queryToJson(LlmQuery query) {
+        Map<String, Object> json = new LinkedHashMap<>();
+        
+        json.put("model", query.getModel());
+        json.put("messages", query.getMessages().stream()
+                .map(m -> {
+                    Map<String, String> messageJson = new LinkedHashMap<>();
+                    messageJson.put("role", m.getRole().name().toLowerCase());
+                    messageJson.put("content", m.getContent());
+                    return m;
+                })
+                .toList());
+        json.put("stream", false);
+        if (think != null) {
+            if (think.equalsIgnoreCase("true")) {
+                json.put("think", true);
+            } else if (think.equalsIgnoreCase("false")) {
+                json.put("think", false);
+            } else {
+                json.put("think", think);
+            }
+        }
+        
+        Map<String, Object> options = new LinkedHashMap<>();
+        options.put("seed", query.getSeed());
+        options.put("temperature", query.getTemperature());
+        options.put("num_ctx", contextSize);
+        json.put("options", options);
+        
+        return json;
+    }
+    
+    @Override
+    protected OllamaResponse parseResponse(String content, LlmQuery query) throws JsonParseException {
+        OllamaResponse response = getGson().fromJson(content, OllamaResponse.class);
+        sanityChecks(response, query);
+        return response;
+    }
+    
+    private void sanityChecks(OllamaResponse response, LlmQuery query) throws JsonParseException {
+        List<String> warnings = new LinkedList<>();
+        
+        if (response.message() == null || response.message().getContent() == null) {
+            throw new JsonParseException("Got no response message");
+        }
+        if (!response.done()) {
+            warnings.add("Response is not \"done\"");
+        }
+        
+        if (!query.getModel().equals(response.model())) {
+            warnings.add("Response model (" + response.model() + ") does not equal query model ("
+                    + query.getModel() + ")");
+        }
+        
+        if (think != null) {
+            if (!think.equalsIgnoreCase("false") && response.message().getThinking() == null) {
+                warnings.add("Thinking is enabled in query but got no thinking output in response");
+            }
+            if (think.equalsIgnoreCase("false") && response.message().getThinking() != null) {
+                warnings.add("Thinking is disabled in query but got no thinking output in response");
+            }
+        }
+        
+        if (!warnings.isEmpty()) {
+            LOG.warning(() -> "Got sanity check warnings for response " + response);
+            for (String warning : warnings) {
+                LOG.warning(warning);
+            }
+        }
+    }
+    
+}

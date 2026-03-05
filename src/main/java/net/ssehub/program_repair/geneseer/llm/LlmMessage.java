@@ -2,30 +2,22 @@ package net.ssehub.program_repair.geneseer.llm;
 
 import java.util.Objects;
 
-import com.google.gson.annotations.SerializedName;
-
-public class ChatGptMessage {
+public class LlmMessage {
     
     public enum Role {
-        @SerializedName("system") SYSTEM,
-        @SerializedName("user") USER,
-        @SerializedName("assistant") ASSISTANT,
+        SYSTEM,
+        USER,
+        ASSISTANT,
     }
     
     private String content;
     
+    private String thinking;
+    
     private Role role;
     
-    public ChatGptMessage(String content, Role role) {
-        this.content = content;
+    public LlmMessage(Role role, String content) {
         this.role = role;
-    }
-    
-    public String getContent() {
-        return content;
-    }
-    
-    void setContent(String content) {
         this.content = content;
     }
     
@@ -33,17 +25,33 @@ public class ChatGptMessage {
         return role;
     }
     
+    public String getContent() {
+        return content;
+    }
+    
+    public void setContent(String content) {
+        this.content = content;
+    }
+    
+    public String getThinking() {
+        return thinking;
+    }
+    
+    public void setThinking(String thinking) {
+        this.thinking = thinking;
+    }
+    
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("ChatGptMessage[content=");
+        builder.append("LlmMessage[role=");
+        builder.append(role);
+        builder.append(", content=");
         String content = this.content;
         if (content.length() > 20) {
             content = content.substring(0, 20) + "...";
         }
         builder.append(content.replaceAll("\r?\n", "\\\\n"));
-        builder.append(", role=");
-        builder.append(role);
         builder.append("]");
         return builder.toString();
     }
@@ -58,10 +66,10 @@ public class ChatGptMessage {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof ChatGptMessage)) {
+        if (!(obj instanceof LlmMessage)) {
             return false;
         }
-        ChatGptMessage other = (ChatGptMessage) obj;
+        LlmMessage other = (LlmMessage) obj;
         return Objects.equals(content, other.content) && role == other.role;
     }
     

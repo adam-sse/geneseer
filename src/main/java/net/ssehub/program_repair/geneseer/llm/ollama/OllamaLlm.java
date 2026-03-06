@@ -13,6 +13,7 @@ import net.ssehub.program_repair.geneseer.llm.AbstractLlm;
 import net.ssehub.program_repair.geneseer.llm.LlmMessage.Role;
 import net.ssehub.program_repair.geneseer.llm.LlmQuery;
 
+// https://docs.ollama.com/api/chat
 public class OllamaLlm extends AbstractLlm {
     
     private static final Logger LOG = Logger.getLogger(OllamaLlm.class.getName());

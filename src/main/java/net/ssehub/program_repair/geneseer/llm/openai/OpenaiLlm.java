@@ -15,6 +15,7 @@ import net.ssehub.program_repair.geneseer.llm.LlmQuery;
 import net.ssehub.program_repair.geneseer.llm.openai.OpenaiResponse.Choice;
 import net.ssehub.program_repair.geneseer.llm.openai.OpenaiResponse.FinishReason;
 
+// https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create
 public class OpenaiLlm extends AbstractLlm {
     
     private static final Logger LOG = Logger.getLogger(OpenaiLlm.class.getName());

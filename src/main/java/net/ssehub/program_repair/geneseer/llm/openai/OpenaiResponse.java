@@ -37,10 +37,10 @@ record OpenaiResponse(
         public final String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append("query tokens: ").append(promptTokens);
-            if (completionTokensDetails != null && completionTokensDetails.reasoningTokens != null) {
-                sb.append(", thinking tokens: ").append(completionTokens);
-            }
             sb.append(", answer tokens: ").append(completionTokens);
+            if (completionTokensDetails != null && completionTokensDetails.reasoningTokens != null) {
+                sb.append(" (").append(completionTokensDetails.reasoningTokens).append(" thinking)");
+            }
             return sb.toString();
         }
         

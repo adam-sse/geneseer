@@ -101,7 +101,6 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.llm.model`                      | `dummy`              | The name of the model to call. The special value `dummy` will not call an API but instead return a static dummy string (for debugging). |
 | `--config.llm.api`                        | not set              | The API endpoint of the LLM. Consists of the provider type and the full endpoint URL, separated by `+` (e.g. `ollama+http://localhost:11434/api/chat`). Valid providers are `ollama` and `openai`. The URL should end with `/api/chat` for `ollama` and `/v1/chat/completions` for `openai`. |
 | `--config.llm.apiToken`                   | not set              | If set, this is added as a `Bearer` token in the `Authorization` header for API calls. |
-| `--config.llm.apiUserHeader`              | not set              | If set, this is added as the `x-user` header for API calls. |
 | `--config.llm.think`                      | not set              | The thinking/reasoning level to pass to the model. `true` or `false` for most models, `none`, `minimal`, `low`, `medium`, `high`, or `xhigh` for others. |
 | `--config.llm.thinkingDelimiter`          | not set              | If set, everything up to the last occurrence of this sequence in the model output will be considered a thinking/reasoning trace and discarded (for instances where the API does not differentiate between thinking and answer). |
 | `--config.llm.temperature`                | not set              | If set, this defines the temperature of the model. |

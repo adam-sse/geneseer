@@ -18,8 +18,6 @@ public class LlmFactory {
     
     private String apiToken;
     
-    private String apiUserHeader;
-    
     private String think;
     
     private String thinkingDelimiter;
@@ -33,7 +31,6 @@ public class LlmFactory {
                 .withModel(configuration.model())
                 .withApi(configuration.api())
                 .withApiToken(configuration.apiToken())
-                .withApiUserHeader(configuration.apiUserHeader())
                 .withThink(configuration.think())
                 .withThinkingDelimiter(configuration.thinkingDelimiter())
                 .withContextSize(configuration.contextSize())
@@ -52,11 +49,6 @@ public class LlmFactory {
     
     public LlmFactory withApiToken(String apiToken) {
         this.apiToken = apiToken;
-        return this;
-    }
-    
-    public LlmFactory withApiUserHeader(String apiUserHeader) {
-        this.apiUserHeader = apiUserHeader;
         return this;
     }
     
@@ -124,7 +116,6 @@ public class LlmFactory {
     
     private void applyCommonSettings(AbstractLlm con) {
         con.setApiToken(apiToken);
-        con.setApiUserHeader(apiUserHeader);
         con.setThink(think);
         con.setThinkingDelimiter(thinkingDelimiter);
         con.setTemperature(temperature);

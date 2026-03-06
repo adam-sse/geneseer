@@ -31,8 +31,6 @@ public abstract class AbstractLlm implements ILlm {
     
     private String apiToken;
     
-    private String apiUserHeader;
-    
     private String think;
     
     private String thinkingDelimiter;
@@ -67,10 +65,6 @@ public abstract class AbstractLlm implements ILlm {
     
     public void setApiToken(String apiToken) {
         this.apiToken = apiToken;
-    }
-    
-    public void setApiUserHeader(String apiUserHeader) {
-        this.apiUserHeader = apiUserHeader;
     }
     
     public void setThink(String think) {
@@ -128,9 +122,6 @@ public abstract class AbstractLlm implements ILlm {
         HttpURLConnection http = (HttpURLConnection) apiUrl.openConnection();
         http.setRequestProperty("Accept", "application/json");
         http.setRequestProperty("Content-Type", "application/json");
-        if (apiUserHeader != null) {
-            http.setRequestProperty("x-user", apiUserHeader);
-        }
         if (apiToken != null) {
             http.setRequestProperty("Authorization", "Bearer " + apiToken);
         }

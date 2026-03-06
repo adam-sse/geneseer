@@ -255,7 +255,6 @@ public class Configuration {
                 return "<redacted>";
             };
         };
-        private Option<String> apiUserHeader = new Option<>("apiUserHeader", "API user header", Function.identity());
         private Option<String> think = new Option<>("think", "Thinking", Function.identity());
         private Option<String> thinkingDelimiter = new Option<>("thinkingDelimiter", "Thinking Delimiter",
                 Function.identity());
@@ -271,7 +270,6 @@ public class Configuration {
             super.options.add(model);
             super.options.add(api);
             super.options.add(apiToken);
-            super.options.add(apiUserHeader);
             super.options.add(think);
             super.options.add(thinkingDelimiter);
             super.options.add(temperature);
@@ -290,10 +288,6 @@ public class Configuration {
         
         public String apiToken() {
             return apiToken.getValue();
-        }
-        
-        public String apiUserHeader() {
-            return apiUserHeader.getValue();
         }
         
         public String think() {

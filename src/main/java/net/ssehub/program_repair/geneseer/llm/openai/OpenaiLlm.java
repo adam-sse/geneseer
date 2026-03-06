@@ -36,6 +36,7 @@ public class OpenaiLlm extends AbstractLlm {
                 })
                 .toList());
         json.put("seed", query.getSeed());
+        json.put("reasoning_effort", getThink());
         json.put("temperature", getTemperature());
         
         return json;

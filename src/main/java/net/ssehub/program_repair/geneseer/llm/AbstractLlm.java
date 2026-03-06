@@ -32,6 +32,8 @@ public abstract class AbstractLlm implements ILlm {
     
     private String userHeader;
     
+    private String think;
+    
     private String thinkingDelimiter;
     
     private Double temperature;
@@ -67,6 +69,22 @@ public abstract class AbstractLlm implements ILlm {
     
     public void setUserHeader(String userHeader) {
         this.userHeader = userHeader;
+    }
+    
+    public void setThink(String think) {
+        this.think = think;
+    }
+    
+    protected String getThink() {
+        return think;
+    }
+    
+    protected boolean isThinkingExplicitlyEnabled() {
+        return think != null && !isThinkingExplicitlyDisabled();
+    }
+    
+    protected boolean isThinkingExplicitlyDisabled() {
+        return think != null && (think.equals("false") || think.equals("none"));
     }
     
     public void setThinkingDelimiter(String thinkingDelimiter) {

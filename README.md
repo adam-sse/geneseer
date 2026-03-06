@@ -99,15 +99,15 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.genetic.llmMutationProbability` | `0.0`                | The probability that mutations are created by calling an LLM instead of the classic simple mutation operations (insert, swap, delete). |
 | `--config.genetic.statementScope`         | `GLOBAL`             | Defines where other statements for mutations are taken from. Either `GLOBAL` or `FILE`. |
 | `--config.llm.model`                      | `dummy`              | The name of the model to call. The special value `dummy` will not call an API but instead return a static dummy string (for debugging). |
-| `--config.llm.maxCodeContext`             | `100`                | The maximum number of lines of code to supply as code context in a query to the LLM. This does not include test code. |
-| `--config.llm.temperature`                | not set              | If set, this defines the temperature to pass to the LLM API. |
-| `--config.llm.seed`                       | not set              | If set, this defines the seed to pass to the LLM API. |
-| `--config.llm.thinkingDelimiter`          | not set              | If set, everything up to the last occurence of this sequence in the model output will be considered a thinking/reasoning trace and discarded (for instances where the API does not differentiate between thinking and answer). |
-| `--config.llm.think`                      | not set              | Only for ollama: the thinking level to pass to the model. "true" or "false" for most models, "low", "medium", or "high" for others. |
-| `--config.llm.contextSize`                | not set              | Only for ollama: the context window size of the model (in tokens). |
 | `--config.llm.apiUrl`                     | not set              | The API endpoint of the LLM. Must start with "openai:" or "ollama:", depending on which API format should be used, followed by the full URL to the API endpoint (usually ending with "/api/chat" for "ollama:" and "/v1/chat/completions" for "openai:"). |
 | `--config.llm.apiToken`                   | not set              | If set, this is added as a `Bearer` token in the `Authorization` header for API calls. |
 | `--config.llm.apiUserHeader`              | not set              | If set, this is added as the `x-user` header for API calls. |
+| `--config.llm.think`                      | not set              | The thinking/reasoning level to pass to the model. "true" or "false" for most models, "none", "minimal", "low", "medium", "high", or "xhigh" for others. |
+| `--config.llm.thinkingDelimiter`          | not set              | If set, everything up to the last occurence of this sequence in the model output will be considered a thinking/reasoning trace and discarded (for instances where the API does not differentiate between thinking and answer). |
+| `--config.llm.temperature`                | not set              | If set, this defines the temperature of the model. |
+| `--config.llm.contextSize`                | not set              | Only for ollama: the context window size of the model (in tokens). |
+| `--config.llm.seed`                       | not set              | If set, this defines the seed to use for calls to the model. |
+| `--config.llm.maxCodeContext`             | `100`                | The maximum number of lines of code to supply as code context in a query to the LLM. This does not include test code. |
 
 ## Output
 

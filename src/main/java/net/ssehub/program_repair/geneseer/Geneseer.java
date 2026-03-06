@@ -176,7 +176,7 @@ public class Geneseer {
     
     private static LlmFixer createLlmFixer(Project project, TemporaryDirectoryManager tempDirManager)
             throws IllegalArgumentException {
-        LlmFactory factory = new LlmFactory();
+        LlmFactory factory = LlmFactory.fromConfiguration(Configuration.INSTANCE.llm());
         LlmFixer llmFixer = new LlmFixer(factory.create(), tempDirManager, project.getEncoding(),
                 project.getProjectDirectory());
         

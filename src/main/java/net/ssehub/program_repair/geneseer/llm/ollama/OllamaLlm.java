@@ -16,16 +16,10 @@ public class OllamaLlm extends AbstractLlm {
     
     private static final Logger LOG = Logger.getLogger(OllamaLlm.class.getName());
     
-    private String think;
-    
     private Long contextSize;
     
     public OllamaLlm(String model, URL apiUrl) {
         super(model, apiUrl);
-    }
-    
-    public void setThink(String think) {
-        this.think = think;
     }
     
     public void setContextSize(Long contextSize) {
@@ -46,13 +40,13 @@ public class OllamaLlm extends AbstractLlm {
                 })
                 .toList());
         json.put("stream", false);
-        if (think != null) {
-            if (think.equalsIgnoreCase("true")) {
+        if (getThink() != null) {
+            if (getThink().equals("true")) {
                 json.put("think", true);
-            } else if (think.equalsIgnoreCase("false")) {
+            } else if (getThink().equals("false")) {
                 json.put("think", false);
             } else {
-                json.put("think", think);
+                json.put("think", getThink());
             }
         }
         
@@ -88,13 +82,11 @@ public class OllamaLlm extends AbstractLlm {
             warnings.add("Response model (" + response.model() + ") does not equal query model (" + getModel() + ")");
         }
         
-        if (think != null) {
-            if (!think.equalsIgnoreCase("false") && response.message().getThinking() == null) {
-                warnings.add("Thinking is enabled in query but got no thinking output in response");
-            }
-            if (think.equalsIgnoreCase("false") && response.message().getThinking() != null) {
-                warnings.add("Thinking is disabled in query but got no thinking output in response");
-            }
+        if (isThinkingExplicitlyEnabled() && response.message().getThinking() == null) {
+            warnings.add("Thinking is enabled in query but got no thinking output in response");
+        }
+        if (isThinkingExplicitlyDisabled() && response.message().getThinking() != null) {
+            warnings.add("Thinking is disabled in query but got no thinking output in response");
         }
         
         if (!warnings.isEmpty()) {

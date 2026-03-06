@@ -176,9 +176,13 @@ public abstract class AbstractLlm implements ILlm {
     }
     
     private void logRateLimitHeaders(HttpURLConnection http) {
-        LOG.info("Ratelimit HTTP headers:");
+        boolean first = true;
         for (Map.Entry<String, List<String>> header : http.getHeaderFields().entrySet()) {
             if (header.getKey() != null && header.getKey().toLowerCase().startsWith("x-ratelimit-")) {
+                if (first) {
+                    LOG.info("Ratelimit HTTP headers:");
+                    first = false;
+                }
                 String value;
                 if (header.getValue().size() == 1) {
                     value = header.getValue().get(0);

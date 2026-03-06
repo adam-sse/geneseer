@@ -45,6 +45,7 @@ public class LlmApiConnectionFactory {
         con.setToken(Configuration.INSTANCE.llm().apiToken());
         con.setUserHeader(Configuration.INSTANCE.llm().apiUserHeader());
         con.setThinkingDelimiter(Configuration.INSTANCE.llm().thinkingDelimiter());
+        con.setTemperature(Configuration.INSTANCE.llm().temperature());
     }
     
     private URL parse(String url) throws IllegalArgumentException {

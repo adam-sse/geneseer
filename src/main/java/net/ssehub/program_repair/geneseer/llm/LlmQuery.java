@@ -10,8 +10,6 @@ public class LlmQuery {
     
     private List<LlmMessage> messages;
     
-    private Double temperature;
-    
     private Long seed;
     
     public LlmQuery(String model) {
@@ -31,17 +29,6 @@ public class LlmQuery {
         return Collections.unmodifiableList(messages);
     }
     
-    public void setTemperature(double temperature) {
-        if (temperature < 0.0 || temperature > 2.0) {
-            throw new IllegalArgumentException("temperature must be between 0.0 and 2.0");
-        }
-        this.temperature = temperature;
-    }
-    
-    public Double getTemperature() {
-        return temperature;
-    }
-    
     public void setSeed(long seed) {
         this.seed = seed;
     }
@@ -57,10 +44,10 @@ public class LlmQuery {
         builder.append(model);
         builder.append(", messages=");
         builder.append(messages);
-        builder.append(", temperature=");
-        builder.append(temperature);
-        builder.append(", seed=");
-        builder.append(seed);
+        if (seed != null) {
+            builder.append(", seed=");
+            builder.append(seed);
+        }
         builder.append("]");
         return builder.toString();
     }

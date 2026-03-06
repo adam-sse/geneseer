@@ -32,6 +32,8 @@ public abstract class AbstractLlmApiConnection implements ILlmApiConnection {
     
     private String thinkingDelimiter;
     
+    private Double temperature;
+    
     private Gson gson;
     
     public AbstractLlmApiConnection(URL apiUrl) {
@@ -62,6 +64,17 @@ public abstract class AbstractLlmApiConnection implements ILlmApiConnection {
     
     public void setThinkingDelimiter(String thinkingDelimiter) {
         this.thinkingDelimiter = thinkingDelimiter;
+    }
+    
+    public void setTemperature(Double temperature) throws IllegalArgumentException {
+        if (temperature != null && (temperature < 0.0 || temperature > 2.0)) {
+            throw new IllegalArgumentException("temperature must be between 0.0 and 2.0");
+        }
+        this.temperature = temperature;
+    }
+    
+    protected Double getTemperature() {
+        return temperature;
     }
     
     @Override

@@ -58,9 +58,11 @@ public class OllamaConnection extends AbstractLlmApiConnection {
         
         Map<String, Object> options = new LinkedHashMap<>();
         options.put("seed", query.getSeed());
-        options.put("temperature", query.getTemperature());
+        options.put("temperature", getTemperature());
         options.put("num_ctx", contextSize);
-        json.put("options", options);
+        if (options.size() > 0) {
+            json.put("options", options);
+        }
         
         return json;
     }

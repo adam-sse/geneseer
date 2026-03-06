@@ -173,9 +173,6 @@ public class LlmFixer {
         
         LOG.fine(() -> "Prompt:\n" + prompt);
         query.addMessage(new LlmMessage(Role.USER, prompt.toString()));
-        if (Configuration.INSTANCE.llm().temperature() != null) {
-            query.setTemperature(Configuration.INSTANCE.llm().temperature());
-        }
         if (Configuration.INSTANCE.llm().seed() != null) {
             query.setSeed(Configuration.INSTANCE.llm().seed());
         }

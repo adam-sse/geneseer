@@ -36,7 +36,7 @@ public class ChatGptConnection extends AbstractLlmApiConnection {
                 })
                 .toList());
         json.put("seed", query.getSeed());
-        json.put("temperature", query.getTemperature());
+        json.put("temperature", getTemperature());
         
         return json;
     }

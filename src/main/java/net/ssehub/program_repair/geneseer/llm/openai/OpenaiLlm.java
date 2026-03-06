@@ -10,6 +10,7 @@ import java.util.logging.Logger;
 import com.google.gson.JsonParseException;
 
 import net.ssehub.program_repair.geneseer.llm.AbstractLlm;
+import net.ssehub.program_repair.geneseer.llm.LlmMessage.Role;
 import net.ssehub.program_repair.geneseer.llm.LlmQuery;
 import net.ssehub.program_repair.geneseer.llm.openai.OpenaiResponse.Choice;
 import net.ssehub.program_repair.geneseer.llm.openai.OpenaiResponse.FinishReason;
@@ -75,7 +76,13 @@ public class OpenaiLlm extends AbstractLlm {
                 warnings.add("Index of choice " + i + " is " + choice.index());
             }
             if (choice.message() == null) {
-                throw new JsonParseException("message of choice " + i + " is null");
+                throw new JsonParseException("Message of choice " + i + " is null");
+            }
+            if (choice.message().getContent() == null) {
+                throw new JsonParseException("Message content of choice " + i + " is null");
+            }
+            if (choice.message().getRole() != Role.ASSISTANT) {
+                warnings.add("Role of message in choice " + i + " is not ASSISTANT, but " + choice.message().getRole());
             }
         }
         

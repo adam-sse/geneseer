@@ -23,7 +23,9 @@ record OpenaiResponse(
     enum FinishReason {
         @SerializedName("stop") STOP,
         @SerializedName("length") LENGTH,
+        @SerializedName("tool_calls") TOOL_CALLS,
         @SerializedName("content_filter") CONTENT_FILTER,
+        @SerializedName("function_call") FUNCTION_CALL,
     }
     
     record Usage(

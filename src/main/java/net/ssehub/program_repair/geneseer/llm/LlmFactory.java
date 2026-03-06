@@ -5,31 +5,31 @@ import java.net.URL;
 import java.util.logging.Logger;
 
 import net.ssehub.program_repair.geneseer.Configuration;
-import net.ssehub.program_repair.geneseer.llm.ollama.OllamaConnection;
-import net.ssehub.program_repair.geneseer.llm.openai.ChatGptConnection;
+import net.ssehub.program_repair.geneseer.llm.ollama.OllamaLlm;
+import net.ssehub.program_repair.geneseer.llm.openai.OpenaiLlm;
 
-public class LlmApiConnectionFactory {
+public class LlmFactory {
     
-    private static final Logger LOG = Logger.getLogger(LlmApiConnectionFactory.class.getName());
+    private static final Logger LOG = Logger.getLogger(LlmFactory.class.getName());
     
-    public ILlmApiConnection create() throws IllegalArgumentException {
+    public ILlm create() throws IllegalArgumentException {
         String url = Configuration.INSTANCE.llm().apiUrl();
         
-        ILlmApiConnection result;
+        ILlm result;
         if (url.equals("dummy")) {
             LOG.warning("llm.url is set to \"dummy\"; not using a real LLM");
-            result = new DummyLlmConnection();
+            result = new DummyLlm();
             
         } else if (url.startsWith("openai:")) {
             url = url.substring("openai:".length());
-            ChatGptConnection con = new ChatGptConnection(parse(url));
-            applySettings(con);
+            OpenaiLlm con = new OpenaiLlm(parse(url));
+            applyStandardSettings(con);
             result = con;
             
         } else if (url.startsWith("ollama:")) {
             url = url.substring("ollama:".length());
-            OllamaConnection con = new OllamaConnection(parse(url));
-            applySettings(con);
+            OllamaLlm con = new OllamaLlm(parse(url));
+            applyStandardSettings(con);
             con.setThink(Configuration.INSTANCE.llm().think());
             con.setContextSize(Configuration.INSTANCE.llm().contextSize());
             result = con;
@@ -41,7 +41,7 @@ public class LlmApiConnectionFactory {
         return result;
     }
     
-    private void applySettings(AbstractLlmApiConnection con) {
+    private void applyStandardSettings(AbstractLlm con) {
         con.setToken(Configuration.INSTANCE.llm().apiToken());
         con.setUserHeader(Configuration.INSTANCE.llm().apiUserHeader());
         con.setThinkingDelimiter(Configuration.INSTANCE.llm().thinkingDelimiter());

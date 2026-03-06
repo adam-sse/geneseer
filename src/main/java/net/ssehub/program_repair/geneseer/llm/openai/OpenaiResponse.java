@@ -7,7 +7,7 @@ import com.google.gson.annotations.SerializedName;
 import net.ssehub.program_repair.geneseer.llm.ILlmResponse;
 import net.ssehub.program_repair.geneseer.llm.LlmMessage;
 
-record ChatGptResponse(
+record OpenaiResponse(
         String id,
         List<Choice> choices,
         long created,

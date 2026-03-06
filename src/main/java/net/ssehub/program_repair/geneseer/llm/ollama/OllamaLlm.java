@@ -9,18 +9,18 @@ import java.util.logging.Logger;
 
 import com.google.gson.JsonParseException;
 
-import net.ssehub.program_repair.geneseer.llm.AbstractLlmApiConnection;
+import net.ssehub.program_repair.geneseer.llm.AbstractLlm;
 import net.ssehub.program_repair.geneseer.llm.LlmQuery;
 
-public class OllamaConnection extends AbstractLlmApiConnection {
+public class OllamaLlm extends AbstractLlm {
     
-    private static final Logger LOG = Logger.getLogger(OllamaConnection.class.getName());
+    private static final Logger LOG = Logger.getLogger(OllamaLlm.class.getName());
     
     private String think;
     
     private Long contextSize;
     
-    public OllamaConnection(URL apiUrl) {
+    public OllamaLlm(URL apiUrl) {
         super(apiUrl);
     }
     

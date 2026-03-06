@@ -23,7 +23,7 @@ import net.ssehub.program_repair.geneseer.fixers.Outliner;
 import net.ssehub.program_repair.geneseer.fixers.SetupTest;
 import net.ssehub.program_repair.geneseer.fixers.SingleLlm;
 import net.ssehub.program_repair.geneseer.fixers.genetic.GeneticAlgorithm;
-import net.ssehub.program_repair.geneseer.llm.LlmApiConnectionFactory;
+import net.ssehub.program_repair.geneseer.llm.LlmFactory;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
@@ -176,7 +176,7 @@ public class Geneseer {
     
     private static LlmFixer createLlmFixer(Project project, TemporaryDirectoryManager tempDirManager)
             throws IllegalArgumentException {
-        LlmApiConnectionFactory factory = new LlmApiConnectionFactory();
+        LlmFactory factory = new LlmFactory();
         LlmFixer llmFixer = new LlmFixer(factory.create(), tempDirManager, project.getEncoding(),
                 project.getProjectDirectory());
         

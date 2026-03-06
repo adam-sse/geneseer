@@ -9,16 +9,16 @@ import java.util.logging.Logger;
 
 import com.google.gson.JsonParseException;
 
-import net.ssehub.program_repair.geneseer.llm.AbstractLlmApiConnection;
+import net.ssehub.program_repair.geneseer.llm.AbstractLlm;
 import net.ssehub.program_repair.geneseer.llm.LlmQuery;
-import net.ssehub.program_repair.geneseer.llm.openai.ChatGptResponse.Choice;
-import net.ssehub.program_repair.geneseer.llm.openai.ChatGptResponse.FinishReason;
+import net.ssehub.program_repair.geneseer.llm.openai.OpenaiResponse.Choice;
+import net.ssehub.program_repair.geneseer.llm.openai.OpenaiResponse.FinishReason;
 
-public class ChatGptConnection extends AbstractLlmApiConnection {
+public class OpenaiLlm extends AbstractLlm {
     
-    private static final Logger LOG = Logger.getLogger(ChatGptConnection.class.getName());
+    private static final Logger LOG = Logger.getLogger(OpenaiLlm.class.getName());
     
-    public ChatGptConnection(URL apiUrl) {
+    public OpenaiLlm(URL apiUrl) {
         super(apiUrl);
     }
     
@@ -42,14 +42,14 @@ public class ChatGptConnection extends AbstractLlmApiConnection {
     }
     
     @Override
-    protected ChatGptResponse parseResponse(String content, LlmQuery query) throws JsonParseException {
-        ChatGptResponse response = getGson().fromJson(content, ChatGptResponse.class);
+    protected OpenaiResponse parseResponse(String content, LlmQuery query) throws JsonParseException {
+        OpenaiResponse response = getGson().fromJson(content, OpenaiResponse.class);
         sanityChecks(response, query);
-        LOG.info(() -> "ChatGPT response usage: " + response.usage());
+        LOG.info(() -> "Response usage: " + response.usage());
         return response;
     }
     
-    private void sanityChecks(ChatGptResponse response, LlmQuery query) throws JsonParseException {
+    private void sanityChecks(OpenaiResponse response, LlmQuery query) throws JsonParseException {
         List<String> warnings = new LinkedList<>();
         
         if (response.id() == null) {

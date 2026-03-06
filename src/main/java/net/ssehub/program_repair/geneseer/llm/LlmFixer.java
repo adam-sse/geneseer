@@ -37,7 +37,7 @@ public class LlmFixer {
     
     private static final String SYSTEM_MESSAGE = "You are an automated program repair tool for Java programs.";
     
-    private ILlmApiConnection llm;
+    private ILlm llm;
     
     private TemporaryDirectoryManager tempDirManager;
     
@@ -45,7 +45,7 @@ public class LlmFixer {
     
     private Path projectRoot;
 
-    public LlmFixer(ILlmApiConnection llm, TemporaryDirectoryManager tempDirManager, Charset encoding,
+    public LlmFixer(ILlm llm, TemporaryDirectoryManager tempDirManager, Charset encoding,
             Path projectRoot) {
         this.llm = llm;
         this.tempDirManager = tempDirManager;

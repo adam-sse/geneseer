@@ -20,9 +20,9 @@ import com.google.gson.stream.JsonWriter;
 
 import net.ssehub.program_repair.geneseer.llm.LlmMessage.Role;
 
-public abstract class AbstractLlmApiConnection implements ILlmApiConnection {
+public abstract class AbstractLlm implements ILlm {
     
-    private static final Logger LOG = Logger.getLogger(AbstractLlmApiConnection.class.getName());
+    private static final Logger LOG = Logger.getLogger(AbstractLlm.class.getName());
     
     private URL apiUrl;
     
@@ -36,7 +36,7 @@ public abstract class AbstractLlmApiConnection implements ILlmApiConnection {
     
     private Gson gson;
     
-    public AbstractLlmApiConnection(URL apiUrl) {
+    public AbstractLlm(URL apiUrl) {
         this.apiUrl = apiUrl;
         
         GsonBuilder gsonBuilder = new GsonBuilder();

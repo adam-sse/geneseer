@@ -5,11 +5,11 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import net.ssehub.program_repair.geneseer.llm.LlmMessage.Role;
-import net.ssehub.program_repair.geneseer.llm.openai.ChatGptConnection;
+import net.ssehub.program_repair.geneseer.llm.openai.OpenaiLlm;
 
-public class DummyLlmConnection implements ILlmApiConnection {
+public class DummyLlm implements ILlm {
 
-    private static final Logger LOG = Logger.getLogger(ChatGptConnection.class.getName());
+    private static final Logger LOG = Logger.getLogger(OpenaiLlm.class.getName());
     
     private static final String TEXT = """
 Code snippet number 1:

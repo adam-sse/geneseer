@@ -10,6 +10,7 @@ import java.util.logging.Logger;
 import com.google.gson.JsonParseException;
 
 import net.ssehub.program_repair.geneseer.llm.AbstractLlm;
+import net.ssehub.program_repair.geneseer.llm.LlmMessage.Role;
 import net.ssehub.program_repair.geneseer.llm.LlmQuery;
 
 public class OllamaLlm extends AbstractLlm {
@@ -80,6 +81,11 @@ public class OllamaLlm extends AbstractLlm {
         if (response.message() == null || response.message().getContent() == null) {
             throw new JsonParseException("Got no response message");
         }
+        
+        if (response.message().getRole() != Role.ASSISTANT) {
+            warnings.add("Role of response message is not ASSISTANT, but " + response.message().getRole());
+        }
+        
         if (!response.done()) {
             warnings.add("Response is not \"done\"");
         }

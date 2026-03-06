@@ -97,7 +97,7 @@ public class LlmFactory {
             if (apiUrl.startsWith("openai:")) {
                 apiUrl = apiUrl.substring("openai:".length());
                 OpenaiLlm con = new OpenaiLlm(model, parse(apiUrl));
-                applyStandardSettings(con);
+                applyCommonSettings(con);
                 result = con;
                 if (contextSize != null) {
                     LOG.warning(() -> "Context size setting is not supported for openai API");
@@ -106,7 +106,7 @@ public class LlmFactory {
             } else if (apiUrl.startsWith("ollama:")) {
                 apiUrl = apiUrl.substring("ollama:".length());
                 OllamaLlm con = new OllamaLlm(model, parse(apiUrl));
-                applyStandardSettings(con);
+                applyCommonSettings(con);
                 con.setContextSize(contextSize);
                 result = con;
                 
@@ -118,9 +118,9 @@ public class LlmFactory {
         return result;
     }
     
-    private void applyStandardSettings(AbstractLlm con) {
-        con.setToken(apiToken);
-        con.setUserHeader(apiUserHeader);
+    private void applyCommonSettings(AbstractLlm con) {
+        con.setApiToken(apiToken);
+        con.setApiUserHeader(apiUserHeader);
         con.setThink(think);
         con.setThinkingDelimiter(thinkingDelimiter);
         con.setTemperature(temperature);

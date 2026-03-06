@@ -20,8 +20,8 @@ public class OllamaLlm extends AbstractLlm {
     
     private Long contextSize;
     
-    public OllamaLlm(URL apiUrl) {
-        super(apiUrl);
+    public OllamaLlm(String model, URL apiUrl) {
+        super(model, apiUrl);
     }
     
     public void setThink(String think) {
@@ -36,7 +36,7 @@ public class OllamaLlm extends AbstractLlm {
     protected Map<String, Object> queryToJson(LlmQuery query) {
         Map<String, Object> json = new LinkedHashMap<>();
         
-        json.put("model", query.getModel());
+        json.put("model", getModel());
         json.put("messages", query.getMessages().stream()
                 .map(m -> {
                     Map<String, String> messageJson = new LinkedHashMap<>();
@@ -84,9 +84,8 @@ public class OllamaLlm extends AbstractLlm {
             warnings.add("Response is not \"done\"");
         }
         
-        if (!query.getModel().equals(response.model())) {
-            warnings.add("Response model (" + response.model() + ") does not equal query model ("
-                    + query.getModel() + ")");
+        if (!getModel().equals(response.model())) {
+            warnings.add("Response model (" + response.model() + ") does not equal query model (" + getModel() + ")");
         }
         
         if (think != null) {

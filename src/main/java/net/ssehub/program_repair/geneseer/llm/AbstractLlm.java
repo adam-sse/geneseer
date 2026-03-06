@@ -24,6 +24,8 @@ public abstract class AbstractLlm implements ILlm {
     
     private static final Logger LOG = Logger.getLogger(AbstractLlm.class.getName());
     
+    private String model;
+    
     private URL apiUrl;
     
     private String token;
@@ -36,7 +38,8 @@ public abstract class AbstractLlm implements ILlm {
     
     private Gson gson;
     
-    public AbstractLlm(URL apiUrl) {
+    public AbstractLlm(String model, URL apiUrl) {
+        this.model = model;
         this.apiUrl = apiUrl;
         
         GsonBuilder gsonBuilder = new GsonBuilder();
@@ -52,6 +55,10 @@ public abstract class AbstractLlm implements ILlm {
         });
         
         this.gson = gsonBuilder.create();
+    }
+    
+    protected String getModel() {
+        return model;
     }
     
     public void setToken(String token) {

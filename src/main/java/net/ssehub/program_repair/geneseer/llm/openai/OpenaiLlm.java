@@ -18,15 +18,15 @@ public class OpenaiLlm extends AbstractLlm {
     
     private static final Logger LOG = Logger.getLogger(OpenaiLlm.class.getName());
     
-    public OpenaiLlm(URL apiUrl) {
-        super(apiUrl);
+    public OpenaiLlm(String model, URL apiUrl) {
+        super(model, apiUrl);
     }
     
     @Override
     protected Map<String, Object> queryToJson(LlmQuery query) {
         Map<String, Object> json = new LinkedHashMap<>();
         
-        json.put("model", query.getModel());
+        json.put("model", getModel());
         json.put("messages", query.getMessages().stream()
                 .map(m -> {
                     Map<String, String> messageJson = new LinkedHashMap<>();
@@ -75,9 +75,8 @@ public class OpenaiLlm extends AbstractLlm {
             }
         }
         
-        if (!query.getModel().equals(response.model())) {
-            warnings.add("Response model (" + response.model() + ") does not equal query model ("
-                    + query.getModel() + ")");
+        if (!getModel().equals(response.model())) {
+            warnings.add("Response model (" + response.model() + ") does not equal query model (" + getModel() + ")");
         }
         
         if (response.systemFingerprint() == null) {

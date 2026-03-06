@@ -13,22 +13,23 @@ public class LlmFactory {
     private static final Logger LOG = Logger.getLogger(LlmFactory.class.getName());
     
     public ILlm create() throws IllegalArgumentException {
+        String model = Configuration.INSTANCE.llm().model();
         String url = Configuration.INSTANCE.llm().apiUrl();
         
         ILlm result;
-        if (url.equals("dummy")) {
-            LOG.warning("llm.url is set to \"dummy\"; not using a real LLM");
+        if (model.equals("dummy")) {
+            LOG.warning("llm.model is set to \"dummy\"; not using a real LLM");
             result = new DummyLlm();
             
         } else if (url.startsWith("openai:")) {
             url = url.substring("openai:".length());
-            OpenaiLlm con = new OpenaiLlm(parse(url));
+            OpenaiLlm con = new OpenaiLlm(model, parse(url));
             applyStandardSettings(con);
             result = con;
             
         } else if (url.startsWith("ollama:")) {
             url = url.substring("ollama:".length());
-            OllamaLlm con = new OllamaLlm(parse(url));
+            OllamaLlm con = new OllamaLlm(model, parse(url));
             applyStandardSettings(con);
             con.setThink(Configuration.INSTANCE.llm().think());
             con.setContextSize(Configuration.INSTANCE.llm().contextSize());

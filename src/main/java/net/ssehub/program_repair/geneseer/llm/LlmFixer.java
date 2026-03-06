@@ -125,7 +125,7 @@ public class LlmFixer {
         List<TestMethodContext> testMethodContext = failingTests.stream().map(this::getTestMethodContext).toList();
         String projectOutline = createProjectOutline(code, codeSnippets);
         
-        LlmQuery query = new LlmQuery(Configuration.INSTANCE.llm().model());
+        LlmQuery query = new LlmQuery();
         query.addMessage(new LlmMessage(Role.SYSTEM, SYSTEM_MESSAGE));
         
         StringBuilder prompt = new StringBuilder();

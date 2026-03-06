@@ -6,21 +6,14 @@ import java.util.List;
 
 public class LlmQuery {
 
-    private String model;
-    
     private List<LlmMessage> messages;
     
     private Long seed;
     
-    public LlmQuery(String model) {
-        this.model = model;
+    public LlmQuery() {
         messages = new LinkedList<>();
     }
     
-    public String getModel() {
-        return model;
-    }
-
     public void addMessage(LlmMessage message) {
         this.messages.add(message);
     }
@@ -40,9 +33,7 @@ public class LlmQuery {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("LlmQuery[model=");
-        builder.append(model);
-        builder.append(", messages=");
+        builder.append("LlmQuery[messages=");
         builder.append(messages);
         if (seed != null) {
             builder.append(", seed=");

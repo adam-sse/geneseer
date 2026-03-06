@@ -14,7 +14,7 @@ public class LlmFactory {
     
     private String model;
     
-    private String apiUrl;
+    private String api;
     
     private String apiToken;
     
@@ -31,7 +31,7 @@ public class LlmFactory {
     public static LlmFactory fromConfiguration(LlmConfiguration configuration) {
         return new LlmFactory()
                 .withModel(configuration.model())
-                .withApiUrl(configuration.apiUrl())
+                .withApi(configuration.api())
                 .withApiToken(configuration.apiToken())
                 .withApiUserHeader(configuration.apiUserHeader())
                 .withThink(configuration.think())
@@ -45,8 +45,8 @@ public class LlmFactory {
         return this;
     }
     
-    public LlmFactory withApiUrl(String apiUrl) {
-        this.apiUrl = apiUrl;
+    public LlmFactory withApi(String api) {
+        this.api = api;
         return this;
     }
     
@@ -90,28 +90,32 @@ public class LlmFactory {
             LOG.warning("llm.model is set to \"dummy\"; not using a real LLM");
             result = new DummyLlm();
         } else {
-            if (apiUrl == null) {
-                throw new IllegalArgumentException("No API URL specified");
+            if (api == null) {
+                throw new IllegalArgumentException("No API specified");
             }
+            int splitIndex = api.indexOf('+');
+            if (splitIndex == -1) {
+                throw new IllegalArgumentException("No API provider specified with + before URL");
+            }
+            String provider = api.substring(0, splitIndex);
+            URL url = parse(api.substring(splitIndex + 1));
             
-            if (apiUrl.startsWith("openai:")) {
-                apiUrl = apiUrl.substring("openai:".length());
-                OpenaiLlm con = new OpenaiLlm(model, parse(apiUrl));
+            if (provider.equals("openai")) {
+                OpenaiLlm con = new OpenaiLlm(model, url);
                 applyCommonSettings(con);
                 result = con;
                 if (contextSize != null) {
                     LOG.warning(() -> "Context size setting is not supported for openai API");
                 }
                 
-            } else if (apiUrl.startsWith("ollama:")) {
-                apiUrl = apiUrl.substring("ollama:".length());
-                OllamaLlm con = new OllamaLlm(model, parse(apiUrl));
+            } else if (provider.equals("ollama")) {
+                OllamaLlm con = new OllamaLlm(model, url);
                 applyCommonSettings(con);
                 con.setContextSize(contextSize);
                 result = con;
                 
             } else {
-                throw new IllegalArgumentException("Invalid LLM url: " + apiUrl);
+                throw new IllegalArgumentException("Invalid LLM provider: " + provider);
             }
         }
         

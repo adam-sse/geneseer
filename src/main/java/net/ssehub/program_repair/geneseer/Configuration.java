@@ -247,73 +247,45 @@ public class Configuration {
         
         private Option<String> model = new Option<>("model",
                 "Model", "dummy", Function.identity());
-        private Option<Integer> maxCodeContext = new Option<>("maxCodeContext",
-                "Max code context lines", 100, Integer::parseInt);
-        private Option<Double> temperature = new Option<>("temperature",
-                "Temperature", Double::parseDouble);
-        private Option<Long> seed = new Option<>("seed",
-                "Seed", Long::parseLong);
-        private Option<String> thinkingDelimiter = new Option<>("thinkingDelimiter",
-                "Thinking Delimiter", Function.identity());
-        private Option<String> think = new Option<>("think", "Thinking", Function.identity());
-        private Option<Long> contextSize = new Option<>("contextSize", "Context window size", Long::parseLong);
-        private Option<String> apiUrl = new Option<>("apiUrl", "API URL", Function.identity());
+        private Option<String> api = new Option<>("api", "API", Function.identity());
         private Option<String> apiToken = new Option<>("apiToken",
                 "API Token", Function.identity()) {
-            
             @Override
             protected String valueAsString() {
                 return "<redacted>";
             };
-            
         };
-        private Option<String> apiUserHeader = new Option<>("apiUserHeader",
-                "API user header", Function.identity());
+        private Option<String> apiUserHeader = new Option<>("apiUserHeader", "API user header", Function.identity());
+        private Option<String> think = new Option<>("think", "Thinking", Function.identity());
+        private Option<String> thinkingDelimiter = new Option<>("thinkingDelimiter", "Thinking Delimiter",
+                Function.identity());
+        private Option<Double> temperature = new Option<>("temperature", "Temperature", Double::parseDouble);
+        private Option<Long> contextSize = new Option<>("contextSize", "Context window size", Long::parseLong);
+        private Option<Long> seed = new Option<>("seed", "Seed", Long::parseLong);
+        private Option<Integer> maxCodeContext = new Option<>("maxCodeContext", "Max code context lines", 100,
+                Integer::parseInt);
+        
         
         public LlmConfiguration() {
             super("llm", "LLM Configuration", new LinkedList<>());
             super.options.add(model);
-            super.options.add(maxCodeContext);
-            super.options.add(temperature);
-            super.options.add(seed);
-            super.options.add(thinkingDelimiter);
-            super.options.add(think);
-            super.options.add(contextSize);
-            super.options.add(apiUrl);
+            super.options.add(api);
             super.options.add(apiToken);
             super.options.add(apiUserHeader);
+            super.options.add(think);
+            super.options.add(thinkingDelimiter);
+            super.options.add(temperature);
+            super.options.add(contextSize);
+            super.options.add(seed);
+            super.options.add(maxCodeContext);
         }
         
         public String model() {
             return model.getValue();
         }
         
-        public int maxCodeContext() {
-            return maxCodeContext.getValue();
-        }
-        
-        public Double temperature() {
-            return temperature.getValue();
-        }
-        
-        public Long seed() {
-            return seed.getValue();
-        }
-        
-        public String thinkingDelimiter() {
-            return thinkingDelimiter.getValue();
-        }
-        
-        public String think() {
-            return think.getValue();
-        }
-        
-        public Long contextSize() {
-            return contextSize.getValue();
-        }
-        
-        public String apiUrl() {
-            return apiUrl.getValue();
+        public String api() {
+            return api.getValue();
         }
         
         public String apiToken() {
@@ -324,6 +296,29 @@ public class Configuration {
             return apiUserHeader.getValue();
         }
         
+        public String think() {
+            return think.getValue();
+        }
+        
+        public String thinkingDelimiter() {
+            return thinkingDelimiter.getValue();
+        }
+        
+        public Double temperature() {
+            return temperature.getValue();
+        }
+        
+        public Long contextSize() {
+            return contextSize.getValue();
+        }
+        
+        public Long seed() {
+            return seed.getValue();
+        }
+        
+        public int maxCodeContext() {
+            return maxCodeContext.getValue();
+        }
     }
     
     private SetupConfiguration setup = new SetupConfiguration();

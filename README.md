@@ -139,7 +139,7 @@ if applicable):
   },
   "evaluations": {
     "compilations": 23,
-    "testSuiteRuns: 16
+    "testSuiteRuns": 16
   },
   "mutationStats": {
     "insertions": 40,
@@ -150,6 +150,11 @@ if applicable):
     "llmCallsOnUnmodified": 0,
     "llmCallsOnMutated": 0,
     "unusableLlmAnswers": 0
+  },
+  "llmStats": {
+    "calls": 0,
+    "totalQueryTokens": 0,
+    "totalAnswerTokens": 0
   },
   "timings": { // timing measurements in ms
     "total": 4679, // (almost) complete runtime of geneseer, including initial evaluation of unmodified variant

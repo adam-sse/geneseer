@@ -93,6 +93,9 @@ public class GeneticAlgorithm implements IFixer {
         mutationStats.put("unusableLlmAnswers", numUnusableLlmAnswers);
         
         result.put("mutationStats", mutationStats);
+        if (llmFixer != null) {
+            result.put("llmStats", llmFixer.createStats());
+        }
         result.put("generation", generation);
         fitnessResult.put("best", fitnessEvaluator.getBestVariant().getFitness());
         

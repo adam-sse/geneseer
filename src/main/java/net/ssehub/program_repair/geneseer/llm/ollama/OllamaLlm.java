@@ -65,6 +65,12 @@ public class OllamaLlm extends AbstractLlm {
     protected OllamaResponse parseResponse(String content, LlmQuery query) throws JsonParseException {
         OllamaResponse response = getGson().fromJson(content, OllamaResponse.class);
         sanityChecks(response, query);
+        LOG.info(() -> {
+            StringBuilder sb = new StringBuilder("Token usage: ");
+            sb.append("query tokens: ").append(response.promptEvalCount());
+            sb.append(", answer tokens: ").append(response.evalCount());
+            return sb.toString();
+        });
         return response;
     }
     

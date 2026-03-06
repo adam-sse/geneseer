@@ -13,15 +13,25 @@ record OllamaResponse(
         String doneReason,
         long totalDuration,
         long loadDuration,
-        long promptEvalCount,
+        int promptEvalCount,
         long promptEvalDuration,
-        long evalCount,
+        int evalCount,
         long evalDuration
 ) implements ILlmResponse {
 
     @Override
     public List<LlmMessage> getMessages() {
         return List.of(message());
+    }
+    
+    @Override
+    public int getQueryTokens() {
+        return promptEvalCount;
+    }
+    
+    @Override
+    public int getAnswerTokens() {
+        return evalCount;
     }
 
 }

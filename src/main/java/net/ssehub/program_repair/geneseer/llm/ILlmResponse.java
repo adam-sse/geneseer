@@ -14,4 +14,8 @@ public interface ILlmResponse {
         return getMessages().get(0).getThinking();
     }
     
+    public int getQueryTokens();
+    
+    public int getAnswerTokens();
+    
 }

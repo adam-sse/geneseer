@@ -44,6 +44,12 @@ public class LlmFixer {
     private Charset encoding;
     
     private Path projectRoot;
+    
+    private int numberOfCalls;
+    
+    private long totalQueryTokens;
+    
+    private long totalAnswerTokens;
 
     public LlmFixer(ILlm llm, TemporaryDirectoryManager tempDirManager, Charset encoding,
             Path projectRoot) {
@@ -404,6 +410,9 @@ public class LlmFixer {
             if (response.getThinking() != null) {
                 LOG.fine(() -> "Got " + response.getThinking().length() + " characters of thinking trace");
             }
+            numberOfCalls++;
+            totalQueryTokens += response.getQueryTokens();
+            totalAnswerTokens += response.getAnswerTokens();
             return response.getContent();
         }
     }
@@ -487,6 +496,26 @@ public class LlmFixer {
         }
         
         Files.writeString(file, newLines.stream().collect(Collectors.joining("\n")), encoding);
+    }
+    
+    public int getNumberOfCalls() {
+        return numberOfCalls;
+    }
+    
+    public long getTotalQueryTokens() {
+        return totalQueryTokens;
+    }
+    
+    public long getTotalAnswerTokens() {
+        return totalAnswerTokens;
+    }
+    
+    public Map<String, Object> createStats() {
+        return Map.of(
+                "calls", numberOfCalls,
+                "totalQueryTokens", totalQueryTokens,
+                "totalAnswerTokens", totalAnswerTokens
+                );
     }
     
 }

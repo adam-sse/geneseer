@@ -54,4 +54,14 @@ record OpenaiResponse(
         return choices.stream().map(Choice::message).toList();
     }
     
+    @Override
+    public int getQueryTokens() {
+        return usage != null ? usage.promptTokens : 0;
+    }
+    
+    @Override
+    public int getAnswerTokens() {
+        return usage != null ? usage.completionTokens : 0;
+    }
+    
 }

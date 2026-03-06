@@ -60,6 +60,16 @@ Code snippet number 1:
             return messages;
         }
         
+        @Override
+        public int getQueryTokens() {
+            return 0;
+        }
+        
+        @Override
+        public int getAnswerTokens() {
+            return 0;
+        }
+        
     }
     
     @Override

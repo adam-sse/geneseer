@@ -67,6 +67,7 @@ public class SingleLlm implements IFixer {
         }
         
         result.put("result", resultString);
+        result.put("llmStats", llmFixer.createStats());
         
         return patched;
     }

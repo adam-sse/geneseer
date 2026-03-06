@@ -11,7 +11,6 @@ record OpenaiResponse(
         String id,
         List<Choice> choices,
         String model,
-        String systemFingerprint,
         String object,
         Usage usage) implements ILlmResponse {
 

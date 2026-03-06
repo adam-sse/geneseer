@@ -35,9 +35,12 @@ public class OpenaiLlm extends AbstractLlm {
                     return m;
                 })
                 .toList());
-        json.put("seed", query.getSeed());
         json.put("reasoning_effort", getThink());
         json.put("temperature", getTemperature());
+        
+        if (query.getSeed() != null) {
+            LOG.warning("Specifying a seed is not supported by the openai API");
+        }
         
         return json;
     }
@@ -78,10 +81,6 @@ public class OpenaiLlm extends AbstractLlm {
         
         if (!getModel().equals(response.model())) {
             warnings.add("Response model (" + response.model() + ") does not equal query model (" + getModel() + ")");
-        }
-        
-        if (response.systemFingerprint() == null) {
-            warnings.add("Response has no system_fingerprint");
         }
         
         if (!"chat.completion".equals(response.object())) {

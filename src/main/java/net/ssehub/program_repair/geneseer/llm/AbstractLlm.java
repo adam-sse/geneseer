@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
@@ -45,6 +46,7 @@ public abstract class AbstractLlm implements ILlm {
         this.apiUrl = apiUrl;
         
         GsonBuilder gsonBuilder = new GsonBuilder();
+        gsonBuilder.setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES);
         gsonBuilder.registerTypeAdapter(Role.class, new TypeAdapter<Role>() {
             @Override
             public void write(JsonWriter out, Role value) throws IOException {

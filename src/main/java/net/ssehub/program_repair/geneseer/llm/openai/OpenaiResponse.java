@@ -10,17 +10,15 @@ import net.ssehub.program_repair.geneseer.llm.LlmMessage;
 record OpenaiResponse(
         String id,
         List<Choice> choices,
-        long created,
         String model,
-        @SerializedName("system_fingerprint") String systemFingerprint,
+        String systemFingerprint,
         String object,
         Usage usage) implements ILlmResponse {
 
     record Choice(
-            @SerializedName("finish_reason") FinishReason finishReason,
+            FinishReason finishReason,
             int index,
-            LlmMessage message,
-            Object logprobs) {
+            LlmMessage message) {
     }
     
     enum FinishReason {
@@ -30,9 +28,25 @@ record OpenaiResponse(
     }
     
     record Usage(
-            @SerializedName("completion_tokens") int completionTokens,
-            @SerializedName("prompt_tokens") int promptTokens,
-            @SerializedName("total_tokens") int totalTokens) {
+            int completionTokens,
+            int promptTokens,
+            int totalTokens,
+            UsageDetails completionTokensDetails) {
+        
+        @Override
+        public final String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("query tokens: ").append(promptTokens);
+            if (completionTokensDetails != null && completionTokensDetails.reasoningTokens != null) {
+                sb.append(", thinking tokens: ").append(completionTokens);
+            }
+            sb.append(", answer tokens: ").append(completionTokens);
+            return sb.toString();
+        }
+        
+    }
+    
+    record UsageDetails(Integer reasoningTokens) {
     }
     
     @Override

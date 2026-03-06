@@ -46,7 +46,7 @@ public class OpenaiLlm extends AbstractLlm {
     protected OpenaiResponse parseResponse(String content, LlmQuery query) throws JsonParseException {
         OpenaiResponse response = getGson().fromJson(content, OpenaiResponse.class);
         sanityChecks(response, query);
-        LOG.info(() -> "Response usage: " + response.usage());
+        LOG.info(() -> "Token usage: " + response.usage());
         return response;
     }
     
@@ -90,6 +90,19 @@ public class OpenaiLlm extends AbstractLlm {
         
         if (response.usage() == null) {
             warnings.add("Response usage is null");
+        } else {
+            if (response.usage().completionTokensDetails() == null
+                    || response.usage().completionTokensDetails().reasoningTokens() == null) {
+                warnings.add("Response completion thinking tokens not reported");
+            } else {
+                int thinkingTokens = response.usage().completionTokensDetails().reasoningTokens();
+                if (isThinkingExplicitlyEnabled() && thinkingTokens == 0) {
+                    warnings.add("Thinking is enabled in query but got no thinking output in response");
+                }
+                if (isThinkingExplicitlyDisabled() && thinkingTokens > 0) {
+                    warnings.add("Thinking is disabled in query but got thinking output in response");
+                }
+            }
         }
         
         if (!warnings.isEmpty()) {

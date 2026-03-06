@@ -86,7 +86,7 @@ public class OllamaLlm extends AbstractLlm {
             warnings.add("Thinking is enabled in query but got no thinking output in response");
         }
         if (isThinkingExplicitlyDisabled() && response.message().getThinking() != null) {
-            warnings.add("Thinking is disabled in query but got no thinking output in response");
+            warnings.add("Thinking is disabled in query but got thinking output in response");
         }
         
         if (!warnings.isEmpty()) {

@@ -6,6 +6,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -14,6 +15,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -72,30 +75,69 @@ class ProjectCompiler {
             });
             ProcessRunner process = new ProcessRunner.Builder(command)
                         .workingDirectory(sourceDirectory)
-                        .captureOutput(logOutput)
+                        .captureOutput(true)
                         .run();
             
+            List<String> errors = parseOutput(new String(process.getStderr()));
+            boolean success = process.getExitCode() == 0 && errors.isEmpty();
+            String resultMessage = "Compilation " + (success ? "" : "not ") + "successful ("
+                    + errors.size() + " errors)";
             
-            LOG.fine(() -> "Compilation " + (process.getExitCode() == 0 ? "" : "not ") + "successful");
+            LOG.log(logOutput ? Level.INFO : Level.FINE, resultMessage);
             if (logOutput) {
-                String stdout = new String(process.getStdout());
-                String stderr = new String(process.getStderr());
-                if (!stdout.isEmpty()) {
-                    LOG.fine(() -> "Compiler stdout:\n" + stdout);
-                }
-                if (!stderr.isEmpty()) {
-                    LOG.fine(() -> "Compiler stderr:\n" + stderr);
+                for (String error : errors) {
+                    Arrays.stream(error.split("\n")).forEach(LOG::info);
                 }
             }
             
-            if (process.getExitCode() != 0) {
-                throw new CompilationException("Compiler exited with " + process.getExitCode());
+            if (!success) {
+                throw new CompilationException(resultMessage);
             }
-            
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "Failed to run compiler process", e);
             throw new CompilationException("Failed to run compiler process", e);
         }
+    }
+
+    private List<String> parseOutput(String stderr) {
+        Pattern outputPattern = Pattern.compile(
+                "^(?<filename>.+):(?<line>\\d+): (?<type>error|warning): (?<message>.+)$");
+        List<String> errors = new LinkedList<>();
+        
+        StringBuilder currentError = null;
+        for (String outputLine : stderr.split("\n")) {
+            Matcher m = outputPattern.matcher(outputLine);
+            if (m.matches()) {
+                String type = m.group("type");
+                if (type.equals("error")) {
+                    if (currentError != null) {
+                        errors.add(currentError.toString());
+                    }
+                    currentError = new StringBuilder("Error in file ")
+                            .append(m.group("filename"))
+                            .append(" line ")
+                            .append(m.group("line"))
+                            .append(": ")
+                            .append(m.group("message"));
+                } else {
+                    errors.add(currentError.toString());
+                    currentError = null;
+                }
+            } else if (currentError != null) {
+                if (!outputLine.isBlank() && Character.isWhitespace(outputLine.charAt(0))) {
+                    currentError.append("\n    ").append(outputLine);
+                } else {
+                    errors.add(currentError.toString());
+                    currentError = null;
+                }
+            }
+        }
+        if (currentError != null) {
+            errors.add(currentError.toString());
+            currentError = null;
+        }
+        
+        return errors;
     }
     
     private Set<Path> writeModifiedFiles(Node newAst) throws CompilationException {

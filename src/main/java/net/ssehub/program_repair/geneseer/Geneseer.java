@@ -85,6 +85,7 @@ public class Geneseer {
         LOG.config("    test execution classpath: " + project.getTestExecutionClassPath());
         LOG.config("    test classes (" + project.getTestClassNames().size() + "): " + project.getTestClassNames());
         LOG.config("    encoding: " + project.getEncoding());
+        LOG.config("    additional compiler options: " + project.getAdditionalCompilerOptions());
         
         TestSuite testSuite = null;
         Map<String, Object> result = new HashMap<>();

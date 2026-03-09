@@ -474,6 +474,7 @@ identifier
     | PERMITS
     | RECORD
     | VAR
+    | ENUM
     ;
 
 typeIdentifier  // Identifiers that are not restricted for type declarations

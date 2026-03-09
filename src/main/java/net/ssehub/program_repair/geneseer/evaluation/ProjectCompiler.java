@@ -6,7 +6,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -22,8 +22,8 @@ import java.util.stream.Stream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.code.Node;
-import net.ssehub.program_repair.geneseer.code.Writer;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
+import net.ssehub.program_repair.geneseer.code.Writer;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 import net.ssehub.program_repair.geneseer.util.ProcessRunner;
@@ -35,6 +35,8 @@ class ProjectCompiler {
     private List<Path> classpath;
     
     private Charset encoding;
+    
+    private List<String> additionalOptions = Collections.emptyList();
     
     private Path sourceDirectory;
     
@@ -49,6 +51,10 @@ class ProjectCompiler {
         this.encoding = encoding;
         this.sourceDirectory = sourceDirectory;
         this.outputDirectory = outputDirectory;
+    }
+    
+    public void setAdditionalOptions(List<String> additionalOptions) {
+        this.additionalOptions = additionalOptions;
     }
     
     public Path getOutputDirectory() {
@@ -85,8 +91,16 @@ class ProjectCompiler {
             
             LOG.log(logResult ? Level.INFO : Level.FINE, resultMessage);
             if (logResult) {
-                for (String error : errors) {
-                    Arrays.stream(error.split("\n")).forEach(LOG::info);
+                if (!errors.isEmpty()) {
+                    for (String error : errors) {
+                        for (String line : error.split("\n")) {
+                            LOG.info(line);
+                        }
+                    }
+                } else {
+                    for (String line : new String(process.getStderr()).split("\n")) {
+                        LOG.info(line);
+                    }
                 }
             }
             
@@ -216,6 +230,8 @@ class ProjectCompiler {
         
         command.add("-encoding");
         command.add(encoding.toString());
+        
+        command.addAll(additionalOptions);
         
         command.add("-d");
         command.add(outputDirectory.toString());

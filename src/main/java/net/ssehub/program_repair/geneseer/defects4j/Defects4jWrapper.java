@@ -105,6 +105,9 @@ class Defects4jWrapper {
                 testExecutionClassPath, testClassNames);
         if (bug.project().equals("Lang")) {
             project.setEncoding(StandardCharsets.ISO_8859_1);
+            if (bug.bug() >= 42) {
+                project.setAdditionalCompilerOptions(List.of("-source", "1.3", "-target", "1.2"));
+            }
         }
         return project;
     }

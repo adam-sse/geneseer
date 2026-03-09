@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -34,6 +35,8 @@ public class Project {
     
     private Charset encoding;
     
+    private List<String> additionalCompilerOptions;
+    
     /**
      * @param projectDirectory The root directory of the project.
      * @param sourceDirectory The base directory where the Java source code files are located. May be relative to
@@ -57,6 +60,7 @@ public class Project {
         this.testExecutionClassPath = testExecutionClassPath;
         this.testClassNames = testClassNames;
         this.encoding = Charset.defaultCharset();
+        this.additionalCompilerOptions = Collections.emptyList();
         
         checkConsistency();
     }
@@ -125,7 +129,7 @@ public class Project {
     
     public static Set<String> getCliOptions() {
         return Set.of("--project-directory", "--source-directory", "--compile-classpath", "--test-classpath",
-                "--test-classes", "--encoding");
+                "--test-classes", "--encoding", "--additional-javac-options");
     }
     
     public static Project readFromCommandLine(CliArguments args) throws IllegalArgumentException {
@@ -144,6 +148,12 @@ public class Project {
         
         if (args.hasOption("--encoding")) {
             project.setEncoding(Charset.forName(args.getOption("--encoding")));
+        }
+        
+        if (args.hasOption("--additional-javac-options")) {
+            project.setAdditionalCompilerOptions(Arrays.stream(args.getOption("--additional-javac-options").split(","))
+                    .map(option -> option.trim())
+                    .toList());
         }
         
         return project;
@@ -171,6 +181,10 @@ public class Project {
     
     public void setEncoding(Charset encoding) {
         this.encoding = encoding;
+    }
+    
+    public void setAdditionalCompilerOptions(List<String> additionalCompilerOptions) {
+        this.additionalCompilerOptions = additionalCompilerOptions;
     }
     
     /**
@@ -239,6 +253,10 @@ public class Project {
     
     public Charset getEncoding() {
         return encoding;
+    }
+    
+    public List<String> getAdditionalCompilerOptions() {
+        return additionalCompilerOptions;
     }
     
 }

@@ -26,6 +26,7 @@ The following optional command line arguments can be specified (also with a foll
 compile-time dependencies; usually this is a list of jars. Entries may be relative to the project directory.
 * `--encoding`: The encoding of the source files of the project to repair. For example `ISO-8859-1`. If this is not
 specified, the default encoding of the operating system is used.
+* `--additional-javac-options`: A comma-separated list of additional command line options to pass to the Java compiler.
 * `--config.*`: Configuration options start with `--config.`, see below.
 
 The classpaths (`--test-classpath` and `--compile-classpath`) can be specified with the platform-specific file separator

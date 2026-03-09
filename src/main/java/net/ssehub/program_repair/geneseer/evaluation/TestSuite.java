@@ -65,8 +65,10 @@ public class TestSuite {
             Path compilerOutputDirectory = tempDirManager.createTemporaryDirectory();
             FileUtils.copyAllNonJavaSourceFiles(project.getSourceDirectoryAbsolute(), compilerSourceDirectory);
             FileUtils.copyAllNonJavaSourceFiles(project.getSourceDirectoryAbsolute(), compilerOutputDirectory);
-            return new ProjectCompiler(project.getCompilationClasspathAbsolute(), project.getEncoding(),
-                    compilerSourceDirectory, compilerOutputDirectory);
+            ProjectCompiler compiler = new ProjectCompiler(project.getCompilationClasspathAbsolute(),
+                    project.getEncoding(), compilerSourceDirectory, compilerOutputDirectory);
+            compiler.setAdditionalOptions(project.getAdditionalCompilerOptions());
+            return compiler;
         } catch (IOException e) {
             throw new CompilationException("Can't setup directories for compiler", e);
         }

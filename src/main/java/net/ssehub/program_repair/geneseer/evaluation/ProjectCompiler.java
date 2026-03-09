@@ -84,7 +84,8 @@ class ProjectCompiler {
                         .captureOutput(true)
                         .run();
             
-            List<String> errors = parseOutput(new String(process.getStderr()));
+            String stderr = new String(process.getStderr());
+            List<String> errors = parseOutput(stderr);
             boolean success = process.getExitCode() == 0 && errors.isEmpty();
             String resultMessage = "Compilation " + (success ? "" : "not ") + "successful ("
                     + errors.size() + " errors)";
@@ -97,8 +98,8 @@ class ProjectCompiler {
                             LOG.info(line);
                         }
                     }
-                } else {
-                    for (String line : new String(process.getStderr()).split("\n")) {
+                } else if (!stderr.isBlank()) {
+                    for (String line : stderr.split("\n")) {
                         LOG.info(line);
                     }
                 }

@@ -236,6 +236,14 @@ public class LlmFixer {
             this.lines = lines;
         }
         
+        public Path getFile() {
+            return file;
+        }
+        
+        public LineRange getLineRange() {
+            return lineRange;
+        }
+        
         public int size() {
             return lineRange.size();
         }
@@ -243,11 +251,7 @@ public class LlmFixer {
         public String getText() {
             return lines.stream().collect(Collectors.joining("\n"));
         }
-        
-        public boolean contains(ChangedArea changedArea) {
-            return file.equals(Path.of(changedArea.file())) && lineRange.start() <= changedArea.start()
-                    && lineRange.end() >= changedArea.end();
-        }
+
     }
 
     private CodeSnippet getSnippetForMethod(Node root, Node method) {
@@ -266,7 +270,7 @@ public class LlmFixer {
         return new CodeSnippet(filename, range, lines);
     }
 
-    protected record LineRange(int start, int end) {
+    public record LineRange(int start, int end) {
         public int size() {
             return end - start + 1;
         }

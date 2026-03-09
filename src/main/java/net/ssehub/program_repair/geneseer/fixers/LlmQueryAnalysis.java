@@ -19,11 +19,11 @@ import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingType;
 
 import net.ssehub.program_repair.geneseer.code.Node;
+import net.ssehub.program_repair.geneseer.defects4j.PatchWriter.ChangedArea;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
-import net.ssehub.program_repair.geneseer.llm.ChangedArea;
-import net.ssehub.program_repair.geneseer.llm.Query;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer.CodeSnippet;
+import net.ssehub.program_repair.geneseer.llm.Query;
 
 public class LlmQueryAnalysis implements IFixer {
 
@@ -58,7 +58,7 @@ public class LlmQueryAnalysis implements IFixer {
         for (ChangedArea area : changedByHumanPatch) {
             boolean containedByAny = false;
             for (CodeSnippet snippet : codeSnippets) {
-                if (snippet.contains(area)) {
+                if (area.isWithin(snippet)) {
                     in.add(area);
                     irrelevant.remove(snippet);
                     containedByAny = true;

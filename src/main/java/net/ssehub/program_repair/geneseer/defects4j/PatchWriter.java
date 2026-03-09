@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 import com.google.gson.Gson;
 
 import net.ssehub.program_repair.geneseer.defects4j.Defects4jWrapper.Version;
-import net.ssehub.program_repair.geneseer.llm.ChangedArea;
+import net.ssehub.program_repair.geneseer.llm.LlmFixer.CodeSnippet;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
@@ -51,6 +51,19 @@ public class PatchWriter {
     public void selectBugs(List<Bug> bugs) {
         this.bugs = bugs;
         LOG.info(() -> "Running on " + bugs.size() + " specified bugs");
+    }
+    
+    public record ChangedArea(String file, int start, int size) {
+        
+        public int end() {
+            return start + Math.max(size - 1, 0);
+        }
+        
+        public boolean isWithin(CodeSnippet snippet) {
+            return Path.of(file).equals(snippet.getFile()) && snippet.getLineRange().start() <= start()
+                    && snippet.getLineRange().end() >= end();
+        }
+        
     }
     
     public void run() throws IOException {

@@ -18,8 +18,8 @@ import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
+import net.ssehub.program_repair.geneseer.defects4j.PatchWriter.ChangedArea;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
-import net.ssehub.program_repair.geneseer.llm.ChangedArea;
 
 public class Outliner implements IFixer {
     

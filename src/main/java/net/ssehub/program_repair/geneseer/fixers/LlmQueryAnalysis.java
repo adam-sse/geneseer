@@ -19,6 +19,7 @@ import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingType;
 
 import net.ssehub.program_repair.geneseer.code.Node;
+import net.ssehub.program_repair.geneseer.defects4j.PatchWriter;
 import net.ssehub.program_repair.geneseer.defects4j.PatchWriter.ChangedArea;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
@@ -27,6 +28,8 @@ import net.ssehub.program_repair.geneseer.llm.Query;
 
 public class LlmQueryAnalysis implements IFixer {
 
+    public static final String LLM_QUERY_FILENAME = "geneseer-llm-query.json";
+    
     private static final Logger LOG = Logger.getLogger(LlmQueryAnalysis.class.getName());
     
     private Path projectRoot;
@@ -44,7 +47,7 @@ public class LlmQueryAnalysis implements IFixer {
         
         List<CodeSnippet> codeSnippets = llmFixer.selectMostSuspiciousMethods(original);
         
-        Path changedAreasFile = projectRoot.resolve("geneseer-changed-areas.json");
+        Path changedAreasFile = projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME);
         java.lang.reflect.Type listType = new TypeToken<List<ChangedArea>>() {
         }.getType();
         List<ChangedArea> changedByHumanPatch = new Gson().fromJson(
@@ -84,7 +87,7 @@ public class LlmQueryAnalysis implements IFixer {
         LOG.info(() -> "Query:\n" + queryText);
         analyzeQuery(result, tokenEncoding, codeSnippets, irrelevant, queryText);
         
-        Path queryJson = projectRoot.resolve("geneseer-llm-query.json");
+        Path queryJson = projectRoot.resolve(LLM_QUERY_FILENAME);
         Files.write(queryJson, new Gson().toJson(query).getBytes(StandardCharsets.UTF_8));
         
         return null;

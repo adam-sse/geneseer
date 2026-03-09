@@ -18,10 +18,13 @@ import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
+import net.ssehub.program_repair.geneseer.defects4j.PatchWriter;
 import net.ssehub.program_repair.geneseer.defects4j.PatchWriter.ChangedArea;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 
 public class Outliner implements IFixer {
+
+    public static final String METHOD_OVERVIEW_FILENAME = "geneseer-method-overview.json";
     
 //    private static final Logger LOG = Logger.getLogger(Outliner.class.getName());
     
@@ -54,7 +57,7 @@ public class Outliner implements IFixer {
 
     @Override
     public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) throws IOException {
-        Path changedAreasFile = projectRoot.resolve("geneseer-changed-areas.json");
+        Path changedAreasFile = projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME);
         java.lang.reflect.Type listType = new TypeToken<List<ChangedArea>>() {
         }.getType();
         List<ChangedArea> changedByHumanPatch = new Gson().fromJson(
@@ -109,7 +112,7 @@ public class Outliner implements IFixer {
                 })
                 .toList();
         
-        Files.writeString(projectRoot.resolve("geneseer-method-overview.json"),
+        Files.writeString(projectRoot.resolve(METHOD_OVERVIEW_FILENAME),
                 new Gson().toJson(methods), StandardCharsets.UTF_8);
         
         result.put("result", "DONE");

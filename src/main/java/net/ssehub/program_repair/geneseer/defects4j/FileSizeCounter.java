@@ -29,6 +29,8 @@ public class FileSizeCounter {
         System.setProperty("java.util.logging.config.class", LoggingConfiguration.class.getName());
     }
     
+    public static final String FILE_OVERVIEW_FILENAME = "geneseer-file-overview.json";
+    
     private static final Logger LOG = Logger.getLogger(FileSizeCounter.class.getName());
  
     private Defects4jWrapper defects4j;
@@ -74,7 +76,7 @@ public class FileSizeCounter {
                         LOG.warning(() -> "Found no Java files in " + srcDir);
                     }
                     
-                    Path jsonFile = bug.getDirectory().resolve("geneseer-file-overview.json");
+                    Path jsonFile = bug.getDirectory().resolve(FILE_OVERVIEW_FILENAME);
                     LOG.info(() -> "Writing JSON to " + jsonFile);
                     Gson gson = new Gson();
                     Files.writeString(jsonFile, gson.toJson(files), StandardCharsets.UTF_8);

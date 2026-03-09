@@ -29,6 +29,10 @@ public class PatchWriter {
         System.setProperty("java.util.logging.config.class", LoggingConfiguration.class.getName());
     }
     
+    public static final String HUMAN_PATCH_FILENAME = "geneseer-human-patch.diff";
+    
+    public static final String CHANGED_AREAS_FILENAME = "geneseer-human-patch.diff";
+    
     private static final Logger LOG = Logger.getLogger(PatchWriter.class.getName());
  
     private Defects4jWrapper defects4j;
@@ -91,14 +95,14 @@ public class PatchWriter {
                     
                     LOG.fine(() -> "Diff:\n" + diff);
                     
-                    Path diffFile = bug.getDirectory().resolve("geneseer-human-patch.diff");
+                    Path diffFile = bug.getDirectory().resolve(HUMAN_PATCH_FILENAME);
                     LOG.info(() -> "Writing diff to " + diffFile);
                     Files.writeString(diffFile, diff, encoding);
                     
                     List<ChangedArea> changedAreas = getChangedAreas(diff);
                     LOG.info(() -> changedAreas.stream().map(ChangedArea::toString).collect(Collectors.joining("\n")));
                     
-                    Path jsonFile = bug.getDirectory().resolve("geneseer-changed-areas.json");
+                    Path jsonFile = bug.getDirectory().resolve(CHANGED_AREAS_FILENAME);
                     LOG.info(() -> "Writing JSON to " + jsonFile);
                     Gson gson = new Gson();
                     Files.writeString(jsonFile, gson.toJson(changedAreas), StandardCharsets.UTF_8);

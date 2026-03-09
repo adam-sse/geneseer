@@ -10,8 +10,8 @@ import java.util.logging.Logger;
 import com.google.gson.JsonParseException;
 
 import net.ssehub.program_repair.geneseer.llm.AbstractLlm;
-import net.ssehub.program_repair.geneseer.llm.LlmMessage.Role;
-import net.ssehub.program_repair.geneseer.llm.LlmQuery;
+import net.ssehub.program_repair.geneseer.llm.Query;
+import net.ssehub.program_repair.geneseer.llm.Role;
 
 // https://docs.ollama.com/api/chat
 public class OllamaLlm extends AbstractLlm {
@@ -29,7 +29,7 @@ public class OllamaLlm extends AbstractLlm {
     }
     
     @Override
-    protected Map<String, Object> queryToJson(LlmQuery query) {
+    protected Map<String, Object> queryToJson(Query query) {
         Map<String, Object> json = new LinkedHashMap<>();
         
         json.put("model", getModel());
@@ -64,7 +64,7 @@ public class OllamaLlm extends AbstractLlm {
     }
     
     @Override
-    protected OllamaResponse parseResponse(String content, LlmQuery query) throws JsonParseException {
+    protected OllamaResponse parseResponse(String content, Query query) throws JsonParseException {
         OllamaResponse response = getGson().fromJson(content, OllamaResponse.class);
         sanityChecks(response, query);
         LOG.info(() -> {
@@ -76,7 +76,7 @@ public class OllamaLlm extends AbstractLlm {
         return response;
     }
     
-    private void sanityChecks(OllamaResponse response, LlmQuery query) throws JsonParseException {
+    private void sanityChecks(OllamaResponse response, Query query) throws JsonParseException {
         List<String> warnings = new LinkedList<>();
         
         if (response.message() == null || response.message().getContent() == null) {

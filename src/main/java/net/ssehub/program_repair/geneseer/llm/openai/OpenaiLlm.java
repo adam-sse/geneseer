@@ -10,8 +10,8 @@ import java.util.logging.Logger;
 import com.google.gson.JsonParseException;
 
 import net.ssehub.program_repair.geneseer.llm.AbstractLlm;
-import net.ssehub.program_repair.geneseer.llm.LlmMessage.Role;
-import net.ssehub.program_repair.geneseer.llm.LlmQuery;
+import net.ssehub.program_repair.geneseer.llm.Query;
+import net.ssehub.program_repair.geneseer.llm.Role;
 import net.ssehub.program_repair.geneseer.llm.openai.OpenaiResponse.Choice;
 import net.ssehub.program_repair.geneseer.llm.openai.OpenaiResponse.FinishReason;
 
@@ -25,7 +25,7 @@ public class OpenaiLlm extends AbstractLlm {
     }
     
     @Override
-    protected Map<String, Object> queryToJson(LlmQuery query) {
+    protected Map<String, Object> queryToJson(Query query) {
         Map<String, Object> json = new LinkedHashMap<>();
         
         json.put("model", getModel());
@@ -48,14 +48,14 @@ public class OpenaiLlm extends AbstractLlm {
     }
     
     @Override
-    protected OpenaiResponse parseResponse(String content, LlmQuery query) throws JsonParseException {
+    protected OpenaiResponse parseResponse(String content, Query query) throws JsonParseException {
         OpenaiResponse response = getGson().fromJson(content, OpenaiResponse.class);
         sanityChecks(response, query);
         LOG.info(() -> "Token usage: " + response.usage());
         return response;
     }
     
-    private void sanityChecks(OpenaiResponse response, LlmQuery query) throws JsonParseException {
+    private void sanityChecks(OpenaiResponse response, Query query) throws JsonParseException {
         List<String> warnings = new LinkedList<>();
         
         if (response.id() == null) {

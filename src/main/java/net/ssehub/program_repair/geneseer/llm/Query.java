@@ -4,21 +4,21 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-public class LlmQuery {
+public class Query {
 
-    private List<LlmMessage> messages;
+    private List<Message> messages;
     
     private Long seed;
     
-    public LlmQuery() {
+    public Query() {
         messages = new LinkedList<>();
     }
     
-    public void addMessage(LlmMessage message) {
+    public void addMessage(Message message) {
         this.messages.add(message);
     }
     
-    public List<LlmMessage> getMessages() {
+    public List<Message> getMessages() {
         return Collections.unmodifiableList(messages);
     }
     
@@ -33,7 +33,7 @@ public class LlmQuery {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("LlmQuery[messages=");
+        builder.append("Query[messages=");
         builder.append(messages);
         if (seed != null) {
             builder.append(", seed=");

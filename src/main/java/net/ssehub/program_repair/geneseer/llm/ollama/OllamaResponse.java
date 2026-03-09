@@ -2,13 +2,13 @@ package net.ssehub.program_repair.geneseer.llm.ollama;
 
 import java.util.List;
 
-import net.ssehub.program_repair.geneseer.llm.ILlmResponse;
-import net.ssehub.program_repair.geneseer.llm.LlmMessage;
+import net.ssehub.program_repair.geneseer.llm.IResponse;
+import net.ssehub.program_repair.geneseer.llm.Message;
 
 record OllamaResponse(
         String model,
         String createdAt,
-        LlmMessage message,
+        Message message,
         boolean done,
         String doneReason,
         long totalDuration,
@@ -17,10 +17,10 @@ record OllamaResponse(
         long promptEvalDuration,
         int evalCount,
         long evalDuration
-) implements ILlmResponse {
+) implements IResponse {
 
     @Override
-    public List<LlmMessage> getMessages() {
+    public List<Message> getMessages() {
         return List.of(message());
     }
     

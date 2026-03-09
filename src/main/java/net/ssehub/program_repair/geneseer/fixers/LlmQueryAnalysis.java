@@ -21,7 +21,7 @@ import com.knuddels.jtokkit.api.EncodingType;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.llm.ChangedArea;
-import net.ssehub.program_repair.geneseer.llm.LlmQuery;
+import net.ssehub.program_repair.geneseer.llm.Query;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer.CodeSnippet;
 
@@ -78,7 +78,7 @@ public class LlmQueryAnalysis implements IFixer {
         } else {    
             result.put("result", "PARTIALLY_INCLUDED");
         }
-        LlmQuery query = llmFixer.createQuery(original,
+        Query query = llmFixer.createQuery(original,
                 new ArrayList<>(testSuite.getInitialFailingTestResults()), codeSnippets);
         String queryText = query.getMessages().get(query.getMessages().size() - 1).getContent();
         LOG.info(() -> "Query:\n" + queryText);

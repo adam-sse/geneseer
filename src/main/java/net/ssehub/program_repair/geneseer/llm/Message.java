@@ -2,13 +2,7 @@ package net.ssehub.program_repair.geneseer.llm;
 
 import java.util.Objects;
 
-public class LlmMessage {
-    
-    public enum Role {
-        SYSTEM,
-        USER,
-        ASSISTANT,
-    }
+public class Message {
     
     private String content;
     
@@ -16,7 +10,7 @@ public class LlmMessage {
     
     private Role role;
     
-    public LlmMessage(Role role, String content) {
+    public Message(Role role, String content) {
         this.role = role;
         this.content = content;
     }
@@ -44,7 +38,7 @@ public class LlmMessage {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("LlmMessage[role=");
+        builder.append("Message[role=");
         builder.append(role);
         builder.append(", content=");
         String content = this.content;
@@ -66,10 +60,10 @@ public class LlmMessage {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof LlmMessage)) {
+        if (!(obj instanceof Message)) {
             return false;
         }
-        LlmMessage other = (LlmMessage) obj;
+        Message other = (Message) obj;
         return Objects.equals(content, other.content) && role == other.role;
     }
     

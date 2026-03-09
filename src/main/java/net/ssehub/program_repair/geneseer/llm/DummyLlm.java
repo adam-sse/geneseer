@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.logging.Logger;
 
-import net.ssehub.program_repair.geneseer.llm.LlmMessage.Role;
 import net.ssehub.program_repair.geneseer.llm.openai.OpenaiLlm;
 
 public class DummyLlm implements ILlm {
@@ -47,16 +46,16 @@ Code snippet number 1:
 ```
             """;
     
-    public static class DummyResponse implements ILlmResponse {
+    public static class DummyResponse implements IResponse {
 
-        private List<LlmMessage> messages;
+        private List<Message> messages;
         
-        public DummyResponse(List<LlmMessage> messages) {
+        public DummyResponse(List<Message> messages) {
             this.messages = messages;
         }
         
         @Override
-        public List<LlmMessage> getMessages() {
+        public List<Message> getMessages() {
             return messages;
         }
         
@@ -73,10 +72,10 @@ Code snippet number 1:
     }
     
     @Override
-    public DummyResponse send(LlmQuery query) throws IOException {
+    public DummyResponse send(Query query) throws IOException {
         LOG.fine(() -> "Got query: " + query);
         
-        return new DummyResponse(List.of(new LlmMessage(Role.ASSISTANT, TEXT)));
+        return new DummyResponse(List.of(new Message(Role.ASSISTANT, TEXT)));
     }
     
 }

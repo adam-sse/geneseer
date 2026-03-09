@@ -4,20 +4,20 @@ import java.util.List;
 
 import com.google.gson.annotations.SerializedName;
 
-import net.ssehub.program_repair.geneseer.llm.ILlmResponse;
-import net.ssehub.program_repair.geneseer.llm.LlmMessage;
+import net.ssehub.program_repair.geneseer.llm.IResponse;
+import net.ssehub.program_repair.geneseer.llm.Message;
 
 record OpenaiResponse(
         String id,
         List<Choice> choices,
         String model,
         String object,
-        Usage usage) implements ILlmResponse {
+        Usage usage) implements IResponse {
 
     record Choice(
             FinishReason finishReason,
             int index,
-            LlmMessage message) {
+            Message message) {
     }
     
     enum FinishReason {
@@ -51,7 +51,7 @@ record OpenaiResponse(
     }
     
     @Override
-    public List<LlmMessage> getMessages() {
+    public List<Message> getMessages() {
         return choices.stream().map(Choice::message).toList();
     }
     

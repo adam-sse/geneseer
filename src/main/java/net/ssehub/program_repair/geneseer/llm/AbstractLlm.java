@@ -19,8 +19,6 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-import net.ssehub.program_repair.geneseer.llm.LlmMessage.Role;
-
 public abstract class AbstractLlm implements ILlm {
     
     private static final Logger LOG = Logger.getLogger(AbstractLlm.class.getName());
@@ -99,7 +97,7 @@ public abstract class AbstractLlm implements ILlm {
     }
     
     @Override
-    public ILlmResponse send(LlmQuery query) throws IOException {
+    public IResponse send(Query query) throws IOException {
         LOG.info("Sending query to LLM: " + query);
         
         HttpURLConnection http = createConnection();
@@ -108,7 +106,7 @@ public abstract class AbstractLlm implements ILlm {
         logRateLimitHeaders(http);
         
         try {
-            ILlmResponse response = parseResponse(content, query);
+            IResponse response = parseResponse(content, query);
             if (thinkingDelimiter != null) {
                 removeThinkingTrace(response);
             }
@@ -128,7 +126,7 @@ public abstract class AbstractLlm implements ILlm {
         return http;
     }
     
-    protected abstract Map<String, Object> queryToJson(LlmQuery query);
+    protected abstract Map<String, Object> queryToJson(Query query);
     
     private void writePost(HttpURLConnection http, String content) throws IOException {
         http.setRequestMethod("POST");
@@ -185,14 +183,14 @@ public abstract class AbstractLlm implements ILlm {
         }
     }
     
-    protected abstract ILlmResponse parseResponse(String content, LlmQuery query) throws JsonParseException;
+    protected abstract IResponse parseResponse(String content, Query query) throws JsonParseException;
     
     protected Gson getGson() {
         return gson;
     }
     
-    private void removeThinkingTrace(ILlmResponse response) {
-        for (LlmMessage message : response.getMessages()) {
+    private void removeThinkingTrace(IResponse response) {
+        for (Message message : response.getMessages()) {
             if (message.getRole() == Role.ASSISTANT && message.getThinking() == null) {
                 int index = message.getContent().lastIndexOf(thinkingDelimiter);
                 LOG.fine(() -> "Stripping " + index + " characters of thinking trace");

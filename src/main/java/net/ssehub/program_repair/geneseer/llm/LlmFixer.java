@@ -26,7 +26,6 @@ import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.code.Parser;
 import net.ssehub.program_repair.geneseer.code.Writer;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
-import net.ssehub.program_repair.geneseer.llm.LlmMessage.Role;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
@@ -61,7 +60,7 @@ public class LlmFixer {
 
     public Optional<Node> createVariant(Node original, List<TestResult> failingTests) throws IOException {
         List<CodeSnippet> codeSnippets = selectMostSuspiciousMethods(original);
-        LlmQuery query = createQuery(original, failingTests, codeSnippets);
+        Query query = createQuery(original, failingTests, codeSnippets);
         String answer = runQuery(query);
         LOG.fine(() -> "Got answer:\n" + answer);
         
@@ -126,13 +125,13 @@ public class LlmFixer {
         return Optional.ofNullable(variant);
     }
 
-    public LlmQuery createQuery(Node code, List<TestResult> failingTests, List<CodeSnippet> codeSnippets) {
+    public Query createQuery(Node code, List<TestResult> failingTests, List<CodeSnippet> codeSnippets) {
         List<String> failureMessages = failingTests.stream().map(TestResult::failureMessage).toList();
         List<TestMethodContext> testMethodContext = failingTests.stream().map(this::getTestMethodContext).toList();
         String projectOutline = createProjectOutline(code, codeSnippets);
         
-        LlmQuery query = new LlmQuery();
-        query.addMessage(new LlmMessage(Role.SYSTEM, SYSTEM_MESSAGE));
+        Query query = new Query();
+        query.addMessage(new Message(Role.SYSTEM, SYSTEM_MESSAGE));
         
         StringBuilder prompt = new StringBuilder();
         for (int i = 0; i < failureMessages.size(); i++) {
@@ -178,7 +177,7 @@ public class LlmFixer {
                 + " is changed.");
         
         LOG.fine(() -> "Prompt:\n" + prompt);
-        query.addMessage(new LlmMessage(Role.USER, prompt.toString()));
+        query.addMessage(new Message(Role.USER, prompt.toString()));
         if (Configuration.INSTANCE.llm().seed() != null) {
             query.setSeed(Configuration.INSTANCE.llm().seed());
         }
@@ -404,9 +403,9 @@ public class LlmFixer {
         }
     }
 
-    private String runQuery(LlmQuery query) throws IOException {
+    private String runQuery(Query query) throws IOException {
         try (Measurement.Probe m = Measurement.INSTANCE.start("llm-query")) {
-            ILlmResponse response = llm.send(query);
+            IResponse response = llm.send(query);
             if (response.getThinking() != null) {
                 LOG.fine(() -> "Got " + response.getThinking().length() + " characters of thinking trace");
             }

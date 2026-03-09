@@ -2,9 +2,9 @@ package net.ssehub.program_repair.geneseer.llm;
 
 import java.util.List;
 
-public interface ILlmResponse {
+public interface IResponse {
 
-    public List<LlmMessage> getMessages();
+    public List<Message> getMessages();
     
     public default String getContent() {
         return getMessages().get(0).getContent();

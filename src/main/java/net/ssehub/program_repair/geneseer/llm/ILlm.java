@@ -4,6 +4,6 @@ import java.io.IOException;
 
 public interface ILlm {
 
-    public ILlmResponse send(LlmQuery query) throws IOException;
+    public IResponse send(Query query) throws IOException;
     
 }

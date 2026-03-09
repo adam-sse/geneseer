@@ -74,9 +74,9 @@ public class TestSuite {
     
     private void initialize() throws EvaluationException {
         LOG.info("Compiling original source code");
-        compiler.setLogOutput(true);
+        compiler.setLogResultToInfo(true);
         compile(originalSourceCode);
-        compiler.setLogOutput(false);
+        compiler.setLogResultToInfo(false);
         
         LOG.info("Running test suite on original code");
         List<TestResult> testResult = runTests(compiler.getOutputDirectory(), testMethods.keySet());

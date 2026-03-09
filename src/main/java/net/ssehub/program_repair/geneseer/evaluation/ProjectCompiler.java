@@ -40,7 +40,7 @@ class ProjectCompiler {
     
     private Path outputDirectory;
     
-    private boolean logOutput;
+    private boolean logResult;
     
     private Node previousWrittenAst;
     
@@ -51,12 +51,12 @@ class ProjectCompiler {
         this.outputDirectory = outputDirectory;
     }
     
-    public Path getSourceDirectory() {
-        return sourceDirectory;
-    }
-    
     public Path getOutputDirectory() {
         return outputDirectory;
+    }
+
+    public void setLogResultToInfo(boolean logResult) {
+        this.logResult = logResult;
     }
 
     public void compile(Node ast) throws CompilationException {
@@ -83,8 +83,8 @@ class ProjectCompiler {
             String resultMessage = "Compilation " + (success ? "" : "not ") + "successful ("
                     + errors.size() + " errors)";
             
-            LOG.log(logOutput ? Level.INFO : Level.FINE, resultMessage);
-            if (logOutput) {
+            LOG.log(logResult ? Level.INFO : Level.FINE, resultMessage);
+            if (logResult) {
                 for (String error : errors) {
                     Arrays.stream(error.split("\n")).forEach(LOG::info);
                 }
@@ -232,10 +232,6 @@ class ProjectCompiler {
                 .forEach(command::add);
         
         return command;
-    }
-    
-    public void setLogOutput(boolean logOutput) {
-        this.logOutput = logOutput;
     }
     
 }

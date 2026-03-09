@@ -100,29 +100,22 @@ class ProjectCompiler {
     }
 
     private List<String> parseOutput(String stderr) {
-        Pattern outputPattern = Pattern.compile(
-                "^(?<filename>.+):(?<line>\\d+): (?<type>error|warning): (?<message>.+)$");
+        Pattern errorHeaderPattern = Pattern.compile("^(?<filename>.+):(?<line>\\d+): error: (?<message>.+)$");
         List<String> errors = new LinkedList<>();
         
         StringBuilder currentError = null;
         for (String outputLine : stderr.split("\n")) {
-            Matcher m = outputPattern.matcher(outputLine);
+            Matcher m = errorHeaderPattern.matcher(outputLine);
             if (m.matches()) {
-                String type = m.group("type");
-                if (type.equals("error")) {
-                    if (currentError != null) {
-                        errors.add(currentError.toString());
-                    }
-                    currentError = new StringBuilder("Error in file ")
-                            .append(m.group("filename"))
-                            .append(" line ")
-                            .append(m.group("line"))
-                            .append(": ")
-                            .append(m.group("message"));
-                } else {
+                if (currentError != null) {
                     errors.add(currentError.toString());
-                    currentError = null;
                 }
+                currentError = new StringBuilder("Error in file ")
+                        .append(m.group("filename"))
+                        .append(" line ")
+                        .append(m.group("line"))
+                        .append(": ")
+                        .append(m.group("message"));
             } else if (currentError != null) {
                 if (!outputLine.isBlank() && Character.isWhitespace(outputLine.charAt(0))) {
                     currentError.append("\n    ").append(outputLine);

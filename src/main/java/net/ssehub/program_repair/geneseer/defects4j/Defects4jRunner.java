@@ -21,6 +21,7 @@ import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.VersionInfo;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
+import net.ssehub.program_repair.geneseer.util.JsonUtils;
 
 public class Defects4jRunner {
 
@@ -102,32 +103,43 @@ public class Defects4jRunner {
         return result;
     }
     
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         LOG.info(() -> "Geneseer (Defects4jRunner) " + VersionInfo.VERSION + " (" + VersionInfo.GIT_COMMIT
                 + (VersionInfo.GIT_DIRTY ? " dirty" : "") + ")");
         
         Set<String> cliOptions = new HashSet<>();
         cliOptions.add("--defects4j");
-        cliOptions.add("--target");
         cliOptions.addAll(Configuration.INSTANCE.getCliOptions());
-        CliArguments cli = new CliArguments(args, cliOptions);
         
-        Configuration.INSTANCE.loadFromCli(cli);
-        Configuration.INSTANCE.log();
         
-        Defects4jRunner runner = new Defects4jRunner();
-        runner.setDefects4jPath(Path.of(cli.getOptionOrThrow("--defects4j")));
-        
-        if (cli.getRemaining().size() == 1) {
-            String[] parts = cli.getRemaining().get(0).split("/");
-            Bug bug = new Bug(parts[0], Integer.parseInt(parts[1]));
-            runner.setBug(bug);
-            runner.run();
+        try {
+            CliArguments cli = new CliArguments(args, cliOptions);
             
-        } else {
-            LOG.severe("Expecting exactly one bug as parameter");
+            Configuration.INSTANCE.loadFromCli(cli);
+            Configuration.INSTANCE.log();
+            
+            Defects4jRunner runner = new Defects4jRunner();
+            runner.setDefects4jPath(Path.of(cli.getOptionOrThrow("--defects4j")));
+            
+            if (cli.getRemaining().size() == 1) {
+                String[] parts = cli.getRemaining().get(0).split("/");
+                Bug bug = new Bug(parts[0], Integer.parseInt(parts[1]));
+                runner.setBug(bug);
+                runner.run();
+            } else {
+                throw new IllegalArgumentException("Expecting exactly one bug as parameter");
+            }
+            
+        } catch (IllegalArgumentException e) {
+            LOG.severe("Command line arguments invalid: " + e.getMessage());
+            LOG.severe("Usage: --defects4j <path> " + Configuration.INSTANCE.getCliUsage() + " <projectID>/<bugID>");
             System.exit(1);
+            
+        } catch (IOException e) {
+            LOG.log(Level.SEVERE, "IO exception", e);
+            System.out.println(JsonUtils.GSON.toJson(Map.of("result", "IO_EXCEPTION", "exception", e.getMessage())));
         }
+        
     }
     
 }

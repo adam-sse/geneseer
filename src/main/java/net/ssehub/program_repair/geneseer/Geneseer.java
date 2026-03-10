@@ -132,7 +132,7 @@ public class Geneseer {
                     evaluationStats.put("testSuiteRuns", testSuite.getNumTestSuiteRuns());
                 }
                 addTimingsAndLogStats(result);
-                System.out.println(JsonUtils.GSON.toJson(result));
+                System.out.println(JsonUtils.toJson(result));
             }
         }
     }

@@ -14,13 +14,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import com.google.gson.Gson;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingType;
 
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
+import net.ssehub.program_repair.geneseer.util.JsonUtils;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
 public class FileSizeCounter {
@@ -78,8 +78,7 @@ public class FileSizeCounter {
                     
                     Path jsonFile = bug.getDirectory().resolve(FILE_OVERVIEW_FILENAME);
                     LOG.info(() -> "Writing JSON to " + jsonFile);
-                    Gson gson = new Gson();
-                    Files.writeString(jsonFile, gson.toJson(files), StandardCharsets.UTF_8);
+                    JsonUtils.writeJson(files, jsonFile);
                     
                 } catch (UncheckedIOException e) {
                     LOG.log(Level.WARNING, "Failed to run on bug " + bug, e.getCause());

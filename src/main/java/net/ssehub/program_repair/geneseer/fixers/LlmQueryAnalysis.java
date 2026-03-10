@@ -1,8 +1,6 @@
 package net.ssehub.program_repair.geneseer.fixers;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -12,8 +10,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingType;
@@ -25,6 +21,7 @@ import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer.CodeSnippet;
 import net.ssehub.program_repair.geneseer.llm.Query;
+import net.ssehub.program_repair.geneseer.util.JsonUtils;
 
 public class LlmQueryAnalysis implements IFixer {
 
@@ -47,11 +44,8 @@ public class LlmQueryAnalysis implements IFixer {
         
         List<CodeSnippet> codeSnippets = llmFixer.selectMostSuspiciousMethods(original);
         
-        Path changedAreasFile = projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME);
-        java.lang.reflect.Type listType = new TypeToken<List<ChangedArea>>() {
-        }.getType();
-        List<ChangedArea> changedByHumanPatch = new Gson().fromJson(
-                Files.readString(changedAreasFile, StandardCharsets.UTF_8), listType);
+        List<ChangedArea> changedByHumanPatch = JsonUtils.parseToListFromFile(
+                projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME));
         
         List<ChangedArea> in = new LinkedList<>();
         List<ChangedArea> out = new LinkedList<>();
@@ -87,9 +81,7 @@ public class LlmQueryAnalysis implements IFixer {
         LOG.info(() -> "Query:\n" + queryText);
         analyzeQuery(result, tokenEncoding, codeSnippets, irrelevant, queryText);
         
-        Path queryJson = projectRoot.resolve(LLM_QUERY_FILENAME);
-        Files.write(queryJson, new Gson().toJson(query).getBytes(StandardCharsets.UTF_8));
-        
+        JsonUtils.writeJson(query, projectRoot.resolve(LLM_QUERY_FILENAME));
         return null;
     }
 

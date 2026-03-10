@@ -14,13 +14,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.google.gson.Gson;
-
 import net.ssehub.program_repair.geneseer.defects4j.Defects4jWrapper.Version;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer.CodeSnippet;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
+import net.ssehub.program_repair.geneseer.util.JsonUtils;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
 public class PatchWriter {
@@ -104,9 +103,7 @@ public class PatchWriter {
                     
                     Path jsonFile = bug.getDirectory().resolve(CHANGED_AREAS_FILENAME);
                     LOG.info(() -> "Writing JSON to " + jsonFile);
-                    Gson gson = new Gson();
-                    Files.writeString(jsonFile, gson.toJson(changedAreas), StandardCharsets.UTF_8);
-                    
+                    JsonUtils.writeJson(changedAreas, jsonFile);
                     
                 } catch (IOException e) {
                     LOG.log(Level.WARNING, "Failed to run on bug " + bug, e);

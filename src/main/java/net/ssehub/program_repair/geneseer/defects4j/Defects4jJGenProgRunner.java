@@ -14,7 +14,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 
 import net.ssehub.program_repair.geneseer.Configuration;
@@ -22,6 +21,7 @@ import net.ssehub.program_repair.geneseer.Project;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
 import net.ssehub.program_repair.geneseer.util.FileUtils;
+import net.ssehub.program_repair.geneseer.util.JsonUtils;
 import net.ssehub.program_repair.geneseer.util.ProcessManager;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
@@ -208,15 +208,13 @@ public class Defects4jJGenProgRunner {
         
         String output = Files.readString(outputFile, StandardCharsets.UTF_8);
         
-        Gson gson = new Gson();
         try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> json = gson.fromJson(output, Map.class);
+            Map<String, Object> json = JsonUtils.parseToMap(output);
             if (json.containsKey("general") && json.get("general") instanceof Map) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> general = (Map<String, Object>) json.get("general");
                 json.put("result", general.get("OUTPUT_STATUS"));
-                output = gson.toJson(json);
+                output = JsonUtils.toJson(json);
             }
         } catch (JsonParseException e) {
             LOG.log(Level.WARNING, "Unable to parse JSON output", e);

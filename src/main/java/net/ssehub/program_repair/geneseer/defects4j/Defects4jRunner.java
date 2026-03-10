@@ -12,7 +12,6 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 
 import net.ssehub.program_repair.geneseer.Configuration;
@@ -67,13 +66,10 @@ public class Defects4jRunner {
     }
     
     private String augmentSetupTestOutput(String stdout) {
-        Gson gson = new Gson();
-        
         LOG.fine("Augmenting SETUP_TEST result with expected failing tests from Defects4j");
         String result = stdout;
         try {
-            @SuppressWarnings("unchecked")
-            Map<Object, Object> json = gson.fromJson(stdout, Map.class);
+            Map<String, Object> json = JsonUtils.parseToMap(stdout);
             String jsonResult = (String) json.get("result");
             if (jsonResult.equals("FOUND_FAILING_TESTS") || jsonResult.equals("NO_FAILING_TESTS")) {
                 
@@ -94,7 +90,7 @@ public class Defects4jRunner {
                     unexpectedFailing.removeAll(expectedFailingTests);
                     json.put("unexpectedFailing", unexpectedFailing);
                 }
-                result = gson.toJson(json);
+                result = JsonUtils.toJson(json);
             }
         } catch (JsonParseException | NullPointerException | IOException e) {
             LOG.log(Level.WARNING, "Could not determine if failing tests were correct", e);
@@ -137,7 +133,7 @@ public class Defects4jRunner {
             
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "IO exception", e);
-            System.out.println(JsonUtils.GSON.toJson(Map.of("result", "IO_EXCEPTION", "exception", e.getMessage())));
+            System.out.println(JsonUtils.toJson(Map.of("result", "IO_EXCEPTION", "exception", e.getMessage())));
         }
         
     }

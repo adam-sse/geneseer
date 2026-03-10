@@ -1,15 +1,11 @@
 package net.ssehub.program_repair.geneseer.fixers;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.DoubleSummaryStatistics;
 import java.util.List;
 import java.util.Map;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingType;
@@ -21,6 +17,7 @@ import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.defects4j.PatchWriter;
 import net.ssehub.program_repair.geneseer.defects4j.PatchWriter.ChangedArea;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
+import net.ssehub.program_repair.geneseer.util.JsonUtils;
 
 public class Outliner implements IFixer {
 
@@ -57,11 +54,8 @@ public class Outliner implements IFixer {
 
     @Override
     public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) throws IOException {
-        Path changedAreasFile = projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME);
-        java.lang.reflect.Type listType = new TypeToken<List<ChangedArea>>() {
-        }.getType();
-        List<ChangedArea> changedByHumanPatch = new Gson().fromJson(
-                Files.readString(changedAreasFile, StandardCharsets.UTF_8), listType);
+        List<ChangedArea> changedByHumanPatch = JsonUtils.parseToListFromFile(
+                projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME));
         
         Encoding tokenEncoding = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.CL100K_BASE);
         
@@ -112,9 +106,7 @@ public class Outliner implements IFixer {
                 })
                 .toList();
         
-        Files.writeString(projectRoot.resolve(METHOD_OVERVIEW_FILENAME),
-                new Gson().toJson(methods), StandardCharsets.UTF_8);
-        
+        JsonUtils.writeJson(methods, projectRoot.resolve(METHOD_OVERVIEW_FILENAME));
         result.put("result", "DONE");
         return null;
     }

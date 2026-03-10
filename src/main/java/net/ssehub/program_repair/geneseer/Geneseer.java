@@ -45,34 +45,27 @@ public class Geneseer {
         LOG.info(() -> "Geneseer " + VersionInfo.VERSION + " (" + VersionInfo.GIT_COMMIT
                 + (VersionInfo.GIT_DIRTY ? " dirty" : "") + ")");
         
-        Project project = null;
-        try {
-            project = initializeProjectsAndConfiguration(args);
-        } catch (IOException e) {
-            LOG.log(Level.SEVERE, "Failed to read configuration file", e);
-            System.exit(1);
-        }
-        
+        Project project = initializeProjectsAndConfiguration(args);
         main(project);
     }
 
-    private static Project initializeProjectsAndConfiguration(String[] args) throws IOException {
+    private static Project initializeProjectsAndConfiguration(String[] args) {
         Set<String> options = new HashSet<>();
         options.addAll(Project.getCliOptions());
         options.addAll(Configuration.INSTANCE.getCliOptions());
-        CliArguments cli = new CliArguments(args, options);
         
         Project project = null;
         try {
+            CliArguments cli = new CliArguments(args, options);
             project = Project.readFromCommandLine(cli);
+            Configuration.INSTANCE.loadFromCli(cli);
+            Configuration.INSTANCE.log();
+            
         } catch (IllegalArgumentException e) {
             LOG.severe("Command line arguments invalid: " + e.getMessage());
-            LOG.severe("Usage: " + "[--config <configuration file>] " + Project.getCliUsage());
+            LOG.severe("Usage: " + Project.getCliUsage() + " " + Configuration.INSTANCE.getCliUsage());
             System.exit(1);
         }
-        
-        Configuration.INSTANCE.loadFromCli(cli);
-        Configuration.INSTANCE.log();
         
         return project;
     }

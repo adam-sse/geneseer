@@ -124,7 +124,7 @@ public class Project {
     public static String getCliUsage() {
         return "--project-directory <projectDirectory> --source-directory <sourceDirectory> "
                 + "[--compile-classpath <compilationClasspath>] --test-classpath <testExecutionClassPath> "
-                + "--test-classes <testClasses> [--encoding <encoding>]";
+                + "--test-classes <testClasses> [--encoding <encoding>] [--additional-javac-options <options>]";
     }
     
     public static Set<String> getCliOptions() {

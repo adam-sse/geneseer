@@ -13,7 +13,7 @@ public class CliArguments {
     
     private List<String> remaining;
     
-    public CliArguments(String[] args, Set<String> allowedOptions) {
+    public CliArguments(String[] args, Set<String> allowedOptions) throws IllegalArgumentException {
         for (String allowedOption : allowedOptions) {
             if (!allowedOption.startsWith("--")) {
                 throw new IllegalArgumentException("Options must start with --");

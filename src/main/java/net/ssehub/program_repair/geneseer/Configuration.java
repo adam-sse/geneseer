@@ -1,7 +1,5 @@
 package net.ssehub.program_repair.geneseer;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -325,12 +323,12 @@ public class Configuration {
         return sections.stream().filter(s -> s.key.equals(key)).findFirst().orElse(null);
     }
     
-    public void loadFromCli(CliArguments args) throws IOException {
+    public void loadFromCli(CliArguments args) throws IllegalArgumentException {
         for (String cliOption : getCliOptions()) {
             if (args.hasOption(cliOption)) {
                 String[] parts = cliOption.split("\\.");
                 if (parts.length != 3) {
-                    throw new IOException("Invalid CLI config key: " + cliOption);
+                    throw new IllegalArgumentException("Invalid CLI config key: " + cliOption);
                 }
                 
                 Option<?> option = null;
@@ -339,11 +337,7 @@ public class Configuration {
                     option = section.getOption(parts[2]);
                 }
                 if (option != null) {
-                    try {
-                        option.setValueFromString(args.getOption(cliOption));
-                    } catch (UncheckedIOException e) {
-                        throw e.getCause();
-                    }
+                    option.setValueFromString(args.getOption(cliOption));
                 } else {
                     LOG.warning(() -> "Unknown configuration key " + cliOption);
                 }
@@ -369,6 +363,22 @@ public class Configuration {
             }
         }
         return options;
+    }
+    
+    public String getCliUsage() {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (Section section : sections) {
+            for (Option<?> option : section.options) {
+                if (first) {
+                    first = false;
+                } else {
+                    sb.append(' ');
+                }
+                sb.append("[--config.").append(section.key).append('.').append(option.key).append(" <value>]");
+            }
+        }
+        return sb.toString();
     }
     
     public SetupConfiguration setup() {

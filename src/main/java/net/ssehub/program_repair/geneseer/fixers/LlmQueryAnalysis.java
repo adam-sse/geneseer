@@ -45,7 +45,7 @@ public class LlmQueryAnalysis implements IFixer {
         List<CodeSnippet> codeSnippets = llmFixer.selectMostSuspiciousMethods(original);
         
         List<ChangedArea> changedByHumanPatch = JsonUtils.parseToListFromFile(
-                projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME));
+                projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME), ChangedArea.class);
         
         List<ChangedArea> in = new LinkedList<>();
         List<ChangedArea> out = new LinkedList<>();

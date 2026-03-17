@@ -32,14 +32,16 @@ public class JsonUtils {
         return result;
     }
     
-    public static <T> List<T> parseToList(String json) throws JsonParseException {
-        java.lang.reflect.Type listType = new TypeToken<List<T>>() {
-        }.getType();
-        return GSON.fromJson(json, listType);
+    public static <T> List<T> parseToList(String json, Class<T> listElementType)
+            throws JsonParseException {
+        @SuppressWarnings("unchecked")
+        List<T> result = (List<T>) GSON.fromJson(json, TypeToken.getParameterized(List.class, listElementType));
+        return result;
     }
     
-    public static <T> List<T> parseToListFromFile(Path file) throws IOException, JsonParseException {
-        return parseToList(Files.readString(file, StandardCharsets.UTF_8));
+    public static <T> List<T> parseToListFromFile(Path file, Class<T> listElementType)
+            throws IOException, JsonParseException {
+        return parseToList(Files.readString(file, StandardCharsets.UTF_8), listElementType);
     }
     
 }

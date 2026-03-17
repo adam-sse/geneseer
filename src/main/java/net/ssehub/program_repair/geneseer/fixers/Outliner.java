@@ -55,7 +55,7 @@ public class Outliner implements IFixer {
     @Override
     public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) throws IOException {
         List<ChangedArea> changedByHumanPatch = JsonUtils.parseToListFromFile(
-                projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME));
+                projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME), ChangedArea.class);
         
         Encoding tokenEncoding = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.CL100K_BASE);
         

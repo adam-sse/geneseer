@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Configuration;
+import net.ssehub.program_repair.geneseer.Configuration.LlmConfiguration.ProjectOutline;
 import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.LeafNode;
 import net.ssehub.program_repair.geneseer.code.Node;
@@ -128,7 +129,10 @@ public class LlmFixer {
     public Query createQuery(Node code, List<TestResult> failingTests, List<CodeSnippet> codeSnippets) {
         List<String> failureMessages = failingTests.stream().map(TestResult::failureMessage).toList();
         List<TestMethodContext> testMethodContext = failingTests.stream().map(this::getTestMethodContext).toList();
-        String projectOutline = createProjectOutline(code, codeSnippets);
+        String projectOutline = null;
+        if (Configuration.INSTANCE.llm().projectOutine() != ProjectOutline.NONE) {
+            projectOutline = createProjectOutline(code, codeSnippets);
+        }
         
         Query query = new Query();
         query.addMessage(new Message(Role.SYSTEM, SYSTEM_MESSAGE));
@@ -156,7 +160,13 @@ public class LlmFixer {
         }
         
         if (projectOutline != null) {
-            prompt.append("Here is a partial overview of the project:\n```java\n");
+            prompt.append("Here is a");
+            if (Configuration.INSTANCE.llm().projectOutine() == ProjectOutline.PARTIAL) {
+                prompt.append(" partial");
+            } else {
+                prompt.append("n");
+            }
+            prompt.append(" overview of the project:\n```java\n");
             prompt.append(projectOutline);
             prompt.append("```\n\n");
         }
@@ -357,9 +367,10 @@ public class LlmFixer {
                 throw new RuntimeException("Node under AST root is not a compilation unit: " + file);
             }
             Path fileName = (Path) file.getMetadata(Metadata.FILE_NAME);
-            if (codeSnippets.stream()
-                    .filter(snippet -> snippet.file.equals(fileName))
-                    .findAny().isPresent()) {
+            if (Configuration.INSTANCE.llm().projectOutine() == ProjectOutline.FULL
+                    || codeSnippets.stream()
+                        .filter(snippet -> snippet.file.equals(fileName))
+                        .findAny().isPresent()) {
                 if (file.childCount() > 0 && file.get(0).childCount() > 0
                         && file.get(0).get(0) instanceof LeafNode leaf && leaf.getText().equals("package")) {
                     outline.append(file.get(0).getTextSingleLine()).append("\n");
@@ -370,6 +381,10 @@ public class LlmFixer {
             }
         }
         
+        if (outline.length() > 2
+                && outline.charAt(outline.length() - 1) == '\n' && outline.charAt(outline.length() - 2) == '\n') {
+            outline.deleteCharAt(outline.length() - 1);
+        }
         return outline.toString();
     }
     

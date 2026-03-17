@@ -261,7 +261,12 @@ public class Configuration {
         private Option<Long> seed = new Option<>("seed", "Seed", Long::parseLong);
         private Option<Integer> maxCodeContext = new Option<>("maxCodeContext", "Max code context lines", 100,
                 Integer::parseInt);
+        private Option<ProjectOutline> projectOutline = new Option<>("projectOutline",
+                "Project outline in prompt", ProjectOutline.PARTIAL, v -> ProjectOutline.valueOf(v.toUpperCase()));
         
+        public enum ProjectOutline {
+            FULL, PARTIAL, NONE
+        }
         
         public LlmConfiguration() {
             super("llm", "LLM Configuration", new LinkedList<>());
@@ -274,6 +279,7 @@ public class Configuration {
             super.options.add(contextSize);
             super.options.add(seed);
             super.options.add(maxCodeContext);
+            super.options.add(projectOutline);
         }
         
         public String model() {
@@ -310,6 +316,10 @@ public class Configuration {
         
         public int maxCodeContext() {
             return maxCodeContext.getValue();
+        }
+        
+        public ProjectOutline projectOutine() {
+            return projectOutline.getValue();
         }
     }
     

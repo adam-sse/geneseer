@@ -108,6 +108,7 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.llm.contextSize`                | not set              | Only for ollama: the context window size of the model (in tokens). |
 | `--config.llm.seed`                       | not set              | If set, this defines the seed to use for calls to the model. |
 | `--config.llm.maxCodeContext`             | `100`                | The maximum number of lines of code to supply as code context in a query to the LLM. This does not include test code. |
+| `--config.llm.projectOutline`             | `PARTIAL`            | The type of project outline to add to the prompt. Possible values: `FULL`, `PARTIAL`, `NONE` |
 
 ## Output
 

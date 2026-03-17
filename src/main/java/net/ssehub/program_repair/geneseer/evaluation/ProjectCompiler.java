@@ -32,6 +32,8 @@ class ProjectCompiler {
     
     private static final Logger LOG = Logger.getLogger(ProjectCompiler.class.getName());
     
+    private static int javacVersion = 0;
+    
     private List<Path> classpath;
     
     private Charset encoding;
@@ -51,6 +53,49 @@ class ProjectCompiler {
         this.encoding = encoding;
         this.sourceDirectory = sourceDirectory;
         this.outputDirectory = outputDirectory;
+        
+        LOG.info(() -> "Java compiler version: " + getJavacVersion());
+    }
+    
+    public static int getJavacVersion() {
+        if (javacVersion == 0) {
+            String javac = Configuration.INSTANCE.setup().javaCompilerBinaryPath();
+            String output = null;
+            try {
+                ProcessRunner process = new ProcessRunner.Builder(javac, "-version")
+                        .captureOutput(true)
+                        .run();
+                
+                output = new String(process.getStderr());
+                if (output.isBlank()) {
+                    output = new String(process.getStdout());
+                }
+                String o = output;
+                LOG.fine(() -> "`" + javac + " -version` output: " + o.trim());
+                Pattern versionPattern = Pattern.compile("(?<major>[0-9]+)\\.(?<minor>[0-9]+)\\.(?<patch>[0-9]+)");
+                Matcher m = versionPattern.matcher(output);
+                if (m.find()) {
+                    int major = Integer.parseInt(m.group("major"));
+                    int minor = Integer.parseInt(m.group("minor"));
+                    if (major == 1) {
+                        javacVersion = minor;
+                    } else {
+                        javacVersion = major;
+                    }
+                    
+                } else {
+                    LOG.severe("Invalid `" + javac + " -version` output: " + output);
+                    javacVersion = -1;
+                }
+            } catch (IOException e) {
+                LOG.log(Level.SEVERE, "Failed to run `" + javac + " -version`", e);
+                javacVersion = -1;
+            } catch (NumberFormatException e) {
+                LOG.log(Level.SEVERE, "Failed to parse javac version: " + output, e);
+                javacVersion = -1;
+            }
+        }
+        return javacVersion;
     }
     
     public void setAdditionalOptions(List<String> additionalOptions) {

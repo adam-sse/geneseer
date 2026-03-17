@@ -30,7 +30,7 @@ public class PatchWriter {
     
     public static final String HUMAN_PATCH_FILENAME = "geneseer-human-patch.diff";
     
-    public static final String CHANGED_AREAS_FILENAME = "geneseer-human-patch.diff";
+    public static final String CHANGED_AREAS_FILENAME = "geneseer-changed-areas.json";
     
     private static final Logger LOG = Logger.getLogger(PatchWriter.class.getName());
  

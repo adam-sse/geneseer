@@ -136,7 +136,7 @@ class ProjectCompiler {
                     + errors.size() + " errors)";
             
             LOG.log(logResult ? Level.INFO : Level.FINE, resultMessage);
-            if (logResult) {
+            if (logResult && !success) {
                 if (!errors.isEmpty()) {
                     for (String error : errors) {
                         for (String line : error.split("\n")) {

@@ -106,7 +106,7 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.llm.thinkingDelimiter`          | not set              | If set, everything up to the last occurrence of this sequence in the model output will be considered a thinking/reasoning trace and discarded (for instances where the API does not differentiate between thinking and answer). |
 | `--config.llm.temperature`                | not set              | If set, this defines the temperature of the model. |
 | `--config.llm.contextSize`                | not set              | Only for ollama: the context window size of the model (in tokens). |
-| `--config.llm.seed`                       | not set              | If set, this defines the seed to use for calls to the model. |
+| `--config.llm.seed`                       | not set              | Only for ollama: if set, this defines the seed to use for calls to the model. |
 | `--config.llm.maxCodeContext`             | `100`                | The maximum number of lines of code to supply as code context in a query to the LLM. This does not include test code. |
 | `--config.llm.projectOutline`             | `PARTIAL`            | The type of project outline to add to the prompt. Possible values: `FULL`, `PARTIAL`, `NONE` |
 

@@ -81,34 +81,35 @@ refers to configuration options regarding compiling, running tests, etc. The sec
 options of the genetic algorithm. The section `llm` refers to configuration options for calling an LLM via a REST API.
 Here is a list of possible keys, their meaning, and the default values:
 
-| Key                                       |  Default Value       | Description                                                |
-|-------------------------------------------|----------------------|------------------------------------------------------------|
-| `--config.setup.fixer`                    | `GENESEER`           | The fixer to use. Possible values: `GENESEER`, `LLM_SINGLE`, `SETUP_TEST`, `ONLY_DELETE`, `LLM_QUERY_ANALYSIS` |
-| `--config.setup.jvmBinaryPath`            | `java`               | The path to the JVM binary to run tests. May be absolute or on the path. |
-| `--config.setup.javaCompilerBinaryPath`   | `javac`              | The path to the Java compiler to compile the project. May be absolute or on the path. |
-| `--config.setup.testExecutionTimeoutMs`   | `120000` (2 minutes) | The number of milliseconds before a test execution is considered timed out. The test process will be killed and the tests will count as failures. |
-| `--config.setup.coverageMatrixSimplified` | `true`               | Whether to aggregate the coverage per-class instead of running each test method individually when measuring the suspiciousness. If this is `true`, then the execution is (much) faster, but the suspiciousness values will be less accurate. |
-| `--config.setup.suspiciousnessThreshold`  | `0.01`               | The minimum suspiciousness value required; statements that are less suspicious will be ignored. |
-| `--config.setup.testsToRun`               | `ALL_TESTS`          | Relevant only for the Defects4j runner: Whether to run all tests or only the tests that Defects4j marked as relevant. Possible values are `ALL_TESTS` and `RELEVANT_TESTS`. |
-| `--config.setup.debugTestDriver`          | `false`              | Whether to print debug output of the test driver process to stderr. |
-| `--config.genetic.randomSeed`             | `0`                  | The seed to initialize the random source with. If this is the same (and the test cases are deterministic), then the same result is produced. |
-| `--config.genetic.populationSize`         | `40`                 | The number of variants per generation. |
-| `--config.genetic.generationLimit`        | `10`                 | The maximum number of generations to run for (inclusive). |
-| `--config.genetic.negativeTestsWeight`    | `10.0`               | The fitness function weight of test cases that are negative for the unmodified, original code. |
-| `--config.genetic.positiveTestsWeight`    | `1.0`                | The fitness function weight of test cases that are positive for the unmodified, original code. |
-| `--config.genetic.mutationProbability`    | `0.5`                | The probability for each variant, that it is mutated at the end of a generation. |
-| `--config.genetic.llmMutationProbability` | `0.0`                | The probability that mutations are created by calling an LLM instead of the classic simple mutation operations (insert, swap, delete). |
-| `--config.genetic.statementScope`         | `GLOBAL`             | Defines where other statements for mutations are taken from. Either `GLOBAL` or `FILE`. |
-| `--config.llm.model`                      | `dummy`              | The name of the model to call. The special value `dummy` will not call an API but instead return a static dummy string (for debugging). |
-| `--config.llm.api`                        | not set              | The API endpoint of the LLM. Consists of the provider type and the full endpoint URL, separated by `+` (e.g. `ollama+http://localhost:11434/api/chat`). Valid providers are `ollama` and `openai`. The URL should end with `/api/chat` for `ollama` and `/v1/chat/completions` for `openai`. |
-| `--config.llm.apiToken`                   | not set              | If set, this is added as a `Bearer` token in the `Authorization` header for API calls. |
-| `--config.llm.think`                      | not set              | The thinking/reasoning level to pass to the model. `true` or `false` for most models, `none`, `minimal`, `low`, `medium`, `high`, or `xhigh` for others. |
-| `--config.llm.thinkingDelimiter`          | not set              | If set, everything up to the last occurrence of this sequence in the model output will be considered a thinking/reasoning trace and discarded (for instances where the API does not differentiate between thinking and answer). |
-| `--config.llm.temperature`                | not set              | If set, this defines the temperature of the model. |
-| `--config.llm.contextSize`                | not set              | Only for ollama: the context window size of the model (in tokens). |
-| `--config.llm.seed`                       | not set              | Only for ollama: if set, this defines the seed to use for calls to the model. |
-| `--config.llm.maxCodeContext`             | `100`                | The maximum number of lines of code to supply as code context in a query to the LLM. This does not include test code. |
-| `--config.llm.projectOutline`             | `PARTIAL`            | The type of project outline to add to the prompt. Possible values: `FULL`, `PARTIAL`, `NONE` |
+| Key                                       |  Default Value         | Description                                                |
+|-------------------------------------------|------------------------|------------------------------------------------------------|
+| `--config.setup.fixer`                    | `GENESEER`             | The fixer to use. Possible values: `GENESEER`, `LLM_SINGLE`, `SETUP_TEST`, `ONLY_DELETE`, `LLM_QUERY_ANALYSIS` |
+| `--config.setup.jvmBinaryPath`            | `java`                 | The path to the JVM binary to run tests. May be absolute or on the path. |
+| `--config.setup.javaCompilerBinaryPath`   | `javac`                | The path to the Java compiler to compile the project. May be absolute or on the path. |
+| `--config.setup.testExecutionTimeoutMs`   | `120000` (2 minutes)   | The number of milliseconds before a test execution is considered timed out. The test process will be killed and the tests will count as failures. |
+| `--config.setup.coverageMatrixSimplified` | `true`                 | Whether to aggregate the coverage per-class instead of running each test method individually when measuring the suspiciousness. If this is `true`, then the execution is (much) faster, but the suspiciousness values will be less accurate. |
+| `--config.setup.suspiciousnessThreshold`  | `0.01`                 | The minimum suspiciousness value required; statements that are less suspicious will be ignored. |
+| `--config.setup.testsToRun`               | `ALL_TESTS`            | Relevant only for the Defects4j runner: Whether to run all tests or only the tests that Defects4j marked as relevant. Possible values are `ALL_TESTS` and `RELEVANT_TESTS`. |
+| `--config.setup.debugTestDriver`          | `false`                | Whether to print debug output of the test driver process to stderr. |
+| `--config.genetic.randomSeed`             | `0`                    | The seed to initialize the random source with. If this is the same (and the test cases are deterministic), then the same result is produced. |
+| `--config.genetic.populationSize`         | `40`                   | The number of variants per generation. |
+| `--config.genetic.generationLimit`        | `10`                   | The maximum number of generations to run for (inclusive). |
+| `--config.genetic.negativeTestsWeight`    | `10.0`                 | The fitness function weight of test cases that are negative for the unmodified, original code. |
+| `--config.genetic.positiveTestsWeight`    | `1.0`                  | The fitness function weight of test cases that are positive for the unmodified, original code. |
+| `--config.genetic.mutationProbability`    | `0.5`                  | The probability for each variant, that it is mutated at the end of a generation. |
+| `--config.genetic.llmMutationProbability` | `0.0`                  | The probability that mutations are created by calling an LLM instead of the classic simple mutation operations (insert, swap, delete). |
+| `--config.genetic.statementScope`         | `GLOBAL`               | Defines where other statements for mutations are taken from. Either `GLOBAL` or `FILE`. |
+| `--config.llm.model`                      | `dummy`                | The name of the model to call. The special value `dummy` will not call an API but instead return a static dummy string (for debugging). |
+| `--config.llm.api`                        | not set                | The API endpoint of the LLM. Consists of the provider type and the full endpoint URL, separated by `+` (e.g. `ollama+http://localhost:11434/api/chat`). Valid providers are `ollama` and `openai`. The URL should end with `/api/chat` for `ollama` and `/v1/chat/completions` for `openai`. |
+| `--config.llm.apiToken`                   | not set                | If set, this is added as a `Bearer` token in the `Authorization` header for API calls. |
+| `--config.llm.timeoutMs`                  | `1800000` (30 minutes) | The number of milliseconds before a query to the LLM is considered timed out. |
+| `--config.llm.think`                      | not set                | The thinking/reasoning level to pass to the model. `true` or `false` for most models, `none`, `minimal`, `low`, `medium`, `high`, or `xhigh` for others. |
+| `--config.llm.thinkingDelimiter`          | not set                | If set, everything up to the last occurrence of this sequence in the model output will be considered a thinking/reasoning trace and discarded (for instances where the API does not differentiate between thinking and answer). |
+| `--config.llm.temperature`                | not set                | If set, this defines the temperature of the model. |
+| `--config.llm.contextSize`                | not set                | Only for ollama: the context window size of the model (in tokens). |
+| `--config.llm.seed`                       | not set                | Only for ollama: if set, this defines the seed to use for calls to the model. |
+| `--config.llm.maxCodeContext`             | `100`                  | The maximum number of lines of code to supply as code context in a query to the LLM. This does not include test code. |
+| `--config.llm.projectOutline`             | `PARTIAL`              | The type of project outline to add to the prompt. Possible values: `FULL`, `PARTIAL`, `NONE` |
 
 ## Output
 
@@ -154,6 +155,8 @@ if applicable):
   },
   "llmStats": {
     "calls": 0,
+    "answers": 0,
+    "timeouts": 0,
     "totalQueryTokens": 0,
     "totalAnswerTokens": 0
   },

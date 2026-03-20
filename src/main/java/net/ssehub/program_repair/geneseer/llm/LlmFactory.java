@@ -18,6 +18,8 @@ public class LlmFactory {
     
     private String apiToken;
     
+    private long timeoutMs;
+    
     private String think;
     
     private String thinkingDelimiter;
@@ -31,6 +33,7 @@ public class LlmFactory {
                 .withModel(configuration.model())
                 .withApi(configuration.api())
                 .withApiToken(configuration.apiToken())
+                .withTimeoutMs(configuration.timeoutMs())
                 .withThink(configuration.think())
                 .withThinkingDelimiter(configuration.thinkingDelimiter())
                 .withContextSize(configuration.contextSize())
@@ -49,6 +52,11 @@ public class LlmFactory {
     
     public LlmFactory withApiToken(String apiToken) {
         this.apiToken = apiToken;
+        return this;
+    }
+    
+    public LlmFactory withTimeoutMs(long timeoutMs) {
+        this.timeoutMs = timeoutMs;
         return this;
     }
     
@@ -116,6 +124,7 @@ public class LlmFactory {
     
     private void applyCommonSettings(AbstractLlm con) {
         con.setApiToken(apiToken);
+        con.setTimeoutMs(timeoutMs);
         con.setThink(think);
         con.setThinkingDelimiter(thinkingDelimiter);
         con.setTemperature(temperature);

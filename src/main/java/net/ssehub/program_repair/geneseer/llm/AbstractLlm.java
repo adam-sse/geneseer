@@ -1,14 +1,15 @@
 package net.ssehub.program_repair.geneseer.llm;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
+import java.time.Duration;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.gson.FieldNamingPolicy;
@@ -25,9 +26,11 @@ public abstract class AbstractLlm implements ILlm {
     
     private String model;
     
-    private URL apiUrl;
+    private URI apiUrl;
     
     private String apiToken;
+    
+    private long timeoutMs;
     
     private String think;
     
@@ -35,11 +38,17 @@ public abstract class AbstractLlm implements ILlm {
     
     private Double temperature;
     
+    private HttpClient http;
+    
     private Gson gson;
     
     public AbstractLlm(String model, URL apiUrl) {
         this.model = model;
-        this.apiUrl = apiUrl;
+        try {
+            this.apiUrl = apiUrl.toURI();
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException(e);
+        }
         
         GsonBuilder gsonBuilder = new GsonBuilder();
         gsonBuilder.setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES);
@@ -53,8 +62,11 @@ public abstract class AbstractLlm implements ILlm {
                 return Role.valueOf(in.nextString().toUpperCase());
             }
         });
-        
         this.gson = gsonBuilder.create();
+        
+        this.http = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(30))
+                .build();
     }
     
     protected String getModel() {
@@ -63,6 +75,10 @@ public abstract class AbstractLlm implements ILlm {
     
     public void setApiToken(String apiToken) {
         this.apiToken = apiToken;
+    }
+    
+    public void setTimeoutMs(long timeoutMs) {
+        this.timeoutMs = timeoutMs;
     }
     
     public void setThink(String think) {
@@ -98,13 +114,7 @@ public abstract class AbstractLlm implements ILlm {
     
     @Override
     public IResponse send(Query query) throws IOException {
-        LOG.info("Sending query to LLM: " + query);
-        
-        HttpURLConnection http = createConnection();
-        writePost(http, gson.toJson(queryToJson(query)));
-        String content = readContent(http);
-        logRateLimitHeaders(http);
-        
+        String content = executePost(gson.toJson(queryToJson(query)));
         try {
             IResponse response = parseResponse(content, query);
             if (thinkingDelimiter != null) {
@@ -115,73 +125,44 @@ public abstract class AbstractLlm implements ILlm {
             throw new IOException("Failed to parse JSON response " + content, e);
         }
     }
-
-    private HttpURLConnection createConnection() throws IOException {
-        HttpURLConnection http = (HttpURLConnection) apiUrl.openConnection();
-        http.setRequestProperty("Accept", "application/json");
-        http.setRequestProperty("Content-Type", "application/json");
-        if (apiToken != null) {
-            http.setRequestProperty("Authorization", "Bearer " + apiToken);
+    
+    private String executePost(String content) throws IOException {
+        HttpRequest request = createRequest(content);
+        HttpResponse<String> response;
+        try {
+            response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Failed to run HTTP call", e);
         }
-        return http;
+        
+        int status = response.statusCode();
+        String body = response.body();
+        
+        if (status >= 200 && status < 300) {
+            return body;
+        } else {
+            throw new IOException("HTTP request failed with " + status + ": " + body);
+        }
+    }
+    
+    private HttpRequest createRequest(String content) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(apiUrl)
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json");
+        if (apiToken != null) {
+            builder.header("Authorization", "Bearer " + apiToken);
+        }
+        if (timeoutMs != 0) {
+            builder.timeout(Duration.ofMillis(timeoutMs));
+        }
+        return builder
+                .POST(HttpRequest.BodyPublishers.ofString(content, StandardCharsets.UTF_8))
+                .build();
     }
     
     protected abstract Map<String, Object> queryToJson(Query query);
-    
-    private void writePost(HttpURLConnection http, String content) throws IOException {
-        http.setRequestMethod("POST");
-        http.setDoOutput(true);
-        try (OutputStream out = http.getOutputStream()) {
-            out.write(content.getBytes(StandardCharsets.UTF_8));
-        }
-    }
-    
-    private String readContent(HttpURLConnection http) throws IOException {
-        try (InputStream in = http.getInputStream()) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            logErrorMessage(http);
-            throw e;
-        } finally {
-            http.disconnect();
-        }
-    }
-
-    private void logErrorMessage(HttpURLConnection http) {
-        try {
-            int statusCode = http.getResponseCode();
-            if (statusCode == -1) {
-                LOG.warning("Received invalid HTTP response");
-            } else {
-                String responseMessage = http.getResponseMessage();
-                LOG.warning(() -> "Received " + statusCode + " " + responseMessage);
-                
-                String content = new String(http.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
-                LOG.warning(() -> "Error message: " + content);
-            }
-        } catch (IOException e) {
-            LOG.log(Level.WARNING, "Failed to query error information", e);
-        }
-    }
-    
-    private void logRateLimitHeaders(HttpURLConnection http) {
-        boolean first = true;
-        for (Map.Entry<String, List<String>> header : http.getHeaderFields().entrySet()) {
-            if (header.getKey() != null && header.getKey().toLowerCase().startsWith("x-ratelimit-")) {
-                if (first) {
-                    LOG.info("Ratelimit HTTP headers:");
-                    first = false;
-                }
-                String value;
-                if (header.getValue().size() == 1) {
-                    value = header.getValue().get(0);
-                } else {
-                    value = header.getValue().toString();
-                }
-                LOG.info(() -> "    " + header.getKey() + ": " + value);
-            }
-        }
-    }
     
     protected abstract IResponse parseResponse(String content, Query query) throws JsonParseException;
     

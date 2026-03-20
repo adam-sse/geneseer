@@ -253,6 +253,8 @@ public class Configuration {
                 return "<redacted>";
             };
         };
+        private Option<Long> timeoutMs = new Option<>("timeoutMs", "Timeout",
+                TimeUnit.MINUTES.toMillis(30), Long::parseLong);
         private Option<String> think = new Option<>("think", "Thinking", Function.identity());
         private Option<String> thinkingDelimiter = new Option<>("thinkingDelimiter", "Thinking Delimiter",
                 Function.identity());
@@ -273,6 +275,7 @@ public class Configuration {
             super.options.add(model);
             super.options.add(api);
             super.options.add(apiToken);
+            super.options.add(timeoutMs);
             super.options.add(think);
             super.options.add(thinkingDelimiter);
             super.options.add(temperature);
@@ -292,6 +295,10 @@ public class Configuration {
         
         public String apiToken() {
             return apiToken.getValue();
+        }
+        
+        public long timeoutMs() {
+            return timeoutMs.getValue();
         }
         
         public String think() {

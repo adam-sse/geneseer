@@ -1,6 +1,7 @@
 package net.ssehub.program_repair.geneseer.llm;
 
 import java.io.IOException;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,6 +47,10 @@ public class LlmFixer {
     private Path projectRoot;
     
     private int numberOfCalls;
+    
+    private int numberOfAnswers;
+    
+    private int numberOfTimeouts;
     
     private long totalQueryTokens;
     
@@ -424,14 +429,19 @@ public class LlmFixer {
 
     private String runQuery(Query query) throws IOException {
         try (Measurement.Probe m = Measurement.INSTANCE.start("llm-query")) {
+            LOG.info("Sending query to LLM: " + query);
+            numberOfCalls++;
             IResponse response = llm.send(query);
             if (response.getThinking() != null) {
                 LOG.fine(() -> "Got " + response.getThinking().length() + " characters of thinking trace");
             }
-            numberOfCalls++;
+            numberOfAnswers++;
             totalQueryTokens += response.getQueryTokens();
             totalAnswerTokens += response.getAnswerTokens();
             return response.getContent();
+        } catch (HttpTimeoutException e) {
+            numberOfTimeouts++;
+            throw e;
         }
     }
 
@@ -516,21 +526,11 @@ public class LlmFixer {
         Files.writeString(file, newLines.stream().collect(Collectors.joining("\n")), encoding);
     }
     
-    public int getNumberOfCalls() {
-        return numberOfCalls;
-    }
-    
-    public long getTotalQueryTokens() {
-        return totalQueryTokens;
-    }
-    
-    public long getTotalAnswerTokens() {
-        return totalAnswerTokens;
-    }
-    
     public Map<String, Object> createStats() {
         return Map.of(
                 "calls", numberOfCalls,
+                "answers", numberOfAnswers,
+                "timeouts", numberOfTimeouts,
                 "totalQueryTokens", totalQueryTokens,
                 "totalAnswerTokens", totalAnswerTokens
                 );

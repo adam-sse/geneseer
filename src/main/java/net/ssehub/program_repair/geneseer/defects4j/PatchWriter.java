@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.defects4j.Defects4jWrapper.Version;
-import net.ssehub.program_repair.geneseer.llm.LlmFixer.CodeSnippet;
+import net.ssehub.program_repair.geneseer.llm.CodeSnippet;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.CliArguments;

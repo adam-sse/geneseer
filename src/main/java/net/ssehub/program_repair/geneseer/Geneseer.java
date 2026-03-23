@@ -23,8 +23,11 @@ import net.ssehub.program_repair.geneseer.fixers.Outliner;
 import net.ssehub.program_repair.geneseer.fixers.SetupTest;
 import net.ssehub.program_repair.geneseer.fixers.SingleLlm;
 import net.ssehub.program_repair.geneseer.fixers.genetic.GeneticAlgorithm;
+import net.ssehub.program_repair.geneseer.llm.ISnippetRanker;
 import net.ssehub.program_repair.geneseer.llm.LlmFactory;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
+import net.ssehub.program_repair.geneseer.llm.RagRanker;
+import net.ssehub.program_repair.geneseer.llm.SuspiciousnessRanker;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
@@ -159,7 +162,7 @@ public class Geneseer {
             result = new LlmQueryAnalysis(project.getProjectDirectory(), createLlmFixer(project, tempDirManager));
             break;
         case "OUTLINER":
-            result = new Outliner(project.getProjectDirectory());
+            result = new Outliner(project.getProjectDirectory(), project.getEncoding());
             break;
             
         default:
@@ -171,7 +174,24 @@ public class Geneseer {
     private static LlmFixer createLlmFixer(Project project, TemporaryDirectoryManager tempDirManager)
             throws IllegalArgumentException {
         LlmFactory factory = LlmFactory.fromConfiguration(Configuration.INSTANCE.llm());
-        LlmFixer llmFixer = new LlmFixer(factory.create(), tempDirManager, project.getEncoding(),
+        
+        ISnippetRanker ranker;
+        switch (Configuration.INSTANCE.llm().codeContextSelection()) {
+        case SUSPICIOUSNESS:
+            ranker = new SuspiciousnessRanker(Configuration.INSTANCE.llm().maxCodeContext());
+            break;
+        case RAG:
+            ranker = new RagRanker(project.getProjectDirectory(),
+                    Configuration.INSTANCE.llm().maxCodeContext(),
+                    Configuration.INSTANCE.rag().model(),
+                    Configuration.INSTANCE.rag().api());
+            break;
+        default:
+            throw new IllegalArgumentException("Invalid code context selection: "
+                    + Configuration.INSTANCE.llm().codeContextSelection());
+        }
+        
+        LlmFixer llmFixer = new LlmFixer(factory.create(), ranker, tempDirManager, project.getEncoding(),
                 project.getProjectDirectory());
         
         return llmFixer;

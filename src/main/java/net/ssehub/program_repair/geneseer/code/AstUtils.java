@@ -1,5 +1,6 @@
 package net.ssehub.program_repair.geneseer.code;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -16,6 +17,21 @@ public class AstUtils {
             node = node.get(0);
         }
         return (LeafNode) node;
+    }
+    
+    public static Path getFile(Node astRoot, Node child) {
+        Path filename = null;
+        List<Node> parents = astRoot.getPath(child);
+        for (Node parent : parents) {
+            if (parent.getType() == Type.COMPILATION_UNIT) {
+                filename = (Path) parent.getMetadata(Metadata.FILE_NAME);
+                break;
+            }
+        }
+        if (filename == null) {
+            throw new IllegalStateException("Could not find file of node");
+        }
+        return filename;
     }
     
     public static int getLine(Node fileOrRootNode, Node childNode) {

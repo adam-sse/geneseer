@@ -1,8 +1,10 @@
 package net.ssehub.program_repair.geneseer.fixers;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.DoubleSummaryStatistics;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -10,6 +12,7 @@ import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingType;
 
+import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
@@ -17,6 +20,8 @@ import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.defects4j.PatchWriter;
 import net.ssehub.program_repair.geneseer.defects4j.PatchWriter.ChangedArea;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
+import net.ssehub.program_repair.geneseer.llm.RagRanker;
+import net.ssehub.program_repair.geneseer.llm.TestMethodContext;
 import net.ssehub.program_repair.geneseer.util.JsonUtils;
 
 public class Outliner implements IFixer {
@@ -27,8 +32,11 @@ public class Outliner implements IFixer {
     
     private Path projectRoot;
     
-    public Outliner(Path projectRoot) {
+    private Charset encoding;
+    
+    public Outliner(Path projectRoot, Charset encoding) {
         this.projectRoot = projectRoot;
+        this.encoding = encoding;
     }
     
     public static record Method(
@@ -44,7 +52,8 @@ public class Outliner implements IFixer {
             int suspiciousCount,
             double suspiciousMax,
             double suspiciousSum,
-            double suspiciousAvg) {
+            double suspiciousAvg,
+            double ragDistance) {
         
         public int lines() {
             return lineEnd - lineStart + 1;
@@ -58,6 +67,10 @@ public class Outliner implements IFixer {
                 projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME), ChangedArea.class);
         
         Encoding tokenEncoding = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.CL100K_BASE);
+        RagRanker ragRanker = new RagRanker(projectRoot, Integer.MAX_VALUE,
+                Configuration.INSTANCE.rag().model(), Configuration.INSTANCE.rag().api());
+        LinkedHashMap<Node, Double> ragDistances = ragRanker.rankMethods(ast,
+                TestMethodContext.constructContext(testSuite.getInitialFailingTestResults(), projectRoot, encoding));
         
         List<Method> methods = ast.stream()
                 .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
@@ -102,7 +115,7 @@ public class Outliner implements IFixer {
                     
                     return new Method(className, methodName, signature,
                             file, lineStart, lineEnd, numTokens, numStatements, modifiedByHumanPatch,
-                            (int) stats.getCount(), maxSus, stats.getSum(), avgSus);
+                            (int) stats.getCount(), maxSus, stats.getSum(), avgSus, ragDistances.get(method));
                 })
                 .toList();
         

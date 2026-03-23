@@ -79,6 +79,8 @@ Ubuntu, this is `/usr/lib/jvm/java-1.17.0-openjdk-amd64/bin/java`).
 Command line arguments starting with `--config.` can specify configuration options for geneseer. The section `setup`
 refers to configuration options regarding compiling, running tests, etc. The section `genetic` refers to configuration
 options of the genetic algorithm. The section `llm` refers to configuration options for calling an LLM via a REST API.
+The section `rag` refers to configuration options for calling an embedding API; these options are only required when
+using RAG.
 Here is a list of possible keys, their meaning, and the default values:
 
 | Key                                       |  Default Value         | Description                                                |
@@ -108,8 +110,13 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.llm.temperature`                | not set                | If set, this defines the temperature of the model. |
 | `--config.llm.contextSize`                | not set                | Only for ollama: the context window size of the model (in tokens). |
 | `--config.llm.seed`                       | not set                | Only for ollama: if set, this defines the seed to use for calls to the model. |
+| `--config.llm.codeContextSelection`       | `SUSPICIOUSNESS`       | The method by which code snippets are ranked for inclusion in the prompt. Possible values: `SUSPICIOUSNESS` and `RAG`. |
 | `--config.llm.maxCodeContext`             | `100`                  | The maximum number of lines of code to supply as code context in a query to the LLM. This does not include test code. |
 | `--config.llm.projectOutline`             | `PARTIAL`              | The type of project outline to add to the prompt. Possible values: `FULL`, `PARTIAL`, `NONE` |
+| `--config.rag.chromadbWorkerPythonBinaryPath`| not set             | Path to the `python` binary to run the `chromadb-worker.py` script. Typically this will end with `.venv/bin/python`, see `chromadb-worker/setup.md`. |
+| `--config.rag.chromadbWorkerPath`         | not set                | Path to the `chromadb-worker.py` script. See `chromadb-worker/setup.md`. |
+| `--config.rag.model`                      | not set                | The name of the model to use for embedding. |
+| `--config.rag.api`                        | not set                | The ollama API host (e.g. `http://localhost:11434`) used for embedding. |
 
 ## Output
 

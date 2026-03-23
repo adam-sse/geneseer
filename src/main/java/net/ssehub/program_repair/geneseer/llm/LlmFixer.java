@@ -5,9 +5,7 @@ import java.net.http.HttpTimeoutException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +44,8 @@ public class LlmFixer {
     
     private Path projectRoot;
     
+    private ISnippetRanker ranker;
+    
     private int numberOfCalls;
     
     private int numberOfAnswers;
@@ -56,16 +56,17 @@ public class LlmFixer {
     
     private long totalAnswerTokens;
 
-    public LlmFixer(ILlm llm, TemporaryDirectoryManager tempDirManager, Charset encoding,
+    public LlmFixer(ILlm llm, ISnippetRanker ranker, TemporaryDirectoryManager tempDirManager, Charset encoding,
             Path projectRoot) {
         this.llm = llm;
         this.tempDirManager = tempDirManager;
         this.encoding = encoding;
         this.projectRoot = projectRoot;
+        this.ranker = ranker;
     }
 
     public Optional<Node> createVariant(Node original, List<TestResult> failingTests) throws IOException {
-        List<CodeSnippet> codeSnippets = selectMostSuspiciousMethods(original);
+        List<CodeSnippet> codeSnippets = selectMostSuspiciousMethods(original, failingTests);
         Query query = createQuery(original, failingTests, codeSnippets);
         String answer = runQuery(query);
         LOG.fine(() -> "Got answer:\n" + answer);
@@ -77,16 +78,17 @@ public class LlmFixer {
             
             Map<Path, List<CodeSnippet>> modifiedSnippetsByFile = new HashMap<>(codeSnippets.size());
             for (CodeSnippet snippet : codeSnippets) {
-                if (snippet.newLines != null) {
+                if (snippet.getNewLines() != null) {
                     List<CodeSnippet> snippetsInFile = modifiedSnippetsByFile.getOrDefault(
-                            snippet.file, new LinkedList<>());
+                            snippet.getFile(), new LinkedList<>());
                     snippetsInFile.add(snippet);
-                    modifiedSnippetsByFile.put(snippet.file, snippetsInFile);
+                    modifiedSnippetsByFile.put(snippet.getFile(), snippetsInFile);
                 }
             }
             
-            LOG.info(() -> "LLM answer has modified " + codeSnippets.stream().filter(s -> s.newLines != null).count()
-                    + " snippets in " + modifiedSnippetsByFile.size() + " files");
+            LOG.info(() -> "LLM answer has modified " + codeSnippets.stream()
+                    .filter(s -> s.getNewLines() != null)
+                    .count() + " snippets in " + modifiedSnippetsByFile.size() + " files");
             
             sourceDir = tempDirManager.createTemporaryDirectory();
             Writer.write(original, sourceDir, encoding);
@@ -133,7 +135,8 @@ public class LlmFixer {
 
     public Query createQuery(Node code, List<TestResult> failingTests, List<CodeSnippet> codeSnippets) {
         List<String> failureMessages = failingTests.stream().map(TestResult::failureMessage).toList();
-        List<TestMethodContext> testMethodContext = failingTests.stream().map(this::getTestMethodContext).toList();
+        List<TestMethodContext> testMethodContext = TestMethodContext.constructContext(failingTests,
+                projectRoot, encoding);
         String projectOutline = null;
         if (Configuration.INSTANCE.llm().projectOutine() != ProjectOutline.NONE) {
             projectOutline = createProjectOutline(code, codeSnippets);
@@ -154,7 +157,7 @@ public class LlmFixer {
                     prompt.append(" in test class ").append(context.testClassName());
                 }
                 prompt.append(":\n```java\n");
-                prompt.append(context.code);
+                prompt.append(context.code());
                 prompt.append("\n```\n");
             }
             prompt.append("Failure message");
@@ -180,9 +183,9 @@ public class LlmFixer {
         int index = 1;
         for (CodeSnippet snippet : codeSnippets) {
             prompt.append("\n\n");
-            prompt.append("File ").append(snippet.file).append('\n');
+            prompt.append("File ").append(snippet.getFile()).append('\n');
             prompt.append("Code snippet number ").append(index++).append(":\n```java\n");
-            snippet.lines.stream().forEach(line -> prompt.append(line).append('\n'));
+            prompt.append(snippet.getText()).append('\n');
             prompt.append("```");
         }
         prompt.append("\n\nYou must prefix your fixed code with \"Code snippet number <number>\" to clarify which"
@@ -199,169 +202,12 @@ public class LlmFixer {
         return query;
     }
 
-    public List<CodeSnippet> selectMostSuspiciousMethods(Node original) {
-        LinkedHashMap<Node, Double> methodSuspiciousness = getSuspiciousnessByMethod(original);
-        List<CodeSnippet> selectedMethods = new LinkedList<>();
-        int codeSize = 0;
-        for (Map.Entry<Node, Double> entry : methodSuspiciousness.entrySet()) {
-            Node method = entry.getKey();
-            LineRange range = getRange(original, method);
-            
-            if (codeSize + range.size() < Configuration.INSTANCE.llm().maxCodeContext()) {
-                selectedMethods.add(getSnippetForMethod(original, method));
-                codeSize += range.size();
-            } else {
-                break;
-            }
-        }
-        return selectedMethods;
-    }
-
-    private LinkedHashMap<Node, Double> getSuspiciousnessByMethod(Node original) {
-        List<Node> methods = original.stream()
-                .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
-                .toList();
-        Map<Node, Double> methodSuspiciousness = new HashMap<>(methods.size());
-        for (Node method : methods) {
-            double suspiciousnessMax = method.stream()
-                    .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                    .mapToDouble(n -> (double) n.getMetadata(Metadata.SUSPICIOUSNESS))
-                    .max().orElse(0.0);
-            if (suspiciousnessMax > 0) {
-                methodSuspiciousness.put(method, suspiciousnessMax);
-            }
-        }
-        
-        LinkedHashMap<Node, Double> sortedSuspiciousness = new LinkedHashMap<>(methodSuspiciousness.size());
-        methodSuspiciousness.entrySet().stream()
-                .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
-                .forEach(e -> sortedSuspiciousness.put(e.getKey(), e.getValue()));
-        return sortedSuspiciousness;
-    }
-
-    public class CodeSnippet {
-        private Path file;
-        private LineRange lineRange;
-        private List<String> lines;
-        private List<String> newLines;
-        
-        public CodeSnippet(Path file, LineRange lineRange, List<String> lines) {
-            this.file = file;
-            this.lineRange = lineRange;
-            this.lines = lines;
-        }
-        
-        public Path getFile() {
-            return file;
-        }
-        
-        public LineRange getLineRange() {
-            return lineRange;
-        }
-        
-        public int size() {
-            return lineRange.size();
-        }
-        
-        public String getText() {
-            return lines.stream().collect(Collectors.joining("\n"));
-        }
-
-    }
-
-    private CodeSnippet getSnippetForMethod(Node root, Node method) {
-        Path filename = null;
-        List<Node> parents = root.getPath(method);
-        for (Node parent : parents) {
-            if (parent.getType() == Type.COMPILATION_UNIT) {
-                filename = (Path) parent.getMetadata(Metadata.FILE_NAME);
-                break;
-            }
-        }
-        
-        LineRange range = getRange(root, method);
-        List<String> lines = Arrays.asList(method.getTextFormatted().split("\n"));
-        
-        return new CodeSnippet(filename, range, lines);
-    }
-
-    public record LineRange(int start, int end) {
-        public int size() {
-            return end - start + 1;
-        }
-        
-    }
-    private LineRange getRange(Node root, Node node) {
-        int start = AstUtils.getLine(root, node);
-        int end = start + AstUtils.getAdditionalLineCount(node);
-        return new LineRange(start, end);
-    }
-    
-    private static record TestMethodContext(String code, String testClassName) {
-    }
-
-    private TestMethodContext getTestMethodContext(TestResult failingTest) {
-        String testFileName = failingTest.testClass().substring(failingTest.testClass().lastIndexOf('.') + 1) + ".java";
-        
-        TestMethodContext result = null;
-        try {
-            List<Path> testFiles = Files.walk(projectRoot)
-                    .filter(p -> p.getFileName().toString().equals(testFileName))
-                    .filter(p -> Files.isRegularFile(p))
-                    .toList();
-            
-            List<TestMethodContext> found = new LinkedList<>();
-            for (Path testFile : testFiles) {
-                TestMethodContext ctx = findTestMethodInFile(failingTest, testFile);
-                if (ctx != null) {
-                    found.add(ctx);
-                }
-            }
-            
-            if (found.size() == 1) {
-                result = found.get(0);
-            } else {
-                if (testFiles.isEmpty()) {
-                    LOG.warning(() -> "Could not find test file for test class " + failingTest.testClass());
-                } else if (found.isEmpty()) {
-                    LOG.warning(() -> "Could not find test method " + failingTest.testMethod() + " in any of these"
-                            + " test files: " + testFiles);
-                } else {
-                    LOG.warning(() -> "Found test method " + failingTest.testMethod() + " more than once");
-                }
-            }
-                
-        } catch (IOException e) {
-            LOG.log(Level.WARNING, "Failed to read test method file", e);
-        }
-        return result;
-    }
-
-    private TestMethodContext findTestMethodInFile(TestResult failingTest, Path testFile)
+    public List<CodeSnippet> selectMostSuspiciousMethods(Node original, List<TestResult> failingTests)
             throws IOException {
         
-        Node file = new Parser().parseSingleFile(testFile, encoding);
-        Optional<Node> method = file.stream()
-                .filter(n -> n.getType() == Type.METHOD)
-                .filter(n -> n.getMetadata(Metadata.METHOD_NAME).equals(failingTest.testMethod()))
-                .findAny();
-        
-        TestMethodContext result = null;
-        if (method.isPresent()) {
-            String code = method.get().getTextFormatted();
-            List<Node> path = file.getPath(method.get());
-            String testClassName = null;
-            for (int i = path.size() - 1; i >= 0; i--) {
-                if (path.get(i).getMetadata(Metadata.TYPE_NAME) != null) {
-                    testClassName = (String) path.get(i).getMetadata(Metadata.TYPE_NAME);
-                    break;
-                }
-            }
-            
-            result = new TestMethodContext(code, testClassName);
-        }
-        
-        return result;
+        List<CodeSnippet> selected = ranker.selectCodeSnippets(original,
+                TestMethodContext.constructContext(failingTests, projectRoot, encoding));
+        return selected;
     }
     
     private String createProjectOutline(Node astRoot, List<CodeSnippet> codeSnippets) {
@@ -374,7 +220,7 @@ public class LlmFixer {
             Path fileName = (Path) file.getMetadata(Metadata.FILE_NAME);
             if (Configuration.INSTANCE.llm().projectOutine() == ProjectOutline.FULL
                     || codeSnippets.stream()
-                        .filter(snippet -> snippet.file.equals(fileName))
+                        .filter(snippet -> snippet.getFile().equals(fileName))
                         .findAny().isPresent()) {
                 if (file.childCount() > 0 && file.get(0).childCount() > 0
                         && file.get(0).get(0) instanceof LeafNode leaf && leaf.getText().equals("package")) {
@@ -426,7 +272,7 @@ public class LlmFixer {
             break;
         }
     }
-
+    
     private String runQuery(Query query) throws IOException {
         try (Measurement.Probe m = Measurement.INSTANCE.start("llm-query")) {
             LOG.info("Sending query to LLM: " + query);
@@ -494,7 +340,7 @@ public class LlmFixer {
                 throw new AnswerDoesNotApplyException("missing code block end marker for snippet " + snippetNumber);
             }
             
-            snippets.get(snippetNumber - 1).newLines = lines;
+            snippets.get(snippetNumber - 1).setNewLines(lines);
         }
         
         if (!linesOutsideOfCode.isEmpty()) {
@@ -511,10 +357,10 @@ public class LlmFixer {
             int lineNumber = i + 1;
             boolean wasInAnySnippet = false;
             for (CodeSnippet snippet : modifiedCodeSnippets) {
-                if (lineNumber == snippet.lineRange.start()) {
+                if (lineNumber == snippet.getLineRange().start()) {
                     wasInAnySnippet = true;
-                    newLines.addAll(snippet.newLines);
-                    i = snippet.lineRange.end() - 1;
+                    newLines.addAll(snippet.getNewLines());
+                    i = snippet.getLineRange().end() - 1;
                 }
             }
             

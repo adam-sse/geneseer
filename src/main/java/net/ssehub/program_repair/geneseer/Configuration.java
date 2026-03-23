@@ -1,5 +1,7 @@
 package net.ssehub.program_repair.geneseer;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -261,11 +263,16 @@ public class Configuration {
         private Option<Double> temperature = new Option<>("temperature", "Temperature", Double::parseDouble);
         private Option<Long> contextSize = new Option<>("contextSize", "Context window size", Long::parseLong);
         private Option<Long> seed = new Option<>("seed", "Seed", Long::parseLong);
+        private Option<CodeContextSelection> codeContextSelection = new Option<>("codeContextSelection",
+                "Method for selecting code context", CodeContextSelection.SUSPICIOUSNESS,
+                v -> CodeContextSelection.valueOf(v.toUpperCase()));
+        public enum CodeContextSelection {
+            SUSPICIOUSNESS, RAG
+        }
         private Option<Integer> maxCodeContext = new Option<>("maxCodeContext", "Max code context lines", 100,
                 Integer::parseInt);
         private Option<ProjectOutline> projectOutline = new Option<>("projectOutline",
                 "Project outline in prompt", ProjectOutline.PARTIAL, v -> ProjectOutline.valueOf(v.toUpperCase()));
-        
         public enum ProjectOutline {
             FULL, PARTIAL, NONE
         }
@@ -281,6 +288,7 @@ public class Configuration {
             super.options.add(temperature);
             super.options.add(contextSize);
             super.options.add(seed);
+            super.options.add(codeContextSelection);
             super.options.add(maxCodeContext);
             super.options.add(projectOutline);
         }
@@ -321,6 +329,10 @@ public class Configuration {
             return seed.getValue();
         }
         
+        public CodeContextSelection codeContextSelection() {
+            return codeContextSelection.getValue();
+        }
+        
         public int maxCodeContext() {
             return maxCodeContext.getValue();
         }
@@ -330,11 +342,54 @@ public class Configuration {
         }
     }
     
+    public static class RagConfiguration extends Section {
+        
+        private Option<String> chromadbWorkerPythonBinaryPath = new Option<>("chromadbWorkerPythonBinaryPath",
+                "Python binary path", Function.identity());
+        private Option<String> chromadbWorkerPath = new Option<>("chromadbWorkerPath",
+                "chromadb-worker.py path", Function.identity());
+        private Option<String> model = new Option<>("model",
+                "Model", "dummy", Function.identity());
+        private Option<URL> api = new Option<>("api", "API", s -> {
+            try {
+                return new URL(s);
+            } catch (MalformedURLException e) {
+                throw new IllegalArgumentException(e);
+            }
+        });
+        
+        public RagConfiguration() {
+            super("rag", "RAG Configuration", new LinkedList<>());
+            super.options.add(chromadbWorkerPythonBinaryPath);
+            super.options.add(chromadbWorkerPath);
+            super.options.add(model);
+            super.options.add(api);
+        }
+        
+        public String chromadbWorkerPythonBinaryPath() {
+            return chromadbWorkerPythonBinaryPath.getValue();
+        }
+        
+        public String chromadbWorkerPath() {
+            return chromadbWorkerPath.getValue();
+        }
+        
+        public String model() {
+            return model.getValue();
+        }
+        
+        public URL api() {
+            return api.getValue();
+        }
+        
+    }
+    
     private SetupConfiguration setup = new SetupConfiguration();
     private GeneticConfiguration genetic = new GeneticConfiguration();
     private LlmConfiguration llm = new LlmConfiguration();
+    private RagConfiguration rag = new RagConfiguration();
     
-    private List<Section> sections = List.of(setup, genetic, llm);
+    private List<Section> sections = List.of(setup, genetic, llm, rag);
     
     private Section getSection(String key) {
         return sections.stream().filter(s -> s.key.equals(key)).findFirst().orElse(null);
@@ -408,6 +463,10 @@ public class Configuration {
     
     public LlmConfiguration llm() {
         return llm;
+    }
+    
+    public RagConfiguration rag() {
+        return rag;
     }
     
 }

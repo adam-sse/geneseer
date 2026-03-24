@@ -53,11 +53,13 @@ public class RagRanker extends AbstractSnippetRanker {
         try (ChromaDb db = new ChromaDb(projectRoot, model, api)) {
             List<Method> allMethods = code.stream()
                     .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
-                    .map(m -> new Method(
-                            m.getTextFormatted(),
-                            AstUtils.getSignature(m),
-                            AstUtils.getFile(code, m),
-                            m))
+                    .map(m -> {
+                        String className = AstUtils.getEnclosingClass(code, m);
+                        if (className == null) {
+                            className = "<none>";
+                        }
+                        return new Method(m.getTextFormatted(), AstUtils.getSignature(m), className, m);
+                    })
                     .toList();
             
             int existing = db.getEntryCount();

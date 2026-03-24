@@ -19,6 +19,18 @@ public class AstUtils {
         return (LeafNode) node;
     }
     
+    public static String getEnclosingClass(Node astRoot, Node child) {
+        String className = null;
+        List<Node> parents = astRoot.getPath(child);
+        for (Node parent : parents) {
+            if (parent.getType() == Type.TYPE) {
+                className = (String) parent.getMetadata(Metadata.TYPE_NAME);
+                break;
+            }
+        }
+        return className;
+    }
+    
     public static Path getFile(Node astRoot, Node child) {
         Path filename = null;
         List<Node> parents = astRoot.getPath(child);

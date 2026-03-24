@@ -29,7 +29,7 @@ public class ChromaDb implements Closeable {
     
     private static final Logger LOG = Logger.getLogger(ChromaDb.class.getName());
     
-    public record Method(String code, String signature, Path file, Node ast) {
+    public record Method(String code, String signature, String className, Node ast) {
     }
     
     public record MethodWithSimilarity(Node ast, double distance) {
@@ -76,7 +76,7 @@ public class ChromaDb implements Closeable {
                     .map(m -> Map.of(
                             "code", m.code(),
                             "signature", m.signature(),
-                            "file", m.file().toString()))
+                            "class", m.className()))
                     .toList());
             writeCommand(addAction);
         }
@@ -111,14 +111,14 @@ public class ChromaDb implements Closeable {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> metadata = (Map<String, Object>) metadatas.get(i);
                 String signature = Objects.toString(metadata.get("signature"));
-                Path path = Path.of(Objects.toString(metadata.get("file")));
+                String className = Objects.toString(metadata.get("class"));
                 
                 List<Method> matching = methods.stream()
-                        .filter(m -> m.signature().equals(signature) && m.file().equals(path))
+                        .filter(m -> m.signature().equals(signature) && m.className().equals(className))
                         .toList();
                 if (matching.size() != 1) {
                     throw new IOException("Got " + matching.size() + " matching methods for signature " + signature
-                            + " in file " + path);
+                            + " in class " + className);
                 }
                 
                 result.add(new MethodWithSimilarity(matching.get(0).ast(), distance));

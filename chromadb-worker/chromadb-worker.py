@@ -43,7 +43,7 @@ class MethodStore:
             documents += [method.get("code")]
             metadatas += [{
                 "signature": method.get("signature"),
-                "file": method.get("file"),
+                "class": method.get("class"),
             }]
             self.next_id += 1
 

@@ -53,7 +53,7 @@ public class Outliner implements IFixer {
             double suspiciousMax,
             double suspiciousSum,
             double suspiciousAvg,
-            double ragDistance) {
+            Double ragDistance) {
         
         public int lines() {
             return lineEnd - lineStart + 1;

@@ -116,6 +116,7 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.rag.chromadbWorkerPythonBinaryPath`| not set             | Path to the `python` binary to run the `chromadb-worker.py` script. Typically this will end with `.venv/bin/python`, see `chromadb-worker/setup.md`. |
 | `--config.rag.model`                      | not set                | The name of the model to use for embedding. |
 | `--config.rag.api`                        | not set                | The ollama API host (e.g. `http://localhost:11434`) used for embedding. |
+| `--config.rag.persist`                    | `false`                | Whether to store and/or use the RAG database in the project directory. |
 
 ### Setup for RAG
 

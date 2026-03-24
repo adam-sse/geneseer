@@ -347,7 +347,7 @@ public class Configuration {
         private Option<String> chromadbWorkerPythonBinaryPath = new Option<>("chromadbWorkerPythonBinaryPath",
                 "Python binary path", Function.identity());
         private Option<String> model = new Option<>("model",
-                "Model", "dummy", Function.identity());
+                "Model", Function.identity());
         private Option<URL> api = new Option<>("api", "API", s -> {
             try {
                 return new URL(s);
@@ -355,12 +355,15 @@ public class Configuration {
                 throw new IllegalArgumentException(e);
             }
         });
+        private Option<Boolean> persist = new Option<>("persist",
+                "Persistent RAG database", false, Boolean::parseBoolean);
         
         public RagConfiguration() {
             super("rag", "RAG Configuration", new LinkedList<>());
             super.options.add(chromadbWorkerPythonBinaryPath);
             super.options.add(model);
             super.options.add(api);
+            super.options.add(persist);
         }
         
         public String chromadbWorkerPythonBinaryPath() {
@@ -373,6 +376,10 @@ public class Configuration {
         
         public URL api() {
             return api.getValue();
+        }
+        
+        public boolean persist() {
+            return persist.getValue();
         }
         
     }

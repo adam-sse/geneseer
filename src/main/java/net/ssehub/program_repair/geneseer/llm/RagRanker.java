@@ -47,7 +47,7 @@ public class RagRanker extends AbstractSnippetRanker {
     @Override
     public LinkedHashMap<Node, Double> rankMethods(Node code, List<TestMethodContext> failingTestMethods)
             throws IOException {
-        try (ChromaDb db = new ChromaDb(projectRoot, model, api)) {
+        try (ChromaDb db = new ChromaDb(projectRoot, model, api, Configuration.INSTANCE.rag().persist())) {
             List<Method> allMethods = code.stream()
                     .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
                     .map(m -> {

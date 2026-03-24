@@ -69,18 +69,19 @@ public class ChromaDb implements Closeable {
     
     private PrintWriter out;
     
-    public ChromaDb(Path projectRoot, String model, URL api) throws IOException {
+    public ChromaDb(Path projectRoot, String model, URL api, boolean persistent) throws IOException {
         this.model = model;
         this.api = api;
-        startProcess(projectRoot);
+        startProcess(projectRoot, persistent);
     }
     
-    private void startProcess(Path projectRoot) throws IOException {
+    private void startProcess(Path projectRoot, boolean persistent) throws IOException {
         ProcessBuilder builder = new ProcessBuilder(
                 Configuration.INSTANCE.rag().chromadbWorkerPythonBinaryPath(),
                 CHROMADB_WORKER_PATH.toAbsolutePath().toString(),
                 "--model", model,
-                "--host", api.toString());
+                "--host", api.toString(),
+                persistent ? "--persistent" : "--no-persistent");
         builder.redirectInput(Redirect.PIPE);
         builder.redirectOutput(Redirect.PIPE);
         builder.redirectErrorStream(true);

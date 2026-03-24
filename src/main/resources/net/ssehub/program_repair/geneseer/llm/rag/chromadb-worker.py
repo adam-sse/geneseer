@@ -22,17 +22,20 @@ class OllamaEmbeddingFunction(chromadb.EmbeddingFunction):
         return response["embeddings"]
 
 class MethodStore:
-    def __init__(self, model, host):
-        self.client = chromadb.PersistentClient(f"./geneseer-chromadb-{model}")
+    def __init__(self, model, host, persistent):
+        if persistent:
+            self.client = chromadb.PersistentClient(f"./geneseer-chromadb-{model}")
+        else:
+            self.client = chromadb.Client()
         self.embedding_function = OllamaEmbeddingFunction(model=model, host=host)
         self.init_collection()
-        self.next_id = 1
 
     def init_collection(self):
         self.collection = self.client.get_or_create_collection(
             name="methods",
             embedding_function=self.embedding_function
         )
+        self.next_id = self.collection.count() + 1
 
     def add_entry(self, data):
         ids = []
@@ -59,7 +62,7 @@ class MethodStore:
         return {"status": "ok", "ids": ids}
 
     def query_entries(self, data):
-        prompt = data.get("prompt", [])
+        prompt = data.get("prompt")
         n_results = data.get("n_results", 5)
         results = self.collection.query(
             query_texts=[prompt],
@@ -71,7 +74,6 @@ class MethodStore:
     def clear(self):
         self.client.reset()
         self.init_collection()
-        self.next_id = 1
         return {"status": "ok"}
 
     def handle_command(self, data):
@@ -92,11 +94,21 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True, help="Embedding model")
     parser.add_argument("--host", default="http://localhost:11434", help="Ollama host URL")
+    parser.add_argument(
+        "--persistent",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Enable or disable persistence (default: disabled)"
+    )
     return parser.parse_args()
 
 def main():
     args = parse_args()
-    store = MethodStore(model=args.model, host=args.host)
+    store = MethodStore(
+        model=args.model,
+        host=args.host,
+        persistent=args.persistent
+    )
 
     for line in sys.stdin:
         line = line.strip()

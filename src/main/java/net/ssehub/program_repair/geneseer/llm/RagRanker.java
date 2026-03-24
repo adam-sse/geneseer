@@ -55,7 +55,10 @@ public class RagRanker extends AbstractSnippetRanker {
                         if (className == null) {
                             className = "<none>";
                         }
-                        return new Method(m.getTextFormatted(), AstUtils.getSignature(m), className, m);
+                        return new Method(m.getTextFormatted(),
+                                AstUtils.getSignature(m), className,
+                                AstUtils.getFile(code, m), AstUtils.getLine(code, m),
+                                m);
                     })
                     .toList();
             

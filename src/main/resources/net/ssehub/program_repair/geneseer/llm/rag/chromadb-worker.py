@@ -44,6 +44,8 @@ class MethodStore:
             metadatas += [{
                 "signature": method.get("signature"),
                 "class": method.get("class"),
+                "file": method.get("file"),
+                "line": method.get("line"),
             }]
             self.next_id += 1
 

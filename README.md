@@ -114,9 +114,19 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.llm.maxCodeContext`             | `100`                  | The maximum number of lines of code to supply as code context in a query to the LLM. This does not include test code. |
 | `--config.llm.projectOutline`             | `PARTIAL`              | The type of project outline to add to the prompt. Possible values: `FULL`, `PARTIAL`, `NONE` |
 | `--config.rag.chromadbWorkerPythonBinaryPath`| not set             | Path to the `python` binary to run the `chromadb-worker.py` script. Typically this will end with `.venv/bin/python`, see `chromadb-worker/setup.md`. |
-| `--config.rag.chromadbWorkerPath`         | not set                | Path to the `chromadb-worker.py` script. See `chromadb-worker/setup.md`. |
 | `--config.rag.model`                      | not set                | The name of the model to use for embedding. |
 | `--config.rag.api`                        | not set                | The ollama API host (e.g. `http://localhost:11434`) used for embedding. |
+
+### Setup for RAG
+
+When using RAG, there needs to a python environment with the `chromadb` and `ollama` dependencies setup. Using a virtual
+environment like this is probably the easiest setup:
+
+1. Create a venv somewhere (we'll call this `$chromadbPythonDir`): `cd $chromadbPythonDir && python -m venv .venv`
+2. Activate the venv for the current shell: `source $chromadbPythonDir/.venv/bin/activate`
+3. Install dependencies: `pip install --upgrade pip && pip install chromadb ollama`
+4. Set the following option when running geneseer:
+    * `--config.rag.chromadbWorkerPythonBinaryPath $chromadbPythonDir/.venv/bin/python`
 
 ## Output
 

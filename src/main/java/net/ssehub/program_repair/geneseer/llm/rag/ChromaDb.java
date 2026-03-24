@@ -5,15 +5,18 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.io.UncheckedIOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.gson.JsonParseException;
@@ -24,10 +27,31 @@ import net.ssehub.program_repair.geneseer.util.JsonUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 import net.ssehub.program_repair.geneseer.util.ProcessManager;
+import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
 public class ChromaDb implements Closeable {
     
     private static final Logger LOG = Logger.getLogger(ChromaDb.class.getName());
+    
+    private static final Path CHROMADB_WORKER_PATH;
+
+    static {
+        try {
+            @SuppressWarnings("resource") // closed in shutdown hook of TemporaryDirectoryManager
+            TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager();
+            Path tempDir = tempDirManager.createTemporaryDirectory();
+
+            CHROMADB_WORKER_PATH = tempDir.resolve("chromadb-worker.py");
+
+            Files.write(CHROMADB_WORKER_PATH, ChromaDb.class.getClassLoader()
+                    .getResourceAsStream("net/ssehub/program_repair/geneseer/llm/rag/chromadb-worker.py")
+                    .readAllBytes());
+
+        } catch (IOException e) {
+            LOG.log(Level.SEVERE, "Failed to create temporary directory with chromadb-worker script", e);
+            throw new UncheckedIOException(e);
+        }
+    }
     
     public record Method(String code, String signature, String className, Node ast) {
     }
@@ -54,7 +78,7 @@ public class ChromaDb implements Closeable {
     private void startProcess(Path projectRoot) throws IOException {
         ProcessBuilder builder = new ProcessBuilder(
                 Configuration.INSTANCE.rag().chromadbWorkerPythonBinaryPath(),
-                Configuration.INSTANCE.rag().chromadbWorkerPath(),
+                CHROMADB_WORKER_PATH.toAbsolutePath().toString(),
                 "--model", model,
                 "--host", api.toString());
         builder.redirectInput(Redirect.PIPE);

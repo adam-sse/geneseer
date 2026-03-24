@@ -42,9 +42,6 @@ public class RagRanker extends AbstractSnippetRanker {
         if (Configuration.INSTANCE.rag().chromadbWorkerPythonBinaryPath() == null) {
             throw new IllegalArgumentException("Path to python for chromadb-worker.py script not set");
         }
-        if (Configuration.INSTANCE.rag().chromadbWorkerPath() == null) {
-            throw new IllegalArgumentException("Path chromadb-worker.py script not set");
-        }
     }
 
     @Override

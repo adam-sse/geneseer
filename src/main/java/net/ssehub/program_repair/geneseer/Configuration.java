@@ -346,8 +346,6 @@ public class Configuration {
         
         private Option<String> chromadbWorkerPythonBinaryPath = new Option<>("chromadbWorkerPythonBinaryPath",
                 "Python binary path", Function.identity());
-        private Option<String> chromadbWorkerPath = new Option<>("chromadbWorkerPath",
-                "chromadb-worker.py path", Function.identity());
         private Option<String> model = new Option<>("model",
                 "Model", "dummy", Function.identity());
         private Option<URL> api = new Option<>("api", "API", s -> {
@@ -361,17 +359,12 @@ public class Configuration {
         public RagConfiguration() {
             super("rag", "RAG Configuration", new LinkedList<>());
             super.options.add(chromadbWorkerPythonBinaryPath);
-            super.options.add(chromadbWorkerPath);
             super.options.add(model);
             super.options.add(api);
         }
         
         public String chromadbWorkerPythonBinaryPath() {
             return chromadbWorkerPythonBinaryPath.getValue();
-        }
-        
-        public String chromadbWorkerPath() {
-            return chromadbWorkerPath.getValue();
         }
         
         public String model() {

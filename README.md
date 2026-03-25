@@ -130,14 +130,15 @@ Here is a list of possible keys, their meaning, and the default values:
 
 ### Setup for RAG
 
-When using RAG, there needs to be a Python environment with the `chromadb` and `ollama` dependencies installed. Using a
+RAG support is implemented via a separate Python worker that uses chromadb and Ollama (for embeddings) and communicates
+with geneseer via a subprocess. Therefore, a Python environment with the required dependencies is needed. Using a
 virtual environment like this is probably the easiest setup:
 
-1. Create a venv somewhere (we'll call this `$chromadbPythonDir`): `cd $chromadbPythonDir && python -m venv .venv`
-2. Activate the venv for the current shell: `source $chromadbPythonDir/.venv/bin/activate`
+1. Create a venv somewhere: `python -m venv .venv`
+2. Activate the venv for the current shell: `source .venv/bin/activate`
 3. Install dependencies: `pip install --upgrade pip && pip install chromadb ollama`
 4. Set the following option when running geneseer:
-    * `--config.rag.chromadbWorkerPythonBinaryPath $chromadbPythonDir/.venv/bin/python`
+    * `--config.rag.chromadbWorkerPythonBinaryPath /absolute/path/to/.venv/bin/python`
 
 ## Output
 

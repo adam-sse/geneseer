@@ -4,11 +4,12 @@ A search-based program-repair tool for Java.
 
 ## Running
 
-Start a JVM with geneseer and all its dependencies on the classpath. We recommend to simply use the
+Start a JVM with geneseer and all its dependencies on the classpath. We recommend simply using the
 `jar-with-dependencies` of geneseer, then you only need to provide that single jar file. The main class is
-`net.ssehub.program_repair.geneseer.Geneseer`; it is also set as the main class in the jar, so `-jar` can be used to start it.
+`net.ssehub.program_repair.geneseer.Geneseer`; it is also set as the main class in the jar, so `-jar` can be used to
+start it.
 
-The following command line arguments must be specified, each with a following value:
+The following command line arguments must be specified, each followed by a value:
 
 * `--project-directory`: The path to the root directory of the project to repair. The test suite will be executed with
 this as the working directory.
@@ -16,14 +17,15 @@ this as the working directory.
 project directory.
 * `--test-classpath`: The classpath to execute the test suite of the project to repair. This should include the test
 classes themselves, the required runtime dependencies (both for the program and for the test suite), but *not* the
-compiled classes of the program under test. Note that JUnit must not be specified, as the test driver of geneseer
-already includes that. Entries may be relative to the project directory.
+compiled classes of the program under test. Note that JUnit must not be specified, as it is already included in
+geneseer's test driver. Each entry may be absolute or relative to the project directory.
 * `--test-classes`: The fully qualified class names of the test classes in the test suite, joined with `:`.
 
 The following optional command line arguments can be specified (also with a following value):
 
 * `--compile-classpath`: The classpath to use when compiling the source code files. This should include all the
-compile-time dependencies; usually this is a list of jars. Entries may be relative to the project directory.
+compile-time dependencies; usually this is a list of jars. Each entry may be absolute or relative to the project
+directory.
 * `--encoding`: The encoding of the source files of the project to repair. For example `ISO-8859-1`. If this is not
 specified, the default encoding of the operating system is used.
 * `--additional-javac-options`: A comma-separated list of additional command line options to pass to the Java compiler.
@@ -38,17 +40,23 @@ By default, messages in the `CONFIG` level and above are logged. To change this,
 main class or `-jar` parameter.
 
 As an example, a full execution of geneseer may look like this:
-```
-java -Dgeneseer.logLevel=FINE -jar geneseer-jar-with-dependencies.jar --project-directory /path/to/project-to-fix --source-directory src/main/java --encoding ISO-8859-1 --compile-classpath lib/some-lib.jar:lib/other-lib.jar --test-classpath target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar --test-classes com.example.TestClass1:com.example.TestClass2
+```sh
+java -Dgeneseer.logLevel=FINE -jar geneseer-jar-with-dependencies.jar \
+    --project-directory /path/to/project-to-fix \
+    --source-directory src/main/java \
+    --encoding ISO-8859-1 \
+    --compile-classpath lib/some-lib.jar:lib/other-lib.jar \
+    --test-classpath target/test-classes/:lib/some-lib.jar:lib/other-lib.jar:lib/test-lib.jar \
+    --test-classes com.example.TestClass1:com.example.TestClass2
 ```
 
 ### Defects4J
 
 The main class `net.ssehub.program_repair.geneseer.defects4j.Defects4jRunner` can be used to run geneseer on a
 bug from the [Defects4J](https://github.com/rjust/defects4j) database. It will check out, compile, and prepare
-the Defects4J bug in the current working directory (a sub-directory for the project, and then a sub-subdirectory for
-the bug). It then proceeds with a normal execution of geneseer, with the correct parameters as required for the
-Defects4J bug. The output is also identical to a normal geneseer execution after the Defects4J setup is done.
+the Defects4J bug in the current working directory (a sub-directory for the project, and then a nested subdirectory for
+the bug). It then proceeds with a normal execution of geneseer, with the required parameters for the Defects4J bug.
+After the Defects4J setup, the output is identical to a normal geneseer execution.
 
 The following command line argument is mandatory (with a following value):
 
@@ -64,15 +72,17 @@ After the command line arguments, you must specify on which Defects4J bug genese
 
 For example, an execution of the Defects4J runner may look like this:
 
-```
-java -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.defects4j.Defects4jRunner --defects4j ../defects4j --config.geneseer.llmMutationProbability 0 Cli/11
+```sh
+java -cp geneseer-jar-with-dependencies.jar net.ssehub.program_repair.geneseer.defects4j.Defects4jRunner \
+    --defects4j ../defects4j \
+    --config.genetic.llmMutationProbability 0 Cli/11
 ```
 
 Note that Defects4J typically requires a specific Java version on the path (for Defects4J 2.0.0, this is Java 1.8). Due
 to this, make sure that the `PATH` environment variable is set up so that the proper version of JDK is used. Geneseer
 itself requires a JRE of version 17 or later, which of course conflicts with the environment requirements of Defects4J.
 Thus you may need to specify the full path to the JRE 17 `java` executable when launching the Defects4J runner (e.g. on
-Ubuntu, this is `/usr/lib/jvm/java-1.17.0-openjdk-amd64/bin/java`).
+Ubuntu, this is `/usr/lib/jvm/java-17-openjdk-amd64/bin/java`).
 
 ### Configuration
 
@@ -91,7 +101,7 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.setup.testExecutionTimeoutMs`   | `120000` (2 minutes)   | The number of milliseconds before a test execution is considered timed out. The test process will be killed and the tests will count as failures. |
 | `--config.setup.coverageMatrixSimplified` | `true`                 | Whether to aggregate the coverage per-class instead of running each test method individually when measuring the suspiciousness. If this is `true`, then the execution is (much) faster, but the suspiciousness values will be less accurate. |
 | `--config.setup.suspiciousnessThreshold`  | `0.01`                 | The minimum suspiciousness value required; statements that are less suspicious will be ignored. |
-| `--config.setup.testsToRun`               | `ALL_TESTS`            | Relevant only for the Defects4j runner: Whether to run all tests or only the tests that Defects4j marked as relevant. Possible values are `ALL_TESTS` and `RELEVANT_TESTS`. |
+| `--config.setup.testsToRun`               | `ALL_TESTS`            | Relevant only for the Defects4J runner: Whether to run all tests or only the tests that Defects4J marked as relevant. Possible values are `ALL_TESTS` and `RELEVANT_TESTS`. |
 | `--config.setup.debugTestDriver`          | `false`                | Whether to print debug output of the test driver process to stderr. |
 | `--config.genetic.randomSeed`             | `0`                    | The seed to initialize the random source with. If this is the same (and the test cases are deterministic), then the same result is produced. |
 | `--config.genetic.populationSize`         | `40`                   | The number of variants per generation. |
@@ -102,26 +112,26 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.genetic.llmMutationProbability` | `0.0`                  | The probability that mutations are created by calling an LLM instead of the classic simple mutation operations (insert, swap, delete). |
 | `--config.genetic.statementScope`         | `GLOBAL`               | Defines where other statements for mutations are taken from. Either `GLOBAL` or `FILE`. |
 | `--config.llm.model`                      | `dummy`                | The name of the model to call. The special value `dummy` will not call an API but instead return a static dummy string (for debugging). |
-| `--config.llm.api`                        | not set                | The API endpoint of the LLM. Consists of the provider type and the full endpoint URL, separated by `+` (e.g. `ollama+http://localhost:11434/api/chat`). Valid providers are `ollama` and `openai`. The URL should end with `/api/chat` for `ollama` and `/v1/chat/completions` for `openai`. |
+| `--config.llm.api`                        | not set                | The API endpoint of the LLM. Consists of the provider type and the full endpoint URL, separated by `+` (e.g. `ollama+http://localhost:11434/api/chat`). Valid providers are `ollama` and `openai`. The URL should end with `/api/chat` for Ollama and `/v1/chat/completions` for OpenAI. |
 | `--config.llm.apiToken`                   | not set                | If set, this is added as a `Bearer` token in the `Authorization` header for API calls. |
 | `--config.llm.timeoutMs`                  | `1800000` (30 minutes) | The number of milliseconds before a query to the LLM is considered timed out. |
 | `--config.llm.think`                      | not set                | The thinking/reasoning level to pass to the model. `true` or `false` for most models, `none`, `minimal`, `low`, `medium`, `high`, or `xhigh` for others. |
 | `--config.llm.thinkingDelimiter`          | not set                | If set, everything up to the last occurrence of this sequence in the model output will be considered a thinking/reasoning trace and discarded (for instances where the API does not differentiate between thinking and answer). |
 | `--config.llm.temperature`                | not set                | If set, this defines the temperature of the model. |
-| `--config.llm.contextSize`                | not set                | Only for ollama: the context window size of the model (in tokens). |
-| `--config.llm.seed`                       | not set                | Only for ollama: if set, this defines the seed to use for calls to the model. |
+| `--config.llm.contextSize`                | not set                | Only for Ollama: the context window size of the model (in tokens). |
+| `--config.llm.seed`                       | not set                | Only for Ollama: if set, this defines the seed to use for calls to the model. |
 | `--config.llm.codeContextSelection`       | `SUSPICIOUSNESS`       | The method by which code snippets are ranked for inclusion in the prompt. Possible values: `SUSPICIOUSNESS` and `RAG`. |
 | `--config.llm.maxCodeContext`             | `100`                  | The maximum number of lines of code to supply as code context in a query to the LLM. This does not include test code. |
 | `--config.llm.projectOutline`             | `PARTIAL`              | The type of project outline to add to the prompt. Possible values: `FULL`, `PARTIAL`, `NONE` |
-| `--config.rag.chromadbWorkerPythonBinaryPath`| not set             | Path to the `python` binary to run the `chromadb-worker.py` script. Typically this will end with `.venv/bin/python`, see `chromadb-worker/setup.md`. |
+| `--config.rag.chromadbWorkerPythonBinaryPath`| not set             | Path to the `python` binary with necessary `chromadb` and `ollama` dependencies installed, see [Setup for RAG](#setup-for-rag) below. |
 | `--config.rag.model`                      | not set                | The name of the model to use for embedding. |
-| `--config.rag.api`                        | not set                | The ollama API host (e.g. `http://localhost:11434`) used for embedding. |
+| `--config.rag.api`                        | not set                | The Ollama API host (e.g. `http://localhost:11434`) used for embedding. |
 | `--config.rag.persist`                    | `false`                | Whether to store and/or use the RAG database in the project directory. |
 
 ### Setup for RAG
 
-When using RAG, there needs to a python environment with the `chromadb` and `ollama` dependencies setup. Using a virtual
-environment like this is probably the easiest setup:
+When using RAG, there needs to be a Python environment with the `chromadb` and `ollama` dependencies installed. Using a
+virtual environment like this is probably the easiest setup:
 
 1. Create a venv somewhere (we'll call this `$chromadbPythonDir`): `cd $chromadbPythonDir && python -m venv .venv`
 2. Activate the venv for the current shell: `source $chromadbPythonDir/.venv/bin/activate`

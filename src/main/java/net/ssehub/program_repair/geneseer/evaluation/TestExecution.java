@@ -184,9 +184,14 @@ class TestExecution implements AutoCloseable {
     private void stopProcess() {
         LOG.finer("Stopping test driver process"); 
         
-        process.destroy();
+        try {
+            out.close();
+        } catch (IOException e) {
+            LOG.log(Level.WARNING, "Failed to close stream", e);
+            process.destroy();
+        }
         boolean terminated = ProcessRunner.untilNoInterruptedException(
-                () -> process.waitFor(500, TimeUnit.MILLISECONDS));
+                () -> process.waitFor(8, TimeUnit.SECONDS));
         if (!terminated) {
             LOG.warning("Focribly stopping test driver process");
             process.destroyForcibly();
@@ -205,7 +210,7 @@ class TestExecution implements AutoCloseable {
     }
     
     @Override
-    public void close() throws TestExecutionException {
+    public void close() {
         stopProcess();
         
         try {

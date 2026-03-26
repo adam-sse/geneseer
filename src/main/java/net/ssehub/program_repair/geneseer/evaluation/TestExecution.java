@@ -1,16 +1,19 @@
 package net.ssehub.program_repair.geneseer.evaluation;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.SequenceInputStream;
 import java.io.UncheckedIOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.net.ServerSocket;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -136,7 +139,17 @@ class TestExecution implements AutoCloseable {
             ProcessManager.INSTANCE.trackProcess(process);
             out = new ObjectOutputStream(process.getOutputStream());
             rawIn = process.getInputStream();
-            in = new ObjectInputStream(rawIn);
+            byte[] header = rawIn.readNBytes(4);
+            if (!Arrays.equals(header, new byte[] {(byte) 0xAC, (byte) 0xED, 0x00, 0x05}) ) {
+                int available = rawIn.available();
+                byte[] availableOutput = new byte[header.length + available];
+                System.arraycopy(header, 0, availableOutput, 0, 4);
+                int read = rawIn.read(availableOutput, 4, available);
+                String str = new String(availableOutput, 0, 4 + read);
+                LOG.severe(() -> "Did not get Java serialized stream, but: " + str);
+                throw new IOException("Java process did not start Java serialized stream");
+            }
+            in = new ObjectInputStream(new SequenceInputStream(new ByteArrayInputStream(header), rawIn));
             
             if (!Configuration.INSTANCE.setup().debugTestDriver()) {
                 stderrCapture = new CaptureThread(process.getErrorStream(), "test-driver stderr");
@@ -144,6 +157,7 @@ class TestExecution implements AutoCloseable {
             }
             
         } catch (IOException e) {
+            LOG.log(Level.SEVERE, "Failed to start test driver process", e);
             throw new TestExecutionException("Failed to start test driver process", e);
         }
         

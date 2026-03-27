@@ -134,7 +134,6 @@ public class LlmFixer {
     }
 
     public Query createQuery(Node code, List<TestResult> failingTests, List<CodeSnippet> codeSnippets) {
-        List<String> failureMessages = failingTests.stream().map(TestResult::failureMessage).toList();
         List<TestMethodContext> testMethodContext = TestMethodContext.constructContext(failingTests,
                 projectRoot, encoding);
         String projectOutline = null;
@@ -146,25 +145,26 @@ public class LlmFixer {
         query.addMessage(new Message(Role.SYSTEM, SYSTEM_MESSAGE));
         
         StringBuilder prompt = new StringBuilder();
-        for (int i = 0; i < failureMessages.size(); i++) {
-            if (testMethodContext.get(i) != null) {
-                TestMethodContext context = testMethodContext.get(i);
+        int testNumber = 1;
+        for (TestMethodContext testContext : testMethodContext) {
+            if (testContext.code() != null) {
                 prompt.append("Failing test method");
-                if (failureMessages.size() > 1) {
-                    prompt.append(' ').append(i + 1);
+                if (testMethodContext.size() > 1) {
+                    prompt.append(' ').append(testNumber);
                 }
-                if (context.testClassName() != null) {
-                    prompt.append(" in test class ").append(context.testClassName());
+                if (testContext.testClassName() != null) {
+                    prompt.append(" in test class ").append(testContext.testClassName());
                 }
                 prompt.append(":\n```java\n");
-                prompt.append(context.code());
+                prompt.append(testContext.code());
                 prompt.append("\n```\n");
             }
             prompt.append("Failure message");
-            if (failureMessages.size() > 1) {
-                prompt.append(' ').append(i + 1);
+            if (testMethodContext.size() > 1) {
+                prompt.append(' ').append(testNumber);
             }
-            prompt.append(":\n```\n").append(failureMessages.get(i)).append("\n```\n\n");
+            prompt.append(":\n```\n").append(testContext.testResult().failureMessage()).append("\n```\n\n");
+            testNumber++;
         }
         
         if (projectOutline != null) {

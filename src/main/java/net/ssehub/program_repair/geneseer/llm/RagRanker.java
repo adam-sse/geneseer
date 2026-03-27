@@ -76,10 +76,12 @@ public class RagRanker extends AbstractSnippetRanker {
 
             Map<Node, Double> methodDistances = new HashMap<>();
             for (TestMethodContext testMethod : failingTestMethods) {
-                for (MethodWithSimilarity method : db.query(testMethod.code(), getLineLimit(), allMethods)) {
-                    if (!methodDistances.containsKey(method.ast())
-                            || methodDistances.get(method.ast()) > method.distance()) {
-                        methodDistances.put(method.ast(), method.distance());
+                if (testMethod.code() != null) {
+                    for (MethodWithSimilarity method : db.query(testMethod.code(), getLineLimit(), allMethods)) {
+                        if (!methodDistances.containsKey(method.ast())
+                                || methodDistances.get(method.ast()) > method.distance()) {
+                            methodDistances.put(method.ast(), method.distance());
+                        }
                     }
                 }
             }

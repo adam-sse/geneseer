@@ -82,7 +82,7 @@ public record TestMethodContext(TestResult testResult, String code) {
     }
     
     private static TestLocation findTestLocationInStacktrace(TestResult testResult) {
-        Pattern regex = Pattern.compile(Pattern.quote(testResult.testMethod())
+        Pattern regex = Pattern.compile(Pattern.quote("." + testResult.testMethod())
                 + "\\((?<filename>.+\\.java):(?<lineNumber>[0-9]+)\\)");
         Matcher m = regex.matcher(testResult.failureStacktrace());
         TestLocation result;

@@ -145,6 +145,24 @@ public class LlmFixer {
         query.addMessage(new Message(Role.SYSTEM, SYSTEM_MESSAGE));
         
         StringBuilder prompt = new StringBuilder();
+        writeFailingTestCases(prompt, testMethodContext);
+        writeProjectOutline(prompt, projectOutline);
+        writeCodeSnippets(prompt, codeSnippets);
+        prompt.append("\n\nYou must prefix your fixed code with \"Code snippet number <number>\" to clarify which"
+                + " code snippet you modified (you may modify multiple code snippets). Do not output code snippets"
+                + " that you did not modify. Surround each code snippet with ``` markers (after the code snippet"
+                + " number). Output the complete fixed code that is given to you, even if only a small part of it"
+                + " is changed.");
+        
+        LOG.fine(() -> "Prompt:\n" + prompt);
+        query.addMessage(new Message(Role.USER, prompt.toString()));
+        if (Configuration.INSTANCE.llm().seed() != null) {
+            query.setSeed(Configuration.INSTANCE.llm().seed());
+        }
+        return query;
+    }
+
+    private static void writeFailingTestCases(StringBuilder prompt, List<TestMethodContext> testMethodContext) {
         int testNumber = 1;
         for (TestMethodContext testContext : testMethodContext) {
             if (testContext.code() != null) {
@@ -163,10 +181,18 @@ public class LlmFixer {
             if (testMethodContext.size() > 1) {
                 prompt.append(' ').append(testNumber);
             }
-            prompt.append(":\n```\n").append(testContext.testResult().failureMessage()).append("\n```\n\n");
+            prompt.append(":\n```\n");
+            if (testContext.testResult().failureMessage() != null) {
+                prompt.append(testContext.testResult().failureMessage());
+            } else {
+                prompt.append(testContext.testResult().failureStacktrace());
+            }
+            prompt.append("\n```\n\n");
             testNumber++;
         }
-        
+    }
+
+    private static void writeProjectOutline(StringBuilder prompt, String projectOutline) {
         if (projectOutline != null) {
             prompt.append("Here is a");
             if (Configuration.INSTANCE.llm().projectOutine() == ProjectOutline.PARTIAL) {
@@ -178,7 +204,9 @@ public class LlmFixer {
             prompt.append(projectOutline);
             prompt.append("```\n\n");
         }
-        
+    }
+
+    private static void writeCodeSnippets(StringBuilder prompt, List<CodeSnippet> codeSnippets) {
         prompt.append("Here are " + codeSnippets.size() + " code snippets that may need to be fixed:");
         int index = 1;
         for (CodeSnippet snippet : codeSnippets) {
@@ -188,18 +216,6 @@ public class LlmFixer {
             prompt.append(snippet.getText()).append('\n');
             prompt.append("```");
         }
-        prompt.append("\n\nYou must prefix your fixed code with \"Code snippet number <number>\" to clarify which"
-                + " code snippet you modified (you may modify multiple code snippets). Do not output code snippets"
-                + " that you did not modify. Surround each code snippet with ``` markers (after the code snippet"
-                + " number). Output the complete fixed code that is given to you, even if only a small part of it"
-                + " is changed.");
-        
-        LOG.fine(() -> "Prompt:\n" + prompt);
-        query.addMessage(new Message(Role.USER, prompt.toString()));
-        if (Configuration.INSTANCE.llm().seed() != null) {
-            query.setSeed(Configuration.INSTANCE.llm().seed());
-        }
-        return query;
     }
 
     public List<CodeSnippet> selectMostSuspiciousMethods(Node original, List<TestResult> failingTests)

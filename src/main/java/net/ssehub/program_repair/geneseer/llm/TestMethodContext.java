@@ -20,7 +20,7 @@ import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.code.Parser;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 
-public record TestMethodContext(TestResult testResult, String code, String testClassName) {
+public record TestMethodContext(TestResult testResult, String code) {
     
     private static final Logger LOG = Logger.getLogger(TestMethodContext.class.getName());
     
@@ -62,12 +62,12 @@ public record TestMethodContext(TestResult testResult, String code, String testC
                     LOG.warning(() -> "Found " + found.size() + " tests at " + location + " for test "
                             + failingTest);
                 }
-                result = new TestMethodContext(failingTest, null, null);
+                result = new TestMethodContext(failingTest, null);
             }
                 
         } catch (IOException e) {
             LOG.log(Level.WARNING, "Failed to read test method file", e);
-            result = new TestMethodContext(failingTest, null, null);
+            result = new TestMethodContext(failingTest, null);
         }
         return result;
     }
@@ -121,11 +121,7 @@ public record TestMethodContext(TestResult testResult, String code, String testC
                     + " in file " + testFile + " for test " + failingTest);
         }
         return methods.stream()
-                .map(n -> {
-                    String code = methods.get(0).getTextFormatted();
-                    String testClassName = AstUtils.getEnclosingClass(file, methods.get(0));
-                    return new TestMethodContext(failingTest, code, testClassName);
-                })
+                .map(n -> new TestMethodContext(failingTest, n.getTextFormatted()))
                 .toList();
     }
     

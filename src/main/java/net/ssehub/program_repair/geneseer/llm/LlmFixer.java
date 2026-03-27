@@ -165,23 +165,20 @@ public class LlmFixer {
     private static void writeFailingTestCases(StringBuilder prompt, List<TestMethodContext> testMethodContext) {
         int testNumber = 1;
         for (TestMethodContext testContext : testMethodContext) {
+            prompt.append("Failing test ");
+            if (testMethodContext.size() > 1) {
+                prompt.append("number ").append(testNumber).append(' ');
+            }
+            prompt.append(testContext.testResult().testMethod())
+                    .append("() in ")
+                    .append(testContext.testResult().testClass())
+                    .append('\n');
             if (testContext.code() != null) {
-                prompt.append("Failing test method");
-                if (testMethodContext.size() > 1) {
-                    prompt.append(' ').append(testNumber);
-                }
-                if (testContext.testClassName() != null) {
-                    prompt.append(" in test class ").append(testContext.testClassName());
-                }
-                prompt.append(":\n```java\n");
+                prompt.append("Test code:\n```java\n");
                 prompt.append(testContext.code());
                 prompt.append("\n```\n");
             }
-            prompt.append("Failure message");
-            if (testMethodContext.size() > 1) {
-                prompt.append(' ').append(testNumber);
-            }
-            prompt.append(":\n```\n");
+            prompt.append("Failure message:\n```\n");
             if (testContext.testResult().failureMessage() != null) {
                 prompt.append(testContext.testResult().failureMessage());
             } else {

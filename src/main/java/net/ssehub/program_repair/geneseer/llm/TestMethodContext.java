@@ -11,6 +11,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.Node;
@@ -89,9 +90,11 @@ public record TestMethodContext(TestResult testResult, String code, String testC
             result = new TestLocation(m.group("filename"), testResult.testMethod(),
                     Integer.parseInt(m.group("lineNumber")));
         } else {
+            String testFileName = testResult.testClass()
+                    .substring(testResult.testClass().lastIndexOf('.') + 1) + ".java";
+            result = new TestLocation(testFileName, testResult.testMethod(), -1);
             LOG.warning(() -> "Could not find location of test " + testResult + " in stacktrace:\n"
-                    + testResult.failureStacktrace());
-            result = new TestLocation(null, null, -1);
+                    + testResult.failureStacktrace() + " -> guessing: " + result);
         }
         
         return result;
@@ -101,15 +104,17 @@ public record TestMethodContext(TestResult testResult, String code, String testC
             Path testFile, Charset encoding) throws IOException {
         
         Node file = new Parser().parseSingleFile(testFile, encoding);
-        List<Node> methods = file.stream()
+        Stream<Node> stream = file.stream()
                 .filter(n -> n.getType() == Type.METHOD)
-                .filter(n -> n.getMetadata(Metadata.METHOD_NAME).equals(location.methodName()))
-                .filter(n -> {
-                    int lineStart = AstUtils.getLine(file, n);
-                    int lineEnd = lineStart + AstUtils.getAdditionalLineCount(n);
-                    return location.lineNumber() >= lineStart && location.lineNumber() <= lineEnd;
-                })
-                .toList();
+                .filter(n -> n.getMetadata(Metadata.METHOD_NAME).equals(location.methodName()));
+        if (location.lineNumber() != -1) {
+            stream = stream.filter(n -> {
+                int lineStart = AstUtils.getLine(file, n);
+                int lineEnd = lineStart + AstUtils.getAdditionalLineCount(n);
+                return location.lineNumber() >= lineStart && location.lineNumber() <= lineEnd;
+            });
+        }
+        List<Node> methods = stream.toList();
 
         if (methods.size() != 1) {
             LOG.warning(() -> "Found " + methods.size() + " possible test code candidates at " + location

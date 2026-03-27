@@ -93,7 +93,7 @@ public record TestMethodContext(TestResult testResult, String code, String testC
             String testFileName = testResult.testClass()
                     .substring(testResult.testClass().lastIndexOf('.') + 1) + ".java";
             result = new TestLocation(testFileName, testResult.testMethod(), -1);
-            LOG.warning(() -> "Could not find location of test " + testResult + " in stacktrace:\n"
+            LOG.fine(() -> "Could not find location of test " + testResult + " in stacktrace:\n"
                     + testResult.failureStacktrace() + " -> guessing: " + result);
         }
         
@@ -117,7 +117,7 @@ public record TestMethodContext(TestResult testResult, String code, String testC
         List<Node> methods = stream.toList();
 
         if (methods.size() != 1) {
-            LOG.warning(() -> "Found " + methods.size() + " possible test code candidates at " + location
+            LOG.fine(() -> "Found " + methods.size() + " possible test code candidates at " + location
                     + " for test " + failingTest);
         }
         return methods.stream()

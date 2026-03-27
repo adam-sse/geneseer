@@ -43,6 +43,11 @@ public class RagRanker extends AbstractSnippetRanker {
             throw new IllegalArgumentException("Path to python for chromadb-worker.py script not set");
         }
     }
+    
+    @Override
+    public boolean needsTestMethodContext() {
+        return true;
+    }
 
     @Override
     public LinkedHashMap<Node, Double> rankMethods(Node code, List<TestMethodContext> failingTestMethods)

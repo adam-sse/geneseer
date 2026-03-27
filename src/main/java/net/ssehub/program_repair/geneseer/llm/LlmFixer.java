@@ -205,8 +205,8 @@ public class LlmFixer {
     public List<CodeSnippet> selectMostSuspiciousMethods(Node original, List<TestResult> failingTests)
             throws IOException {
         
-        List<CodeSnippet> selected = ranker.selectCodeSnippets(original,
-                TestMethodContext.constructContext(failingTests, projectRoot, encoding));
+        List<CodeSnippet> selected = ranker.selectCodeSnippets(original, ranker.needsTestMethodContext()
+                ? TestMethodContext.constructContext(failingTests, projectRoot, encoding) : null);
         return selected;
     }
     

@@ -145,6 +145,12 @@ public class LlmFixer {
         query.addMessage(new Message(Role.SYSTEM, SYSTEM_MESSAGE));
         
         StringBuilder prompt = new StringBuilder();
+        prompt.append("Your task is to fix the bug that is causing the following test case failure");
+        if (testMethodContext.size() > 1) {
+            prompt.append("s.\n\n");
+        } else {
+            prompt.append(".\n\n");
+        }
         writeFailingTestCases(prompt, testMethodContext);
         writeProjectOutline(prompt, projectOutline);
         writeCodeSnippets(prompt, codeSnippets);

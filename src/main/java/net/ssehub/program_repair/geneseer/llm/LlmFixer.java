@@ -360,7 +360,7 @@ public class LlmFixer {
         }
         
         if (!linesOutsideOfCode.isEmpty()) {
-            LOG.warning(() -> "Found answer lines outside of code blocks:\n"
+            LOG.info(() -> "Found answer lines outside of code blocks:\n"
                     + linesOutsideOfCode.stream().collect(Collectors.joining("\n")));
         }
     }

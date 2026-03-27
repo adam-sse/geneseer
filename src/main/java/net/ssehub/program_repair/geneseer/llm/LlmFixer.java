@@ -154,11 +154,11 @@ public class LlmFixer {
         writeFailingTestCases(prompt, testMethodContext);
         writeProjectOutline(prompt, projectOutline);
         writeCodeSnippets(prompt, codeSnippets);
-        prompt.append("\n\nYou must prefix your fixed code with \"Code snippet number <number>\" to clarify which"
-                + " code snippet you modified (you may modify multiple code snippets). Do not output code snippets"
-                + " that you did not modify. Surround each code snippet with ``` markers (after the code snippet"
-                + " number). Output the complete fixed code that is given to you, even if only a small part of it"
-                + " is changed.");
+        prompt.append("\n\nOutput the fixed code snippets! You must prefix your fixed code with"
+                + " \"Code snippet number <number>\" to clarify which code snippet you modified (you may modify"
+                + " multiple code snippets). Do not output code snippets that you did not modify. Surround each code"
+                + " snippet with ``` markers (after the code snippet number). Output the complete fixed code that is"
+                + " given to you, even if only a small part of it is changed.");
         
         LOG.fine(() -> "Prompt:\n" + prompt);
         query.addMessage(new Message(Role.USER, prompt.toString()));

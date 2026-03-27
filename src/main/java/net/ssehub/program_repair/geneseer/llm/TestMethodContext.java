@@ -1,5 +1,6 @@
 package net.ssehub.program_repair.geneseer.llm;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -20,7 +21,7 @@ import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.code.Parser;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 
-public record TestMethodContext(TestResult testResult, String code) {
+public record TestMethodContext(TestResult testResult, String code, Path file) {
     
     private static final Logger LOG = Logger.getLogger(TestMethodContext.class.getName());
     
@@ -47,27 +48,47 @@ public record TestMethodContext(TestResult testResult, String code) {
             
             List<TestMethodContext> found = new LinkedList<>();
             for (Path testFile : testFiles) {
-                found.addAll(findTestMethodInFile(failingTest, location, testFile, encoding));
+                found.addAll(findTestMethodInFile(failingTest, location, testFile, projectRoot, encoding));
             }
             
             if (found.size() == 1) {
                 result = found.get(0);
-            } else {
-                if (testFiles.isEmpty()) {
-                    LOG.warning(() -> "Could not find test file at " + location + " for test " + failingTest);
-                } else if (found.isEmpty()) {
-                    LOG.warning(() -> "Could not find test method at " + location + " in any of these test files "
-                            + testFiles + " for test " + failingTest);
+            } else if (found.size() > 1) {
+                int pathMatchesClassName = -1;
+                Path expected = Path.of(failingTest.testClass().replace('.', File.separatorChar) + ".java");
+                for (int i = 0; i < found.size(); i++) {
+                    if (found.get(i).file().endsWith(expected)) {
+                        if (pathMatchesClassName == -1) {
+                            pathMatchesClassName = i;
+                        } else {
+                            // two found paths match...
+                            pathMatchesClassName = -1;
+                            break;
+                        }
+                    }
+                }
+                
+                if (pathMatchesClassName != -1) {
+                    result = found.get(pathMatchesClassName);
                 } else {
                     LOG.warning(() -> "Found " + found.size() + " tests at " + location + " for test "
                             + failingTest);
+                    result = new TestMethodContext(failingTest, null, null);
                 }
-                result = new TestMethodContext(failingTest, null);
+                
+            } else {
+                if (testFiles.isEmpty()) {
+                    LOG.warning(() -> "Could not find test file at " + location + " for test " + failingTest);
+                } else {
+                    LOG.warning(() -> "Could not find test method at " + location + " in any of these test files "
+                            + testFiles + " for test " + failingTest);
+                }
+                result = new TestMethodContext(failingTest, null, null);
             }
                 
         } catch (IOException e) {
             LOG.log(Level.WARNING, "Failed to read test method file", e);
-            result = new TestMethodContext(failingTest, null);
+            result = new TestMethodContext(failingTest, null, null);
         }
         return result;
     }
@@ -101,7 +122,7 @@ public record TestMethodContext(TestResult testResult, String code) {
     }
     
     private static List<TestMethodContext> findTestMethodInFile(TestResult failingTest, TestLocation location,
-            Path testFile, Charset encoding) throws IOException {
+            Path testFile, Path projectRoot, Charset encoding) throws IOException {
         
         Node file = new Parser().parseSingleFile(testFile, encoding);
         Stream<Node> stream = file.stream()
@@ -121,7 +142,7 @@ public record TestMethodContext(TestResult testResult, String code) {
                     + " in file " + testFile + " for test " + failingTest);
         }
         return methods.stream()
-                .map(n -> new TestMethodContext(failingTest, n.getTextFormatted()))
+                .map(n -> new TestMethodContext(failingTest, n.getTextFormatted(), projectRoot.relativize(testFile)))
                 .toList();
     }
     

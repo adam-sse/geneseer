@@ -118,7 +118,7 @@ public record TestMethodContext(TestResult testResult, String code, String testC
 
         if (methods.size() != 1) {
             LOG.fine(() -> "Found " + methods.size() + " possible test code candidates at " + location
-                    + " for test " + failingTest);
+                    + " in file " + testFile + " for test " + failingTest);
         }
         return methods.stream()
                 .map(n -> {

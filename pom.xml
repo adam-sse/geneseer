@@ -52,7 +52,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.9.0</version>
+                <version>3.10.0</version>
                 <executions>
                     <execution>
                         <id>copy-geneseer-test-driver</id>
@@ -167,7 +167,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.4.0</version>
+                <version>3.5.0</version>
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -190,7 +190,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
+                <version>3.5.5</version>
             </plugin>
             <plugin>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -277,13 +277,13 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.14.2</version>
+            <version>5.14.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
-            <version>5.14.2</version>
+            <version>5.14.3</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

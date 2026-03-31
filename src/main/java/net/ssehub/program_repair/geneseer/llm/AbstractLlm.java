@@ -24,6 +24,8 @@ public abstract class AbstractLlm implements ILlm {
     
     private static final Logger LOG = Logger.getLogger(AbstractLlm.class.getName());
     
+    private static final int MAX_RETRIES = 2;
+    
     private String model;
     
     private URI apiUrl;
@@ -128,22 +130,38 @@ public abstract class AbstractLlm implements ILlm {
     
     private String executePost(String content) throws IOException {
         HttpRequest request = createRequest(content);
-        HttpResponse<String> response;
-        try {
-            response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("Failed to run HTTP call", e);
+        
+        String result = null;
+        int retries = 0;
+        while (result == null) {
+            HttpResponse<String> response;
+            try {
+                response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Failed to run HTTP call", e);
+            }
+            
+            int status = response.statusCode();
+            String body = response.body();
+            
+            if (status >= 200 && status < 300) {
+                result = body;
+            } else if (status >= 500 && status < 600) {
+                if (retries < MAX_RETRIES) {
+                    retries++;
+                    LOG.warning("HTTP request failed with " + status + ": " + body + ". Retrying ("
+                            + retries + "/" + MAX_RETRIES + ")");
+                } else {
+                    throw new IOException("HTTP request failed after " + MAX_RETRIES + " retries with "
+                            + status + ": " + body); 
+                }
+            } else {
+                throw new IOException("HTTP request failed with " + status + ": " + body);
+            }
         }
         
-        int status = response.statusCode();
-        String body = response.body();
-        
-        if (status >= 200 && status < 300) {
-            return body;
-        } else {
-            throw new IOException("HTTP request failed with " + status + ": " + body);
-        }
+        return result;
     }
     
     private HttpRequest createRequest(String content) {

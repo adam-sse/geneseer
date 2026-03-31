@@ -2,7 +2,6 @@ package net.ssehub.program_repair.geneseer.fixers;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -42,7 +41,7 @@ public class LlmQueryAnalysis implements IFixer {
     @Override
     public Node run(Node original, TestSuite testSuite, Map<String, Object> result) throws IOException {
         Encoding tokenEncoding = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.CL100K_BASE);
-        List<TestResult> failingTests = new ArrayList<>(testSuite.getInitialFailingTestResults()); 
+        List<TestResult> failingTests = testSuite.getInitialFailingTestResults(); 
         
         List<CodeSnippet> codeSnippets = llmFixer.selectMostSuspiciousMethods(original, failingTests);
         

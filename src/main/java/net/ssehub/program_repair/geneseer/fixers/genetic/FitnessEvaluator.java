@@ -36,9 +36,7 @@ class FitnessEvaluator {
         this.bestVariant = unmodifiedOriginal;
         
         unmodifiedOriginal.setFitness(getFitness(testSuite.getInitialTestResults()),
-                testSuite.getInitialTestResults().stream()
-                        .filter(TestResult::isFailure)
-                        .toList());
+                testSuite.getInitialFailingTestResults());
     }
 
     private double getFitness(Collection<TestResult> testResult) {

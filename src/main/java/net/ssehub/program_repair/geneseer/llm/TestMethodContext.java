@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
@@ -25,7 +24,7 @@ public record TestMethodContext(TestResult testResult, String code, Path file) {
     
     private static final Logger LOG = Logger.getLogger(TestMethodContext.class.getName());
     
-    public static List<TestMethodContext> constructContext(Collection<TestResult> failingTests, Path projectRoot,
+    public static List<TestMethodContext> constructContext(List<TestResult> failingTests, Path projectRoot,
             Charset encoding) {
         return failingTests.stream()
                 .map(tr -> constructTestMethodContext(tr, projectRoot, encoding))

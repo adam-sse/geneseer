@@ -2,9 +2,12 @@ package net.ssehub.program_repair.geneseer.evaluation;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -52,9 +55,9 @@ public class TestSuite {
         
         this.testMethods = new HashMap<>();
         for (String testClass : project.getTestClassNames()) {
-            testMethods.put(testClass, new HashSet<>());
+            testMethods.put(testClass, new LinkedHashSet<>());
         }
-        this.initialTestResults = new HashMap<>();
+        this.initialTestResults = new LinkedHashMap<>();
         
         initialize();
     }
@@ -224,20 +227,20 @@ public class TestSuite {
         return modifiedFiles;
     }
     
-    public Set<TestResult> getInitialTestResults() {
-        return Collections.unmodifiableSet(new HashSet<>(initialTestResults.values()));
+    public List<TestResult> getInitialTestResults() {
+        return Collections.unmodifiableList(new ArrayList<>(initialTestResults.values()));
     }
     
-    public Set<TestResult> getInitialPassingTestResults() {
+    public List<TestResult> getInitialPassingTestResults() {
         return initialTestResults.values().stream()
                 .filter(t -> !t.isFailure())
-                .collect(Collectors.toUnmodifiableSet());
+                .collect(Collectors.toUnmodifiableList());
     }
     
-    public Set<TestResult> getInitialFailingTestResults() {
+    public List<TestResult> getInitialFailingTestResults() {
         return initialTestResults.values().stream()
                 .filter(TestResult::isFailure)
-                .collect(Collectors.toUnmodifiableSet());
+                .collect(Collectors.toUnmodifiableList());
     }
     
     public int getNumCompilations() {

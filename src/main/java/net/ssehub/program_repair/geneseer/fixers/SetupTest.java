@@ -1,6 +1,5 @@
 package net.ssehub.program_repair.geneseer.fixers;
 
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -15,17 +14,14 @@ public class SetupTest implements IFixer {
     
     @Override
     public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) {
-        LOG.info(() -> testSuite.getInitialFailingTestResults().size() + " failing tests:");
-        List<String> failingTests = new LinkedList<>();
-        for (TestResult testResult : testSuite.getInitialTestResults()) {
-            if (testResult.isFailure()) {
-                String message = testResult.failureMessage() != null
-                        ? testResult.failureMessage() : testResult.failureStacktrace();
-                LOG.info(() -> "    " + testResult + " " + message);
-                failingTests.add(testResult.toString());
-            }
+        List<TestResult> failingTests = testSuite.getInitialFailingTestResults();
+        LOG.info(() -> failingTests.size() + " failing tests:");
+        for (TestResult testResult : failingTests) {
+            String message = testResult.failureMessage() != null
+                    ? testResult.failureMessage() : testResult.failureStacktrace();
+            LOG.info(() -> "    " + testResult + " " + message);
         }
-        result.put("failingTests", failingTests);
+        result.put("failingTests", failingTests.stream().map(TestResult::toString).toList());
         if (failingTests.isEmpty()) {
             result.put("result", "NO_FAILING_TESTS");
         } else {

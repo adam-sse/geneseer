@@ -19,7 +19,9 @@ public class SetupTest implements IFixer {
         List<String> failingTests = new LinkedList<>();
         for (TestResult testResult : testSuite.getInitialTestResults()) {
             if (testResult.isFailure()) {
-                LOG.info(() -> "    " + testResult + " " + testResult.failureMessage());
+                String message = testResult.failureMessage() != null
+                        ? testResult.failureMessage() : testResult.failureStacktrace();
+                LOG.info(() -> "    " + testResult + " " + message);
                 failingTests.add(testResult.toString());
             }
         }

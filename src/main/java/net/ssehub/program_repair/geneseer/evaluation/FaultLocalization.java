@@ -141,11 +141,9 @@ class FaultLocalization {
     private Map<String, Node> getFileNodesByClassName(Node ast) {
         Map<String, Node> classes = new HashMap<>(ast.childCount());
         for (Node file : ast.childIterator()) {
-            String className = file.getMetadata(Metadata.FILE_NAME).toString().replaceAll("[/\\\\]", ".");
-            if (className.endsWith(".java")) {
-                className = className.substring(0, className.length() - ".java".length());
-            }
-            classes.put(className, file);
+            file.stream()
+                    .filter(n -> n.getMetadata(Metadata.TYPE_NAME) != null)
+                    .forEach(n -> classes.put((String) n.getMetadata(Metadata.TYPE_NAME), file));
         }
         return classes;
     }
@@ -222,13 +220,7 @@ class FaultLocalization {
         }
         
         for (Map.Entry<Location, Set<TestResult>> entry : coverage.entrySet()) {
-            String className = entry.getKey().className();
-            int dollarIndex = className.indexOf('$');
-            if (dollarIndex != -1) {
-                className = className.substring(0, dollarIndex);
-            }
-            
-            Node classNode = classes.get(className);
+            Node classNode = findClassNode(entry.getKey().className(), classes);
             if (classNode != null) {
                 @SuppressWarnings("unchecked")
                 Set<String> coveredBy = (Set<String>) classNode.getMetadata(Metadata.COVERED_BY);

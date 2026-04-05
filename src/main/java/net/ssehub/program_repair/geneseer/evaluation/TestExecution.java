@@ -193,7 +193,7 @@ class TestExecution implements AutoCloseable {
         boolean terminated = ProcessRunner.untilNoInterruptedException(
                 () -> process.waitFor(8, TimeUnit.SECONDS));
         if (!terminated) {
-            LOG.warning("Focribly stopping test driver process");
+            LOG.warning("Forcibly stopping test driver process");
             process.destroyForcibly();
         }
         

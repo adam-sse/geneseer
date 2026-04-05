@@ -52,22 +52,21 @@ class FaultLocalization {
         LinkedHashMap<Location, Double> suspiciousness = measureSuspiciousness(tests, variantBinDir, ast);
         
         Map<String, Node> classes = getFileNodesByClassName(ast);
-        Map<String, AstLocations> locations = new HashMap<>(classes.size());
-        for (Map.Entry<String, Node> entry : classes.entrySet()) {
-            locations.put(entry.getKey(), new AstLocations(entry.getValue()));
+        Map<Node, AstLocations> locations = new HashMap<>(classes.size());
+        for (Node clazz : classes.values()) {
+            locations.put(clazz, new AstLocations(clazz));
         }
         
         for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
-            String className = getClassNameWithoutDollar(entry.getKey().className());
             int line = entry.getKey().line();
             double susValue = entry.getValue();
             
-            Node classNode = classes.get(className);
+            Node classNode = findClassNode(entry.getKey().className(), classes);
             if (classNode != null) {
                 String fileName = classNode.getMetadata(Metadata.FILE_NAME).toString();
                 List<Node> matchingStatements = classNode.stream()
                         .filter(n -> n.getType() == Type.STATEMENT)
-                        .filter(n -> locations.get(className).getStatementsAtLine(line).contains(n))
+                        .filter(n -> locations.get(classNode).getStatementsAtLine(line).contains(n))
                         .collect(Collectors.toList());
                 
                 if (matchingStatements.isEmpty()) {
@@ -90,8 +89,7 @@ class FaultLocalization {
                     }
                 }
             } else {
-                String cn = className;
-                LOG.warning(() -> "Can't find class name " + cn);
+                LOG.warning(() -> "Can't find class in AST: " + entry.getKey().className());
             }
         }
         removeBelowThreshold(ast, Configuration.INSTANCE.setup().suspiciousnessThreshold());
@@ -99,15 +97,17 @@ class FaultLocalization {
         LOG.info(() -> ast.stream().filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null).count()
                 + " suspicious statements");
     }
-
-    private static String getClassNameWithoutDollar(String className) {
-        int dollarIndex = className.indexOf('$');
-        if (dollarIndex != -1) {
-            className = className.substring(0, dollarIndex);
-        }
-        return className;
-    }
     
+    private static Node findClassNode(String classNameFromSuspiciousness, Map<String, Node> classes) {
+        Node result = classes.get(classNameFromSuspiciousness);
+        int dollarIndex;
+        while (result == null && (dollarIndex = classNameFromSuspiciousness.lastIndexOf('$')) != -1) {
+            classNameFromSuspiciousness = classNameFromSuspiciousness.substring(0, dollarIndex);
+            result = classes.get(classNameFromSuspiciousness);
+        }
+        return result;
+    }
+
     private static void removeBelowThreshold(Node ast, double threshold) {
         int count = (int) ast.stream()
                 .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)

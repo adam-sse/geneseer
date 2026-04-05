@@ -138,7 +138,7 @@ class FaultLocalization {
         }
     }
 
-    private Map<String, Node> getFileNodesByClassName(Node ast) {
+    private static Map<String, Node> getFileNodesByClassName(Node ast) {
         Map<String, Node> classes = new HashMap<>(ast.childCount());
         for (Node file : ast.childIterator()) {
             file.stream()
@@ -148,7 +148,7 @@ class FaultLocalization {
         return classes;
     }
     
-    private void removeParentsOfLastElement(List<Node> nodes, Node root) {
+    private static void removeParentsOfLastElement(List<Node> nodes, Node root) {
         Node last = nodes.get(nodes.size() - 1);
         List<Node> parentsToRemove = root.getPath(last);
         
@@ -211,7 +211,7 @@ class FaultLocalization {
         }
     }
     
-    private void annotateClassBasedCoverageOnAstNodes(Map<Location, Set<TestResult>> coverage, Node ast) {
+    private static void annotateClassBasedCoverageOnAstNodes(Map<Location, Set<TestResult>> coverage, Node ast) {
         Map<String, Node> classes = getFileNodesByClassName(ast);
         for (Node clazz : classes.values()) {
             if (clazz.getMetadata(Metadata.COVERED_BY) == null) {
@@ -257,7 +257,7 @@ class FaultLocalization {
         return coverage;
     }
     
-    private void measureCoverageWithClassAggregation(List<TestResult> tests, Path classesDirectory,
+    private static void measureCoverageWithClassAggregation(List<TestResult> tests, Path classesDirectory,
             TestExecution testExec, Map<Location, Set<TestResult>> result) throws TestExecutionException {
         
         Map<String, List<TestResult>> testsByClass = new HashMap<>();
@@ -275,7 +275,7 @@ class FaultLocalization {
         }
     }
     
-    private void measureCoverageForWholeClass(String className, List<TestResult> tests, Path classesDirectory,
+    private static void measureCoverageForWholeClass(String className, List<TestResult> tests, Path classesDirectory,
             TestExecution testExec, Map<Location, Set<TestResult>> result) throws TestExecutionException {
         
         boolean containsFailure = tests.stream().filter(TestResult::isFailure).findAny().isPresent();
@@ -325,7 +325,7 @@ class FaultLocalization {
         }
     }
     
-    private void measureCoverageForSingleTest(TestResult test, Map<Location, Set<TestResult>> coverage,
+    private static void measureCoverageForSingleTest(TestResult test, Map<Location, Set<TestResult>> coverage,
             TestExecution testExec, Path classesDirectory) throws TestExecutionException {
         try {
             TestResultWithCoverage testResult = testExec.executeTestMethodWithCoverage(
@@ -353,8 +353,8 @@ class FaultLocalization {
         }
     }
     
-    private void parseJacocoCoverage(List<TestResult> test, ExecutionDataStore executionData, Path classesDirectory,
-            Map<Location, Set<TestResult>> coverage) throws TestCoverageException {
+    private static void parseJacocoCoverage(List<TestResult> test, ExecutionDataStore executionData,
+            Path classesDirectory, Map<Location, Set<TestResult>> coverage) throws TestCoverageException {
 
         final CoverageBuilder coverageBuilder = new CoverageBuilder();
         final Analyzer analyzer = new Analyzer(executionData, coverageBuilder);

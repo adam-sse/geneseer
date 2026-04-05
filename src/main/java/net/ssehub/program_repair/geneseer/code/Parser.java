@@ -24,13 +24,18 @@ import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.ClassBodyDecl
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.InterfaceBodyDeclarationContext;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.InterfaceMemberDeclarationContext;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.MemberDeclarationContext;
+import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.PackageDeclarationContext;
 import net.ssehub.program_repair.geneseer.parsing.antlr.JavaParser.TypeDeclarationContext;
 
 public class Parser {
     
     private static final Logger LOG = Logger.getLogger(Parser.class.getName());
 
+    private Path currentFile;
+    
     private Token previousToken;
+    
+    private String packageName;
     
     public Parser() {
     }
@@ -80,7 +85,7 @@ public class Parser {
                 }
             });
             ParseTree antlrTree = parser.compilationUnit();
-            previousToken = null;
+            resetBeforeConvert(file);
             return convert(antlrTree);
             
         } catch (IOException e) {
@@ -113,6 +118,12 @@ public class Parser {
         return result;
     }
     
+    private void resetBeforeConvert(Path currentFile) {
+        this.currentFile = currentFile;
+        previousToken = null;
+        packageName = null;
+    }
+    
     private Node convert(ParseTree antlrTree) {
         Node result;
         if (antlrTree instanceof TerminalNode terminal) {
@@ -142,7 +153,14 @@ public class Parser {
         Node result;
         Type nodeType = getType(antlrTree.getClass().getSimpleName());
         String methodName = null;
-        if (antlrTree instanceof ClassBodyDeclarationContext decl) {
+        if (antlrTree instanceof PackageDeclarationContext pkg) {
+            String qualifiedName = pkg.qualifiedName().getText().replaceAll("\\p{javaWhitespace}", "");
+            if (packageName != null) {
+                LOG.warning(() -> "Found multiple package declarations in file " + currentFile
+                        + "; previous: " + packageName + " current: " + qualifiedName);
+            }
+            packageName = qualifiedName;
+        } else if (antlrTree instanceof ClassBodyDeclarationContext decl) {
             if (decl.memberDeclaration() != null) {
                 MemberDeclarationContext memberDecl = decl.memberDeclaration();
                 if (memberDecl.methodDeclaration() != null) {
@@ -204,6 +222,9 @@ public class Parser {
             typeName = typeDecl.recordDeclaration().identifier().getText();
         } else {
             typeName = null;
+        }
+        if (typeName != null && packageName != null) {
+            typeName = packageName + '.' + typeName;
         }
         return typeName;
     }

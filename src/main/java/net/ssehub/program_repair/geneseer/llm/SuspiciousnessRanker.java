@@ -9,7 +9,7 @@ import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
 
-public class SuspiciousnessRanker extends AbstractSnippetRanker {
+public class SuspiciousnessRanker extends AbstractMethodRanker {
 
     public SuspiciousnessRanker(int lineLimit) {
         super(lineLimit);

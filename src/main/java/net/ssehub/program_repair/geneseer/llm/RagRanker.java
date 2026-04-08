@@ -17,7 +17,7 @@ import net.ssehub.program_repair.geneseer.llm.rag.ChromaDb;
 import net.ssehub.program_repair.geneseer.llm.rag.ChromaDb.Method;
 import net.ssehub.program_repair.geneseer.llm.rag.ChromaDb.MethodWithSimilarity;
 
-public class RagRanker extends AbstractSnippetRanker {
+public class RagRanker extends AbstractMethodRanker {
     
     private static final Logger LOG = Logger.getLogger(RagRanker.class.getName());
     

@@ -9,13 +9,13 @@ import java.util.Map;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.llm.CodeSnippet.LineRange;
 
-public abstract class AbstractSnippetRanker implements ISnippetRanker {
+public abstract class AbstractMethodRanker implements ISnippetRanker {
 
     private int lineLimit;
     
     private double lastCutoff;
     
-    public AbstractSnippetRanker(int lineLimit) {
+    public AbstractMethodRanker(int lineLimit) {
         this.lineLimit = lineLimit;
     }
     

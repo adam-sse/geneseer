@@ -281,7 +281,12 @@ public class LlmFixer {
             break;
             
         case ATTRIBUTE:
-            outline.append(indentation).append(node.getTextSingleLine()).append("\n");
+            String text = node.getTextSingleLine();
+            int assignmentIndex = text.indexOf('=');
+            if (assignmentIndex != -1) {
+                text = text.substring(0, assignmentIndex).trim() + ';';
+            }
+            outline.append(indentation).append(text).append("\n");
             break;
             
         default:

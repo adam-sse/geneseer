@@ -276,6 +276,8 @@ public class Configuration {
         public enum ProjectOutline {
             FULL, PARTIAL, NONE
         }
+        private Option<Boolean> structuredOutput = new Option<>("structuredOutput",
+                "Structured output", false, Boolean::parseBoolean);
         
         public LlmConfiguration() {
             super("llm", "LLM Configuration", new LinkedList<>());
@@ -291,6 +293,7 @@ public class Configuration {
             super.options.add(codeContextSelection);
             super.options.add(maxCodeContext);
             super.options.add(projectOutline);
+            super.options.add(structuredOutput);
         }
         
         public String model() {
@@ -339,6 +342,10 @@ public class Configuration {
         
         public ProjectOutline projectOutine() {
             return projectOutline.getValue();
+        }
+        
+        public boolean structuredOutput() {
+            return structuredOutput.getValue();
         }
     }
     

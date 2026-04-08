@@ -123,6 +123,7 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.llm.codeContextSelection`       | `SUSPICIOUSNESS`       | The method by which code snippets are ranked for inclusion in the prompt. Possible values: `SUSPICIOUSNESS` and `RAG`. |
 | `--config.llm.maxCodeContext`             | `100`                  | The maximum number of lines of code to supply as code context in a query to the LLM. This does not include test code. |
 | `--config.llm.projectOutline`             | `PARTIAL`              | The type of project outline to add to the prompt. Possible values: `FULL`, `PARTIAL`, `NONE` |
+| `--config.llm.structuredOutput`           | `false`                | If set to `true`, enforce structured output of the LLM via JSON schema. |
 | `--config.rag.chromadbWorkerPythonBinaryPath`| not set             | Path to the `python` binary with necessary `chromadb` and `ollama` dependencies installed, see [Setup for RAG](#setup-for-rag) below. |
 | `--config.rag.model`                      | not set                | The name of the model to use for embedding. |
 | `--config.rag.api`                        | not set                | The Ollama API host (e.g. `http://localhost:11434`) used for embedding. |

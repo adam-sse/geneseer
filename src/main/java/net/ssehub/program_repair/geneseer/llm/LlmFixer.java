@@ -5,6 +5,7 @@ import java.net.http.HttpTimeoutException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -15,6 +16,11 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Configuration.LlmConfiguration.ProjectOutline;
@@ -27,6 +33,7 @@ import net.ssehub.program_repair.geneseer.code.Parser;
 import net.ssehub.program_repair.geneseer.code.Writer;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
+import net.ssehub.program_repair.geneseer.util.JsonUtils;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
@@ -71,10 +78,13 @@ public class LlmFixer {
         String answer = runQuery(query);
         LOG.fine(() -> "Got answer:\n" + answer);
         
-        Node variant = original.clone();
-        Path sourceDir = null;
+        Optional<Node> result;
         try {
-            parseAnswerSnippets(answer, codeSnippets);
+            if (Configuration.INSTANCE.llm().structuredOutput()) {
+                parseStructuredAnswer(answer, codeSnippets);
+            } else {
+                parseUnstructuredAnswer(answer, codeSnippets);
+            }
             
             Map<Path, List<CodeSnippet>> modifiedSnippetsByFile = new HashMap<>(codeSnippets.size());
             for (CodeSnippet snippet : codeSnippets) {
@@ -86,13 +96,32 @@ public class LlmFixer {
                 }
             }
             
-            LOG.info(() -> "LLM answer has modified " + codeSnippets.stream()
+            long numModified = codeSnippets.stream()
                     .filter(s -> s.getNewLines() != null)
-                    .count() + " snippets in " + modifiedSnippetsByFile.size() + " files");
+                    .count();
+            LOG.info(() -> "LLM answer has modified " + numModified + " snippets in "
+                    + modifiedSnippetsByFile.size() + " files");
             
-            sourceDir = tempDirManager.createTemporaryDirectory();
+            if (numModified > 0) {
+                result = Optional.of(parseModifiedCode(original, modifiedSnippetsByFile));
+            } else {
+                result = Optional.empty();
+            }
+        } catch (AnswerDoesNotApplyException e) {
+            LOG.log(Level.WARNING, "Answer cannot be applied to variant", e);
+            result = Optional.empty();
+        }
+        
+        return result;
+    }
+
+    private Node parseModifiedCode(Node original, Map<Path, List<CodeSnippet>> modifiedSnippetsByFile)
+            throws IOException, AnswerDoesNotApplyException {
+        Path sourceDir = tempDirManager.createTemporaryDirectory();
+        try {
             Writer.write(original, sourceDir, encoding);
             Parser parser = new Parser();
+            Node variant = original.clone();
             for (Map.Entry<Path, List<CodeSnippet>> entry : modifiedSnippetsByFile.entrySet()) {
                 Path absolutePath = sourceDir.resolve(entry.getKey());
                 writeModifiedFile(absolutePath, entry.getValue());
@@ -106,31 +135,25 @@ public class LlmFixer {
                     }
                 }
                 if (originalIndex == -1) {
-                    throw new AnswerDoesNotApplyException("Can't find modified file " + entry.getKey() + " in AST");
+                    throw new AnswerDoesNotApplyException("can't find modified file " + entry.getKey() + " in AST");
                 }
                 
                 Node modifiedFileNode = parser.parseSingleFile(absolutePath, encoding);
                 modifiedFileNode.copyMetadataFromNode(originalFileNode);
                 variant.set(originalIndex, modifiedFileNode);
             }
-
+    
             try {
                 String astDiff = AstDiff.getDiff(original, variant, tempDirManager, encoding);
                 LOG.info(() -> "Diff of created variant:\n" + astDiff);
             } catch (IOException e) {
                 LOG.log(Level.WARNING, "Failed to create diff of variant", e);
             }
-                
-        } catch (AnswerDoesNotApplyException e) {
-            LOG.log(Level.WARNING, "Answer cannot be applied to variant", e);
-            variant = null;
+            
+            return variant;
         } finally {
-            if (sourceDir != null) {
-                tempDirManager.deleteTemporaryDirectory(sourceDir);
-            }
+            tempDirManager.deleteTemporaryDirectory(sourceDir);
         }
-        
-        return Optional.ofNullable(variant);
     }
 
     public Query createQuery(Node code, List<TestResult> failingTests, List<CodeSnippet> codeSnippets) {
@@ -155,11 +178,19 @@ public class LlmFixer {
         writeFailingTestCases(prompt, testMethodContext);
         writeProjectOutline(prompt, projectOutline);
         writeCodeSnippets(prompt, codeSnippets);
-        prompt.append("\n\nOutput the fixed code snippets! You must prefix your fixed code with"
-                + " \"Code snippet number <number>\" to clarify which code snippet you modified (you may modify"
-                + " multiple code snippets). Do not output code snippets that you did not modify. Surround each code"
-                + " snippet with ``` markers (after the code snippet number). Output the complete fixed code that is"
-                + " given to you, even if only a small part of it is changed.");
+        if (Configuration.INSTANCE.llm().structuredOutput()) {
+            prompt.append("\n\nOutput the fixed code snippets! You must adhere to the following JSON schema. You may"
+                    + " modify multiple code snippets. Do not output code snippets that you did not modify. Output"
+                    + " the complete fixed code that is given to you, even if only a small part of it is changed.\n")
+                    .append(CodeChangeResponse.JSON_SCHEMA_STRING);
+            query.setJsonSchema(CodeChangeResponse.JSON_SCHEMA);
+        } else {
+            prompt.append("\n\nOutput the fixed code snippets! You must prefix your fixed code with"
+                    + " \"Code snippet number <number>\" to clarify which code snippet you modified (you may modify"
+                    + " multiple code snippets). Do not output code snippets that you did not modify. Surround each"
+                    + " code snippet with ``` markers (after the code snippet number). Output the complete fixed code"
+                    + " that is given to you, even if only a small part of it is changed.");
+        }
         
         LOG.fine(() -> "Prompt:\n" + prompt);
         query.addMessage(new Message(Role.USER, prompt.toString()));
@@ -314,8 +345,8 @@ public class LlmFixer {
             throw e;
         }
     }
-
-    private void parseAnswerSnippets(String answer, List<CodeSnippet> snippets) throws AnswerDoesNotApplyException {
+    
+    private void parseUnstructuredAnswer(String answer, List<CodeSnippet> snippets) throws AnswerDoesNotApplyException {
         Pattern pattern = Pattern.compile("Code snippet number (?<number>\\d+)", Pattern.CASE_INSENSITIVE);
         
         List<String> linesOutsideOfCode = new LinkedList<>();
@@ -370,6 +401,56 @@ public class LlmFixer {
         if (!linesOutsideOfCode.isEmpty()) {
             LOG.info(() -> "Found answer lines outside of code blocks:\n"
                     + linesOutsideOfCode.stream().collect(Collectors.joining("\n")));
+        }
+    }
+
+    private record CodeChangeResponse(List<ChangedCodeSnippet> changedCodeSnippets) {
+        private static final String JSON_SCHEMA_STRING = """
+              {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "changed_code_snippets": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "number": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "new_content": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["number", "new_content"],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": ["changed_code_snippets"],
+                "additionalProperties": false
+              }
+              """;
+        private static final Map<String, ?> JSON_SCHEMA = JsonUtils.parseToMap(JSON_SCHEMA_STRING);
+    }
+    private record ChangedCodeSnippet(int number, String newContent) {
+    }
+
+    private void parseStructuredAnswer(String answer, List<CodeSnippet> snippets)
+            throws AnswerDoesNotApplyException {
+        Gson gson = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).create();
+        try {
+            CodeChangeResponse parsed = gson.fromJson(answer, CodeChangeResponse.class);
+            for (ChangedCodeSnippet changed : parsed.changedCodeSnippets()) {
+                int index = changed.number() - 1;
+                if (index >= snippets.size()) {
+                    throw new AnswerDoesNotApplyException("invalid snippet number " + changed.number());
+                }
+                snippets.get(index).setNewLines(Arrays.asList(changed.newContent().split("\n")));
+            }
+        } catch (JsonParseException e) {
+            throw new AnswerDoesNotApplyException("invalid JSON", e);
         }
     }
     

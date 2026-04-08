@@ -42,6 +42,9 @@ public class OllamaLlm extends AbstractLlm {
                 })
                 .toList());
         json.put("stream", false);
+        if (query.getJsonSchema() != null) {
+            json.put("format", query.getJsonSchema());
+        }
         if (getThink() != null) {
             if (getThink().equals("true")) {
                 json.put("think", true);

@@ -37,6 +37,14 @@ public class OpenaiLlm extends AbstractLlm {
                     return m;
                 })
                 .toList());
+        if (query.getJsonSchema() != null) {
+            json.put("response_format", Map.of(
+                    "type", "json_schema",
+                    "json_schema", Map.of(
+                            "name", "generic-schema",
+                            "strict", true,
+                            "schema", query.getJsonSchema())));
+        }
         json.put("reasoning_effort", getThink());
         json.put("temperature", getTemperature());
         

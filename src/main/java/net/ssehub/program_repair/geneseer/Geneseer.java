@@ -23,7 +23,9 @@ import net.ssehub.program_repair.geneseer.fixers.Outliner;
 import net.ssehub.program_repair.geneseer.fixers.SetupTest;
 import net.ssehub.program_repair.geneseer.fixers.SingleLlm;
 import net.ssehub.program_repair.geneseer.fixers.genetic.GeneticAlgorithm;
+import net.ssehub.program_repair.geneseer.llm.ILlm;
 import net.ssehub.program_repair.geneseer.llm.ISnippetRanker;
+import net.ssehub.program_repair.geneseer.llm.LlmBasedFileRanker;
 import net.ssehub.program_repair.geneseer.llm.LlmFactory;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.llm.RagRanker;
@@ -174,6 +176,7 @@ public class Geneseer {
     private static LlmFixer createLlmFixer(Project project, TemporaryDirectoryManager tempDirManager)
             throws IllegalArgumentException {
         LlmFactory factory = LlmFactory.fromConfiguration(Configuration.INSTANCE.llm());
+        ILlm llm = factory.create();
         
         ISnippetRanker ranker;
         switch (Configuration.INSTANCE.llm().codeContextSelection()) {
@@ -186,12 +189,15 @@ public class Geneseer {
                     Configuration.INSTANCE.rag().model(),
                     Configuration.INSTANCE.rag().api());
             break;
+        case LLM:
+            ranker = new LlmBasedFileRanker(llm);
+            break;
         default:
             throw new IllegalArgumentException("Invalid code context selection: "
                     + Configuration.INSTANCE.llm().codeContextSelection());
         }
         
-        LlmFixer llmFixer = new LlmFixer(factory.create(), ranker, tempDirManager, project.getEncoding(),
+        LlmFixer llmFixer = new LlmFixer(llm, ranker, tempDirManager, project.getEncoding(),
                 project.getProjectDirectory());
         
         return llmFixer;

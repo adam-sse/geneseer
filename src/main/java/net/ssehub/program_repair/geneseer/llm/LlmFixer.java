@@ -138,7 +138,8 @@ public class LlmFixer {
                 projectRoot, encoding);
         String projectOutline = null;
         if (Configuration.INSTANCE.llm().projectOutine() != ProjectOutline.NONE) {
-            projectOutline = createProjectOutline(code, codeSnippets);
+            projectOutline = createProjectOutline(code,
+                    Configuration.INSTANCE.llm().projectOutine() == ProjectOutline.FULL ? null : codeSnippets);
         }
         
         Query query = new Query();
@@ -168,7 +169,7 @@ public class LlmFixer {
         return query;
     }
 
-    private static void writeFailingTestCases(StringBuilder prompt, List<TestMethodContext> testMethodContext) {
+    static void writeFailingTestCases(StringBuilder prompt, List<TestMethodContext> testMethodContext) {
         int testNumber = 1;
         for (TestMethodContext testContext : testMethodContext) {
             prompt.append("Failing test ");
@@ -229,7 +230,7 @@ public class LlmFixer {
         return selected;
     }
     
-    private String createProjectOutline(Node astRoot, List<CodeSnippet> codeSnippets) {
+    static String createProjectOutline(Node astRoot, List<CodeSnippet> filterByCodeSnippets) {
         StringBuilder outline = new StringBuilder();
         
         for (Node file : astRoot.childIterator()) {
@@ -237,8 +238,7 @@ public class LlmFixer {
                 throw new RuntimeException("Node under AST root is not a compilation unit: " + file);
             }
             Path fileName = (Path) file.getMetadata(Metadata.FILE_NAME);
-            if (Configuration.INSTANCE.llm().projectOutine() == ProjectOutline.FULL
-                    || codeSnippets.stream()
+            if (filterByCodeSnippets == null || filterByCodeSnippets.stream()
                         .filter(snippet -> snippet.getFile().equals(fileName))
                         .findAny().isPresent()) {
                 if (file.childCount() > 0 && file.get(0).childCount() > 0
@@ -258,7 +258,7 @@ public class LlmFixer {
         return outline.toString();
     }
     
-    private void recurseProjectOutline(Node node, StringBuilder outline, String indentation) {
+    private static void recurseProjectOutline(Node node, StringBuilder outline, String indentation) {
         switch (node.getType()) {
         case TYPE:
             outline.append(indentation).append(AstUtils.getSignature(node)).append(" {\n");

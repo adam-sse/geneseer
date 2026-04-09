@@ -163,9 +163,15 @@ public class Geneseer {
         case "LLM_QUERY_ANALYSIS":
             result = new LlmQueryAnalysis(project.getProjectDirectory(), createLlmFixer(project, tempDirManager));
             break;
-        case "OUTLINER":
-            result = new Outliner(project.getProjectDirectory(), project.getEncoding());
+        case "OUTLINER": {
+            Outliner outliner =  new Outliner(project.getProjectDirectory(), project.getSourceDirectoryAbsolute(),
+                    project.getEncoding());
+            if (!Configuration.INSTANCE.llm().model().equals("dummy")) {
+                outliner.setLlm(LlmFactory.fromConfiguration(Configuration.INSTANCE.llm()).create());
+            }
+            result = outliner;
             break;
+        }
             
         default:
             throw new IllegalArgumentException("Unknown fixer name: " + Configuration.INSTANCE.setup().fixer());

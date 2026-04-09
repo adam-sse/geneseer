@@ -53,7 +53,7 @@ public class Outliner implements IFixer {
         this.projectRoot = projectRoot;
         this.sourceDirectory = sourceDirectory;
         this.encoding = encoding;
-        this.tokenEncoding = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.CL100K_BASE);
+        this.tokenEncoding = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.O200K_BASE);
     }
     
     public void setLlm(ILlm llm) {

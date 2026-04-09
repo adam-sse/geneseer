@@ -40,7 +40,7 @@ public class LlmQueryAnalysis implements IFixer {
 
     @Override
     public Node run(Node original, TestSuite testSuite, Map<String, Object> result) throws IOException {
-        Encoding tokenEncoding = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.CL100K_BASE);
+        Encoding tokenEncoding = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.O200K_BASE);
         List<TestResult> failingTests = testSuite.getInitialFailingTestResults(); 
         
         List<CodeSnippet> codeSnippets = llmFixer.selectMostSuspiciousMethods(original, failingTests);

@@ -24,7 +24,7 @@ public class LlmBasedFileRanker implements ISnippetRanker {
     
     private static final Logger LOG = Logger.getLogger(LlmBasedFileRanker.class.getName());
 
-    private static final Map<String, ?> JSON_SCHEMA = JsonUtils.parseToMap("""
+    private static final String JSON_SCHEMA_STRING = """
             {
               "$schema": "http://json-schema.org/draft-07/schema#",
               "title": "AgentFileRankingResponse",
@@ -34,7 +34,6 @@ public class LlmBasedFileRanker implements ISnippetRanker {
               "properties": {
                 "candidate_files": {
                   "type": "array",
-                  "maxItems": 10,
                   "items": {
                     "type": "object",
                     "required": ["path", "reasoning", "confidence"],
@@ -42,12 +41,10 @@ public class LlmBasedFileRanker implements ISnippetRanker {
                     "properties": {
                       "path": {
                         "type": "string",
-                        "pattern": "^[a-zA-Z0-9_./-]+$",
                         "description": "Relative path from workspace root. Must exist in file inventory."
                       },
                       "reasoning": {
                         "type": "string",
-                        "maxLength": 200,
                         "description": "One to two sentence justification for inclusion."
                       },
                       "confidence": {
@@ -61,21 +58,21 @@ public class LlmBasedFileRanker implements ISnippetRanker {
                 }
               }
             }
-            """);
+            """;
+    
+    private static final Map<String, ?> JSON_SCHEMA = JsonUtils.parseToMap(JSON_SCHEMA_STRING);
     
     private static final String SYSTEM_PROMPT = """
             You are a file ranking assistant for a Java automated program repair system.
             
-            Your task: given a specification and a project file inventory, identify which
+            Your task: given failing test(s) and a project file inventory, identify which
             files are most likely to need reading or modification to implement the spec.
             
             Rules:
             - You MUST only suggest files that exist in the provided inventory.
-            - Rank files by relevance to the specification.
+            - Rank files by relevance to the failing test(s).
             - Provide a short reasoning for each file.
             - Assign a confidence score (0.0 to 1.0) per file.
-            - Return at most 10 files.
-            - Focus on production source files that contain or should contain the target functionality.
             
             Output format: respond with a single JSON object matching the schema below.
             Do not include any text outside the JSON object.
@@ -160,7 +157,6 @@ public class LlmBasedFileRanker implements ISnippetRanker {
                 projectPackages.add(file.get(0).getTextSingleLine().replace("package ", "").replace(";", ""));
             }
         }
-        
         Map<Path, List<String>> imports = new LinkedHashMap<>(files.size());
         for (Node file : files) {
             imports.put((Path) file.getMetadata(Metadata.FILE_NAME), file.stream()
@@ -187,15 +183,18 @@ public class LlmBasedFileRanker implements ISnippetRanker {
         prompt.append("\n");
         prompt.append("""
                 ## TASK
-                Identify the files most relevant to fixing the failing tests above.
+                Rank the files regarding relevancy to fixing the failing tests above.
                 Consider:
                 1. Files that likely contain the class/method mentioned in the test(s)
                 2. Files that import or are imported by likely target files
                 3. Utility or helper files that the implementation may depend on
-                4. Configuration files only if the spec involves configuration changes
                 
-                Respond with JSON only.
+                It is fine to include files in the ranking that only have a low confidence
+                of being relevant. Make sure to not miss any relevant files.
+                
+                Respond with JSON adhering to this schema only:
                 """);
+        prompt.append(JSON_SCHEMA_STRING);
         
         String result = prompt.toString();
         LOG.fine(() -> "File context selection prompt:\n" + result);

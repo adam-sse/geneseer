@@ -161,6 +161,9 @@
                         <goals>
                             <goal>filter-sources</goal>
                         </goals>
+                        <configuration>
+                            <escapeString>\</escapeString>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

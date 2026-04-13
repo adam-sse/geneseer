@@ -180,12 +180,12 @@ if applicable):
     "successfulCrossovers": 3,
     "failedCrossovers": 7,
     "llmCallsOnUnmodified": 0,
-    "llmCallsOnMutated": 0,
-    "unusableLlmAnswers": 0
+    "llmCallsOnMutated": 0
   },
   "llmStats": {
     "calls": 0,
     "answers": 0,
+    "unusableAnswers": 0,
     "timeouts": 0,
     "totalQueryTokens": 0,
     "totalAnswerTokens": 0

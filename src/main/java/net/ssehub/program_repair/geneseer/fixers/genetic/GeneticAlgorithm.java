@@ -48,7 +48,6 @@ public class GeneticAlgorithm implements IFixer {
     private int numFailedCrossovers;
     private int numLlmCallsOnUnmodified;
     private int numLlmCallsOnMutated;
-    private int numUnusableLlmAnswers;
     
     public GeneticAlgorithm(LlmFixer llmfixer) {
         this.llmFixer = llmfixer;
@@ -90,7 +89,6 @@ public class GeneticAlgorithm implements IFixer {
         mutationStats.put("failedCrossovers", numFailedCrossovers);
         mutationStats.put("llmCallsOnUnmodified", numLlmCallsOnUnmodified);
         mutationStats.put("llmCallsOnMutated", numLlmCallsOnMutated);
-        mutationStats.put("unusableLlmAnswers", numUnusableLlmAnswers);
         
         result.put("mutationStats", mutationStats);
         if (llmFixer != null) {
@@ -271,12 +269,10 @@ public class GeneticAlgorithm implements IFixer {
                                 needsFaultLocalization = true;
                             }
                         } else {
-                            numUnusableLlmAnswers++;
-                            LOG.info(() -> "Got no usable result from LLM");
+                            LOG.info(() -> "Got no mutation from LLM");
                         }
                     } catch (IOException e) {
                         LOG.log(Level.WARNING, "IOException while querying LLM", e);
-                        numUnusableLlmAnswers++;
                     }
                 }
                 
@@ -295,12 +291,12 @@ public class GeneticAlgorithm implements IFixer {
                 mutationAdded = singleMutation(variant, astRoot, suspicious);
             }
         } else {
-            numFailedMutations++;
             LOG.warning(() -> "Failed to muate " + variant.getName() + " because it has no suspicious statements");
         }
         
         if (!mutationAdded) {
             LOG.info(() -> "No new mutation added to " + variant.getName());
+            numFailedMutations++;
         }
         if (mutationAdded || !variant.hasFitness()) {
             fitnessEvaluator.measureFitness(variant, needsFaultLocalization);

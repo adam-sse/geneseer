@@ -57,6 +57,8 @@ public class LlmFixer {
     
     private int numberOfAnswers;
     
+    private int numberOfUnusableAnswers;
+    
     private int numberOfTimeouts;
     
     private long totalQueryTokens;
@@ -110,6 +112,7 @@ public class LlmFixer {
         } catch (AnswerDoesNotApplyException e) {
             LOG.log(Level.WARNING, "Answer cannot be applied to variant", e);
             result = Optional.empty();
+            numberOfUnusableAnswers++;
         }
         
         return result;
@@ -481,6 +484,7 @@ public class LlmFixer {
         return Map.of(
                 "calls", numberOfCalls,
                 "answers", numberOfAnswers,
+                "unusableAnswers", numberOfUnusableAnswers,
                 "timeouts", numberOfTimeouts,
                 "totalQueryTokens", totalQueryTokens,
                 "totalAnswerTokens", totalAnswerTokens

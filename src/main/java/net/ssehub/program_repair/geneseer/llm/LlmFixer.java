@@ -30,6 +30,7 @@ import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.code.Parser;
+import net.ssehub.program_repair.geneseer.code.ParsingException;
 import net.ssehub.program_repair.geneseer.code.Writer;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
@@ -141,9 +142,13 @@ public class LlmFixer {
                     throw new AnswerDoesNotApplyException("can't find modified file " + entry.getKey() + " in AST");
                 }
                 
-                Node modifiedFileNode = parser.parseSingleFile(absolutePath, encoding);
-                modifiedFileNode.copyMetadataFromNode(originalFileNode);
-                variant.set(originalIndex, modifiedFileNode);
+                try {
+                    Node modifiedFileNode = parser.parseSingleFile(absolutePath, encoding);
+                    modifiedFileNode.copyMetadataFromNode(originalFileNode);
+                    variant.set(originalIndex, modifiedFileNode);
+                } catch (ParsingException e) {
+                    throw new AnswerDoesNotApplyException("failed to parse generated code", e.getCause());
+                }
             }
     
             try {

@@ -7,12 +7,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.logging.Logger;
 
+import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
@@ -40,7 +42,7 @@ public class Parser {
     public Parser() {
     }
     
-    public Node parse(Path sourceDirectory, Charset encoding) throws IOException {
+    public Node parse(Path sourceDirectory, Charset encoding) throws ParsingException, IOException {
         Node parseTree = new InnerNode(Type.OTHER);
         
         try {
@@ -53,6 +55,8 @@ public class Parser {
                         file.setMetadata(Metadata.FILE_NAME, sourceDirectory.relativize(f));
                         parseTree.add(file);
                     });
+        } catch (RecognitionException | ParseCancellationException e) {
+            throw new ParsingException(e);
         } catch (UncheckedIOException e) {
             throw e.getCause();
         }
@@ -60,18 +64,21 @@ public class Parser {
         return parseTree;
     }
     
-    public Node parseSingleFile(Path sourceFile, Charset encoding) throws IOException {
+    public Node parseSingleFile(Path sourceFile, Charset encoding) throws ParsingException, IOException {
         try {
             Node file = parseFile(sourceFile, encoding);
             fix(file);
             file.setMetadata(Metadata.FILE_NAME, sourceFile.getFileName());
             return file;
+        } catch (RecognitionException | ParseCancellationException e) {
+            throw new ParsingException(e);
         } catch (UncheckedIOException e) {
             throw e.getCause();
         }
     }
     
-    private Node parseFile(Path file, Charset encoding) throws UncheckedIOException {
+    private Node parseFile(Path file, Charset encoding)
+            throws RecognitionException, ParseCancellationException, UncheckedIOException {
         try {
             JavaLexer lexer = new JavaLexer(CharStreams.fromFileName(file.toString(), encoding));
             CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -84,6 +91,7 @@ public class Parser {
                     LOG.warning(() -> file + ":" + line + ":" + charPositionInLine + " " + msg);
                 }
             });
+            parser.setErrorHandler(new BailErrorStrategy());
             ParseTree antlrTree = parser.compilationUnit();
             resetBeforeConvert(file);
             return convert(antlrTree);

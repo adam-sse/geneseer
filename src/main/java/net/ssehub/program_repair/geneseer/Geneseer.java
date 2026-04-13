@@ -14,6 +14,7 @@ import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.code.Parser;
+import net.ssehub.program_repair.geneseer.code.ParsingException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.fixers.IFixer;
@@ -115,6 +116,10 @@ public class Geneseer {
             if (patched != null) {
                 analyzeDiffOfPatched(result, ast, patched, project.getEncoding(), tempDirManager);
             }
+            
+        } catch (ParsingException e) {
+            result.put("result", "ORIGINAL_UNFIT");
+            result.put("exception", e.getCause().getClass().getName() + ": " + e.getCause().getMessage());
             
         } catch (EvaluationException e) {
             result.put("result", "ORIGINAL_UNFIT");

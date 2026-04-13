@@ -18,6 +18,7 @@ import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.code.Parser;
+import net.ssehub.program_repair.geneseer.code.ParsingException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 
 public record TestMethodContext(TestResult testResult, String code, Path file) {
@@ -86,7 +87,7 @@ public record TestMethodContext(TestResult testResult, String code, Path file) {
             }
                 
         } catch (IOException e) {
-            LOG.log(Level.WARNING, "Failed to read test method file", e);
+            LOG.log(Level.WARNING, "Failed to enumerate test files", e);
             result = new TestMethodContext(failingTest, null, null);
         }
         return result;
@@ -121,26 +122,33 @@ public record TestMethodContext(TestResult testResult, String code, Path file) {
     }
     
     private static List<TestMethodContext> findTestMethodInFile(TestResult failingTest, TestLocation location,
-            Path testFile, Path projectRoot, Charset encoding) throws IOException {
-        
-        Node file = new Parser().parseSingleFile(testFile, encoding);
-        Stream<Node> stream = file.stream()
-                .filter(n -> n.getType() == Type.METHOD)
-                .filter(n -> n.getMetadata(Metadata.METHOD_NAME).equals(location.methodName()));
-        if (location.lineNumber() != -1) {
-            stream = stream.filter(n -> {
-                int lineStart = AstUtils.getLine(file, n);
-                int lineEnd = lineStart + AstUtils.getAdditionalLineCount(n);
-                return location.lineNumber() >= lineStart && location.lineNumber() <= lineEnd;
-            });
-        }
-        List<Node> methods = stream.toList();
+            Path testFile, Path projectRoot, Charset encoding) {
 
-        if (methods.size() != 1) {
-            LOG.fine(() -> "Found " + methods.size() + " possible test code candidates at " + location
+        List<Node> matchingMethods = new LinkedList<>();
+        try {
+            Node file = new Parser().parseSingleFile(testFile, encoding);
+            Stream<Node> stream = file.stream()
+                    .filter(n -> n.getType() == Type.METHOD)
+                    .filter(n -> n.getMetadata(Metadata.METHOD_NAME).equals(location.methodName()));
+            if (location.lineNumber() != -1) {
+                stream = stream.filter(n -> {
+                    int lineStart = AstUtils.getLine(file, n);
+                    int lineEnd = lineStart + AstUtils.getAdditionalLineCount(n);
+                    return location.lineNumber() >= lineStart && location.lineNumber() <= lineEnd;
+                });
+            }
+            stream.forEach(matchingMethods::add);
+        } catch (ParsingException e) {
+            LOG.log(Level.WARNING, "Failed to parse test file", e.getCause());
+        } catch (IOException e) {
+            LOG.log(Level.WARNING, "Failed to read test file", e);
+        }
+
+        if (matchingMethods.size() != 1) {
+            LOG.fine(() -> "Found " + matchingMethods.size() + " possible test code candidates at " + location
                     + " in file " + testFile + " for test " + failingTest);
         }
-        return methods.stream()
+        return matchingMethods.stream()
                 .map(n -> new TestMethodContext(failingTest, n.getTextFormatted(), projectRoot.relativize(testFile)))
                 .toList();
     }

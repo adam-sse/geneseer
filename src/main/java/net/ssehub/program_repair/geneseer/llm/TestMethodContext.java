@@ -138,10 +138,8 @@ public record TestMethodContext(TestResult testResult, String code, Path file) {
                 });
             }
             stream.forEach(matchingMethods::add);
-        } catch (ParsingException e) {
-            LOG.log(Level.WARNING, "Failed to parse test file", e.getCause());
-        } catch (IOException e) {
-            LOG.log(Level.WARNING, "Failed to read test file", e);
+        } catch (ParsingException | IOException e) {
+            LOG.log(Level.WARNING, "Failed to parse test file", e);
         }
 
         if (matchingMethods.size() != 1) {

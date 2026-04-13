@@ -147,7 +147,7 @@ public class LlmFixer {
                     modifiedFileNode.copyMetadataFromNode(originalFileNode);
                     variant.set(originalIndex, modifiedFileNode);
                 } catch (ParsingException e) {
-                    throw new AnswerDoesNotApplyException("failed to parse generated code", e.getCause());
+                    throw new AnswerDoesNotApplyException("failed to parse generated code", e);
                 }
             }
     

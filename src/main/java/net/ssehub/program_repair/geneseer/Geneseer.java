@@ -117,11 +117,7 @@ public class Geneseer {
                 analyzeDiffOfPatched(result, ast, patched, project.getEncoding(), tempDirManager);
             }
             
-        } catch (ParsingException e) {
-            result.put("result", "ORIGINAL_UNFIT");
-            result.put("exception", e.getCause().getClass().getName() + ": " + e.getCause().getMessage());
-            
-        } catch (EvaluationException e) {
+        } catch (EvaluationException | ParsingException e) {
             result.put("result", "ORIGINAL_UNFIT");
             result.put("exception", e.getClass().getName() + ": " + e.getMessage());
             

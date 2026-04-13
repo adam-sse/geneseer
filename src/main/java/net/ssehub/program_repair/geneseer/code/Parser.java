@@ -13,7 +13,6 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
@@ -96,8 +95,7 @@ public class Parser {
         }
     }
     
-    private Node parseFile(Path file, Charset encoding)
-            throws RecognitionException, ParseCancellationException, UncheckedIOException {
+    private Node parseFile(Path file, Charset encoding) throws WrapperException, UncheckedIOException {
         try {
             JavaLexer lexer = new JavaLexer(CharStreams.fromFileName(file.toString(), encoding));
             lexer.removeErrorListeners();

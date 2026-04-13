@@ -7,7 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.logging.Logger;
 
-import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -55,8 +54,8 @@ public class Parser {
                         file.setMetadata(Metadata.FILE_NAME, sourceDirectory.relativize(f));
                         parseTree.add(file);
                     });
-        } catch (RecognitionException | ParseCancellationException e) {
-            throw new ParsingException(e);
+        } catch (WrapperException e) {
+            throw e.wrapped;
         } catch (UncheckedIOException e) {
             throw e.getCause();
         }
@@ -70,10 +69,30 @@ public class Parser {
             fix(file);
             file.setMetadata(Metadata.FILE_NAME, sourceFile.getFileName());
             return file;
-        } catch (RecognitionException | ParseCancellationException e) {
-            throw new ParsingException(e);
+        } catch (WrapperException e) {
+            throw e.wrapped;
         } catch (UncheckedIOException e) {
             throw e.getCause();
+        }
+    }
+    
+    private static class WrapperException extends RuntimeException {
+        private static final long serialVersionUID = -1297032521894547738L;
+        private ParsingException wrapped;
+        public WrapperException(ParsingException parsingException) {
+            this.wrapped = parsingException;
+        }
+    }
+    
+    private static class ThrowingErrorListener extends BaseErrorListener {
+        private Path file;
+        private ThrowingErrorListener(Path file) {
+            this.file = file;
+        }
+        @Override
+        public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line,
+                int charPositionInLine, String msg, RecognitionException exc) {
+            throw new WrapperException(new ParsingException(file, line, charPositionInLine, msg));
         }
     }
     
@@ -81,17 +100,12 @@ public class Parser {
             throws RecognitionException, ParseCancellationException, UncheckedIOException {
         try {
             JavaLexer lexer = new JavaLexer(CharStreams.fromFileName(file.toString(), encoding));
+            lexer.removeErrorListeners();
+            lexer.addErrorListener(new ThrowingErrorListener(file));
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             JavaParser parser = new JavaParser(tokens);
-            parser.removeErrorListeners(); // remove the default console listener
-            parser.addErrorListener(new BaseErrorListener() {
-                @Override
-                public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line,
-                        int charPositionInLine, String msg, RecognitionException exc) {
-                    LOG.warning(() -> file + ":" + line + ":" + charPositionInLine + " " + msg);
-                }
-            });
-            parser.setErrorHandler(new BailErrorStrategy());
+            parser.removeErrorListeners();
+            parser.addErrorListener(new ThrowingErrorListener(file));
             ParseTree antlrTree = parser.compilationUnit();
             resetBeforeConvert(file);
             return convert(antlrTree);

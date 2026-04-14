@@ -1,8 +1,14 @@
 package net.ssehub.program_repair.geneseer.evaluation;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -20,6 +27,8 @@ import org.jacoco.core.analysis.CoverageBuilder;
 import org.jacoco.core.analysis.IClassCoverage;
 import org.jacoco.core.analysis.IMethodCoverage;
 import org.jacoco.core.data.ExecutionDataStore;
+import org.jacoco.core.instr.Instrumenter;
+import org.jacoco.core.runtime.OfflineInstrumentationAccessGenerator;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.code.Node;
@@ -29,6 +38,7 @@ import net.ssehub.program_repair.geneseer.evaluation.TestExecution.TestResultWit
 import net.ssehub.program_repair.geneseer.util.AstLocations;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
+import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
 class FaultLocalization {
     
@@ -40,10 +50,14 @@ class FaultLocalization {
     
     private Charset encoding;
     
-    public FaultLocalization(Path workingDirectory, List<Path> classpath, Charset encoding) {
+    private TemporaryDirectoryManager tempDirManager;
+    
+    public FaultLocalization(Path workingDirectory, List<Path> classpath, Charset encoding,
+            TemporaryDirectoryManager tempDirManager) {
         this.workingDirectory = workingDirectory;
         this.classpath = classpath;
         this.encoding = encoding;
+        this.tempDirManager = tempDirManager;
     }
     
     public void measureAndAnnotateSuspiciousness(Node ast, Path variantBinDir, List<TestResult> tests)
@@ -237,8 +251,10 @@ class FaultLocalization {
         
         Map<Location, Set<TestResult>> coverage = new HashMap<>();
         
+        Path instrumentedClassesDirectory = offlineInstrumentClasses(classesDirectory);
+        
         List<Path> classpath = new ArrayList<>(this.classpath.size() + 1);
-        classpath.add(classesDirectory);
+        classpath.add(instrumentedClassesDirectory);
         classpath.addAll(this.classpath);
         
         try (TestExecution testExec = new TestExecution(workingDirectory, classpath, encoding, true)) {
@@ -252,9 +268,44 @@ class FaultLocalization {
                     measureCoverageForSingleTest(test, coverage, testExec, classesDirectory);
                 }
             }
+        } finally {
+            try {
+                tempDirManager.deleteTemporaryDirectory(instrumentedClassesDirectory);
+            } catch (IOException e) {
+                LOG.log(Level.WARNING, "Failed to delete temporary directory", e);
+            }
         }
         
         return coverage;
+    }
+    
+    private Path offlineInstrumentClasses(Path classesDirectory) throws TestExecutionException {
+        try {
+            Path instrumentedDirectory = tempDirManager.createTemporaryDirectory();
+            Instrumenter instrumenter = new Instrumenter(new OfflineInstrumentationAccessGenerator());
+            Files.walkFileTree(classesDirectory, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                    Path relative = classesDirectory.relativize(dir);
+                    Path targetDir = instrumentedDirectory.resolve(relative);
+                    Files.createDirectories(targetDir);
+                    return FileVisitResult.CONTINUE;
+                }
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Path relative = classesDirectory.relativize(file);
+                    Path target = instrumentedDirectory.resolve(relative);
+                    try (InputStream in = Files.newInputStream(file);
+                            OutputStream out = Files.newOutputStream(target)) {
+                        instrumenter.instrumentAll(in, out, file.toString());
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+            return instrumentedDirectory;
+        } catch (IOException e) {
+            throw new TestCoverageException("Failed to instrument classes", e);
+        }
     }
     
     private static void measureCoverageWithClassAggregation(List<TestResult> tests, Path classesDirectory,

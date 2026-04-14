@@ -50,7 +50,7 @@ public class TestSuite {
         this.junitSuite = new JunitEvaluation(project.getProjectDirectory(),
                 project.getTestExecutionClassPathAbsolute(), project.getEncoding());
         this.faultLocalization = new FaultLocalization(project.getProjectDirectory(),
-                project.getTestExecutionClassPathAbsolute(), project.getEncoding());
+                project.getTestExecutionClassPathAbsolute(), project.getEncoding(), tempDirManager);
         this.originalSourceCode = sourceCode;
         
         this.testMethods = new HashMap<>();

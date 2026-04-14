@@ -69,7 +69,7 @@ class TestExecution implements AutoCloseable {
     
     private Charset encoding;
     
-    private boolean withCoverage;
+    private boolean withJacocoAgent;
     
     private Process process;
     
@@ -85,13 +85,13 @@ class TestExecution implements AutoCloseable {
     
     private int jacocoPort;
     
-    public TestExecution(Path workingDirectory, List<Path> classpath, Charset encoding, boolean withCoverage)
+    public TestExecution(Path workingDirectory, List<Path> classpath, Charset encoding, boolean withJacocoAgent)
             throws TestExecutionException {
         tempDirManager = new TemporaryDirectoryManager();
         this.workingDirectory = workingDirectory;
         this.classpath = classpath;
         this.encoding = encoding;
-        this.withCoverage = withCoverage;
+        this.withJacocoAgent = withJacocoAgent;
         
         startProcess();
     }
@@ -116,11 +116,11 @@ class TestExecution implements AutoCloseable {
     
     private void startProcess() throws TestExecutionException {
         try {
-            if (withCoverage) {
+            if (withJacocoAgent) {
                 jacocoPort = generateRandomPort();
             }
             
-            List<String> command = createCommand(classpath, withCoverage);
+            List<String> command = createCommand(classpath, withJacocoAgent);
             LOG.finer(() -> {
                 List<String> shortened = new LinkedList<>(command);
                 shortened.set(shortened.indexOf("-cp") + 1, "<...>");
@@ -386,14 +386,15 @@ class TestExecution implements AutoCloseable {
         }
     }
     
-    private List<String> createCommand(List<Path> classpath, boolean withCoverage)
+    private List<String> createCommand(List<Path> classpath, boolean withJacocoAgent)
             throws IOException {
         
         List<String> command = new LinkedList<>();
         command.add(Configuration.INSTANCE.setup().jvmBinaryPath());
         
-        if (withCoverage) {
-            command.add("-javaagent:" + JACOCO_AGENT.toAbsolutePath() + "=output=tcpserver,port=" + jacocoPort);
+        if (withJacocoAgent) {
+            command.add("-javaagent:" + JACOCO_AGENT.toAbsolutePath()
+                    + "=excludes=*,output=tcpserver,port=" + jacocoPort);
         }
         
         command.add("-Dfile.encoding=" + encoding.toString());

@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -99,7 +98,8 @@ class Defects4jWrapper {
         testClassNames = new LinkedList<>(List.of(exportProperty(checkoutDirectory,
                 Configuration.INSTANCE.setup().testsToRun() == TestsToRun.ALL_TESTS ? "tests.all" : "tests.relevant")));
 
-        applyProjectSpecificFixes(bug, checkoutDirectory, compilationClasspath, testExecutionClassPath, testClassNames);
+        applyProjectSpecificFixesToClasspaths(bug, checkoutDirectory, compilationClasspath, testExecutionClassPath,
+                testClassNames);
         
         Project project = new Project(checkoutDirectory, sourceDirectory, compilationClasspath,
                 testExecutionClassPath, testClassNames);
@@ -136,7 +136,6 @@ class Defects4jWrapper {
         }
     }
     
-    
     public void checkout(Bug bug, Path target, Version version, boolean compile) throws IOException {
         if (!Files.isDirectory(target)) {
             Files.createDirectories(target);
@@ -147,12 +146,16 @@ class Defects4jWrapper {
                 .run();
         checkForError(process, "Failed to checkout " + bug);
         
+        applyProjectSpecificFixesBeforeBuild(bug, target);
+        
         if (compile) {
             process = new ProcessRunner.Builder(getDefects4jBinary(), "compile")
                     .workingDirectory(target)
                     .captureOutput(true)
                     .run();
             checkForError(process, "Failed to compile " + bug);
+            
+            applyProjectSpecificFixesAfterBuild(bug, target);
         }
     }
 
@@ -170,6 +173,41 @@ class Defects4jWrapper {
         }
     }
     
+    private static void applyProjectSpecificFixesBeforeBuild(Bug bug, Path checkoutDirectory) throws IOException {
+        switch (bug.project()) {
+        case "Chart":
+            if (bug.bug() >= 5 && bug.bug() <= 26) {
+                Path offendingFile = checkoutDirectory.resolve(
+                        "tests/org/jfree/chart/axis/junit/SubCategoryAxisTests.java");
+                FileUtils.replaceInFile(offendingFile, "return new TestSuite(CategoryAxisTests.class);",
+                        "return new TestSuite(SubCategoryAxisTests.class);", StandardCharsets.UTF_8);
+            }
+            break;
+            
+        default:
+            break;
+        }
+    }
+    
+    private static void applyProjectSpecificFixesAfterBuild(Bug bug, Path checkoutDirectory) throws IOException {
+        switch (bug.project()) {
+        case "Time":
+            Path from;
+            if (bug.bug() <= 11) {
+                from = checkoutDirectory.resolve("target/classes/org/joda/time/tz/data");
+            } else {
+                from = checkoutDirectory.resolve("build/classes/org/joda/time/tz/data");
+            }
+            Path to = checkoutDirectory.resolve("src/main/java/org/joda/time/tz/data");
+            Files.createDirectories(to);
+            FileUtils.copyAllNonJavaSourceFiles(from, to);
+            break;
+            
+        default:
+            break;
+        }
+    }
+
     public Path getRelativeSourceDirectory(Path checkoutDirectory) throws IOException {
         return Path.of(exportProperty(checkoutDirectory, "dir.src.classes")[0]);
     }
@@ -231,7 +269,7 @@ class Defects4jWrapper {
                 .collect(Collectors.toList());
     }
 
-    private void applyProjectSpecificFixes(Bug bug, Path checkoutDirectory, List<Path> compilationClasspath,
+    private void applyProjectSpecificFixesToClasspaths(Bug bug, Path checkoutDirectory, List<Path> compilationClasspath,
             List<Path> testExecutionClassPath, List<String> testClassNames) {
         switch (bug.project()) {
         case "Cli":
@@ -273,10 +311,6 @@ class Defects4jWrapper {
             testClassNames.remove("org.apache.commons.math3.genetics.FixedElapsedTimeTest");
             break;
             
-        case "Time":
-            copyTimeTzData(bug, checkoutDirectory);
-            break;
-            
         default:
             break;
         }
@@ -292,30 +326,6 @@ class Defects4jWrapper {
         return defects4jHome.resolve(pathInDefects4jRoot).toAbsolutePath();
     }
 
-    private static void copyTimeTzData(Bug bug, Path checkoutDirectory) {
-        Path from;
-        if (bug.bug() <= 11) {
-            from = checkoutDirectory.resolve("target/classes/org/joda/time/tz/data");
-        } else {
-            from = checkoutDirectory.resolve("build/classes/org/joda/time/tz/data");
-        }
-        if (Files.isDirectory(from)) {
-            Path to = checkoutDirectory.resolve("src/main/java/org/joda/time/tz/data");
-            
-            if (!Files.isDirectory(to)) {
-                try {
-                    Files.createDirectories(to);
-                    FileUtils.copyAllNonJavaSourceFiles(from, to);
-                } catch (IOException e) {
-                    LOG.log(Level.WARNING, "Failed to copy timezone data in Time project", e);
-                }
-            }
-            
-        } else {
-            LOG.warning("Directory target/classes/org/joda/time/tz/data does not exist in Time project");
-        }
-    }
-    
     private String getDefects4jBinary() {
         return defects4jHome.resolve("framework/bin/defects4j").toAbsolutePath().toString();
     }

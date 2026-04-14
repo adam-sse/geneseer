@@ -2,6 +2,7 @@ package net.ssehub.program_repair.geneseer.util;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -44,6 +45,12 @@ public class FileUtils {
         } catch (UncheckedIOException e) {
             throw e.getCause();
         }
+    }
+
+    public static void replaceInFile(Path file, String from, String to, Charset encoding) throws IOException {
+        String content = Files.readString(file, encoding);
+        content = content.replace(from, to);
+        Files.writeString(file, content, encoding);
     }
     
 }

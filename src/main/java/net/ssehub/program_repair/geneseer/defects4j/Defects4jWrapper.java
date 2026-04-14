@@ -189,16 +189,9 @@ class Defects4jWrapper {
             
         case "Jsoup":
             if (bug.bug() >= 67 && bug.bug() <= 93) {
-                Path file1 = checkoutDirectory.resolve("src/test/java/org/jsoup/integration/ConnectTest.java");
-                Path file2 = checkoutDirectory.resolve("src/test/java/org/jsoup/integration/TestServer.java");
-                FileUtils.replaceInFile(file1, "echoUrl = EchoServlet.Url;",
-                        "echoUrl = TestServer.url(EchoServlet.class);", StandardCharsets.UTF_8);
-                FileUtils.replaceInFile(file2, "    public static String map(",
-                        "    public static String url(Class<? extends BaseServlet> servletClass) {\n"
-                        + "        int port = ((ServerConnector) jetty.getConnectors()[0]).getLocalPort();\n"
-                        + "        return \"http://localhost:\" + port + \"/\" + servletClass.getSimpleName();\n"
-                        + "    }\n"
-                        + "    public static String map(", StandardCharsets.UTF_8);
+                Path offendingFile = checkoutDirectory.resolve("src/test/java/org/jsoup/integration/ConnectTest.java");
+                FileUtils.replaceInFile(offendingFile, "TestServer.stop();", "//TestServer.stop();",
+                        StandardCharsets.UTF_8);
             }
             break;
             

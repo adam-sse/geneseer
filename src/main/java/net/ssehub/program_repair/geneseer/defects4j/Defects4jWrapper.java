@@ -73,6 +73,8 @@ class Defects4jWrapper {
         Path checkoutDirectory = bug.getDirectory().toAbsolutePath();
         if (!Files.isDirectory(checkoutDirectory)) {
             checkout(bug, checkoutDirectory, Version.BUGGY, true);
+        } else {
+            LOG.info(() -> bug.getDirectory() + " already exists, reusing it");
         }
         
         Path sourceDirectory;
@@ -137,6 +139,7 @@ class Defects4jWrapper {
     }
     
     public void checkout(Bug bug, Path target, Version version, boolean compile) throws IOException {
+        LOG.info(() -> "Checking out and compiling " + bug.getDirectory());
         if (!Files.isDirectory(target)) {
             Files.createDirectories(target);
         }

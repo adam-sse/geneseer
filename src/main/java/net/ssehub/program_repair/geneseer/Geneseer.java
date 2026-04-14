@@ -118,6 +118,7 @@ public class Geneseer {
             }
             
         } catch (EvaluationException | ParsingException e) {
+            LOG.log(Level.SEVERE, "Original is unfit", e);
             result.put("result", "ORIGINAL_UNFIT");
             result.put("exception", e.getClass().getName() + ": " + e.getMessage());
             

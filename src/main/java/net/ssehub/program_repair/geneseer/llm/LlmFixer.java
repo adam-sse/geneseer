@@ -225,7 +225,7 @@ public class LlmFixer {
                 prompt.append("\n```\n");
             }
             prompt.append("Failure message:\n```\n");
-            prompt.append(testContext.testResult().getFailureDescription());
+            prompt.append(testContext.testResult().failureStacktrace());
             prompt.append("\n```\n\n");
             testNumber++;
         }

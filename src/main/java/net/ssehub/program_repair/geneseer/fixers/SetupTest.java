@@ -17,7 +17,7 @@ public class SetupTest implements IFixer {
         List<TestResult> failingTests = testSuite.getInitialFailingTestResults();
         LOG.info(() -> failingTests.size() + " failing tests:");
         for (TestResult testResult : failingTests) {
-            LOG.info(() -> "    " + testResult + " " + testResult.getFailureDescription());
+            LOG.info(() -> "    * " + testResult + "\n" + testResult.failureStacktrace());
         }
         result.put("failingTests", failingTests.stream().map(TestResult::toString).toList());
         if (failingTests.isEmpty()) {

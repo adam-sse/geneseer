@@ -15,10 +15,6 @@ public record TestResult(String testClass, String testMethod, String failureMess
         return testMethod.equals("<none>") && failureMessage.equals("Timeout") && failureStacktrace.equals("Timeout");
     }
     
-    public String getFailureDescription() {
-        return failureMessage != null ? failureMessage : failureStacktrace;
-    }
-    
     @Override
     public String toString() {
         return testClass + "::" + testMethod;

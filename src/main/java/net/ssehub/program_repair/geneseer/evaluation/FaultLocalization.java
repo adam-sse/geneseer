@@ -386,9 +386,9 @@ class FaultLocalization {
                 if (test.isFailure() != testResult.getTestResult().isFailure()) {
                     LOG.severe(() -> "Test result for " + testResult.getTestResult()
                             + " differs when run with coverage"
-                            + "\nWithout coverage: " + (test.isFailure() ? test.getFailureDescription() : "no failure")
-                            + "\nWith coverage:    " + (testResult.getTestResult().isFailure()
-                                    ? testResult.getTestResult().getFailureDescription() : "no failure"));
+                            + "\nWithout coverage:\n" + (test.isFailure() ? test.failureStacktrace() : "no failure")
+                            + "\nWith coverage:\n" + (testResult.getTestResult().isFailure()
+                                    ? testResult.getTestResult().failureStacktrace() : "no failure"));
                     throw new TestExecutionException("Test result for " + testResult.getTestResult()
                             + " differs when run with coverage");
                 }

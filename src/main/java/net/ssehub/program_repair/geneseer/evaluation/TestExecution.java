@@ -258,6 +258,8 @@ class TestExecution implements AutoCloseable {
         for (int i = 0; i < result.size(); i++) {
             TestResult tr = result.get(i);
             if (!tr.testClass().equals(className)) {
+                LOG.warning(() -> "Test class name " + tr.testClass()
+                        + " in test result differs from invoked test class " + className);
                 result.set(i, new TestResult(className, tr.testMethod(), tr.failureMessage(),
                         tr.failureStacktrace()));
             }
@@ -364,6 +366,8 @@ class TestExecution implements AutoCloseable {
                         + "::" + methodName);
             }
             if (!result.testClass().equals(className)) {
+                LOG.warning("Test class name " + result.testClass()
+                        + " in test result differs from invoked test class " + className);
                 result = new TestResult(className, result.testMethod(), result.failureMessage(),
                         result.failureStacktrace());
             }

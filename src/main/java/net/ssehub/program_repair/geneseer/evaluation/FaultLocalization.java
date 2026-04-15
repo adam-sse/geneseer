@@ -16,7 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -259,14 +258,19 @@ class FaultLocalization {
         
         try (TestExecution testExec = new TestExecution(workingDirectory, classpath, encoding, true)) {
             testExec.setTimeout(Configuration.INSTANCE.setup().testExecutionTimeoutMs());
-         
-            if (Configuration.INSTANCE.setup().coverageMatrixSimplified()) {
-                measureCoverageWithClassAggregation(tests, classesDirectory, testExec, coverage);
-            } else {
-                LOG.info(() -> "Running coverage on " + tests.size() + " test methods individually");
-                for (TestResult test : tests) {
-                    measureCoverageForSingleTest(test, coverage, testExec, classesDirectory);
-                }
+            
+            Map<String, List<TestResult>> testsByClass = new HashMap<>();
+            for (TestResult test : tests) {
+                testsByClass
+                        .computeIfAbsent(test.testClass(), key -> new LinkedList<>())
+                        .add(test);
+            }
+            
+            LOG.info(() -> "Running coverage on " + tests.size() + " test methods (in "
+                    + testsByClass.size() + " classes)");
+            
+            for (Map.Entry<String, List<TestResult>> entry : testsByClass.entrySet()) {
+                measureCoverageForClass(entry.getKey(), entry.getValue(), classesDirectory, testExec, coverage);
             }
         } finally {
             try {
@@ -312,108 +316,40 @@ class FaultLocalization {
         }
     }
     
-    private static void measureCoverageWithClassAggregation(List<TestResult> tests, Path classesDirectory,
+    private static void measureCoverageForClass(String className, List<TestResult> tests, Path classesDirectory,
             TestExecution testExec, Map<Location, Set<TestResult>> result) throws TestExecutionException {
         
-        Map<String, List<TestResult>> testsByClass = new HashMap<>();
-        for (TestResult test : tests) {
-            testsByClass
-                    .computeIfAbsent(test.testClass(), key -> new LinkedList<>())
-                    .add(test);
-        }
-        
-        LOG.info(() -> "Running coverage on " + tests.size() + " test methods (aggregated in "
-                + testsByClass.size() + " classes)");
-        
-        for (Map.Entry<String, List<TestResult>> entry : testsByClass.entrySet()) {
-            measureCoverageForWholeClass(entry.getKey(), entry.getValue(), classesDirectory, testExec, result);
-        }
-    }
-    
-    private static void measureCoverageForWholeClass(String className, List<TestResult> tests, Path classesDirectory,
-            TestExecution testExec, Map<Location, Set<TestResult>> result) throws TestExecutionException {
-        
-        boolean containsFailure = tests.stream().filter(TestResult::isFailure).findAny().isPresent();
-        
-        if (!containsFailure) {
-            List<TestResultWithCoverage> coverageResults;
-            try {
-                coverageResults = testExec.executeTestClassWithCoverage(className);
-            } catch (TestTimeoutException e) {
-                throw new TestExecutionException("Test class " + className + " timed out when run with coverage");
-            }
-            if (coverageResults.size() != tests.size()) {
-                int size = coverageResults.size();
-                throw new TestExecutionException("Got different number of test methods in class " + className
-                        + " when running with coverage (got " + size + ", expected " + tests.size() + ")");
-            }
-            
-            if (!coverageResults.isEmpty()) {
-                List<TestResult> actuallyReturnedTests = new ArrayList<>(tests.size());
-                for (TestResultWithCoverage coverageResult : coverageResults) {
-                    Optional<TestResult> expected = tests.stream()
-                            .filter(t -> t.testClass().equals(coverageResult.getTestResult().testClass()))
-                            .filter(t -> t.testMethod().equals(coverageResult.getTestResult().testMethod()))
-                            .findAny();
-                    if (expected.isPresent()) {
-                        actuallyReturnedTests.add(expected.get());
-                        if (expected.get().isFailure() != coverageResult.getTestResult().isFailure()) {
-                            throw new TestExecutionException("Test result for " + coverageResult.getTestResult()
-                                    + " differs when run with coverage");
-                        }
-                    } else {
-                        throw new TestExecutionException("Test returned by coverage run ("
-                                + coverageResult.getTestResult() + ") is unknown");
-                    }
-                }
-                
-                parseJacocoCoverage(actuallyReturnedTests, coverageResults.get(0).getCoverage(), classesDirectory,
-                        result);
-            }
-            
-        } else {
-            LOG.fine(() -> "Test class " + className + " contains failing tests; running " + tests.size()
-                    + " test methods individually");
-            for (TestResult test : tests) {
-                measureCoverageForSingleTest(test, result, testExec, classesDirectory);
-            }
-        }
-    }
-    
-    private static void measureCoverageForSingleTest(TestResult test, Map<Location, Set<TestResult>> coverage,
-            TestExecution testExec, Path classesDirectory) throws TestExecutionException {
+        List<TestResultWithCoverage> coverageResults;
         try {
-            TestResultWithCoverage testResult = testExec.executeTestMethodWithCoverage(
-                    test.testClass(), test.testMethod());
-            
-            if (testResult.getTestResult() != null) {
-                if (test.isFailure() != testResult.getTestResult().isFailure()) {
-                    LOG.severe(() -> "Test result for " + testResult.getTestResult()
-                            + " differs when run with coverage"
-                            + "\nWithout coverage:\n" + (test.isFailure() ? test.failureStacktrace() : "no failure")
-                            + "\nWith coverage:\n" + (testResult.getTestResult().isFailure()
-                                    ? testResult.getTestResult().failureStacktrace() : "no failure"));
-                    throw new TestExecutionException("Test result for " + testResult.getTestResult()
-                            + " differs when run with coverage");
-                }
-                
-                parseJacocoCoverage(List.of(test), testResult.getCoverage(), classesDirectory, coverage);
-                
-                // TODO: flacoco additionally looks at the stack trace since the line that threw an exception is not
-                // detected by jacoco:
-                // https://github.com/ASSERT-KTH/flacoco/blob/bd19ee3ded4f052a87e6894175fb266a89e71da6/
-                // src/main/java/fr/spoonlabs/flacoco/core/coverage/CoverageMatrix.java#L82-L128
-                
-            } else {
-                throw new TestExecutionException("Test " + test + " did not return a result");
-            }
-            
+            coverageResults = testExec.executeTestClassWithCoverage(className);
         } catch (TestTimeoutException e) {
-            throw new TestExecutionException("Test " + test + " timed out when run with coverage");
+            throw new TestExecutionException("Test class " + className + " timed out when run with coverage");
+        }
+        if (coverageResults.size() != tests.size()) {
+            int size = coverageResults.size();
+            throw new TestExecutionException("Got different number of test methods in class " + className
+                    + " when running with coverage (got " + size + ", expected " + tests.size() + ")");
+        }
+        
+        for (TestResultWithCoverage coverageResult : coverageResults) {
+            TestResult actual = coverageResult.getTestResult();
+            TestResult expected = tests.stream()
+                    .filter(t -> t.testClass().equals(actual.testClass()))
+                    .filter(t -> t.testMethod().equals(actual.testMethod()))
+                    .findAny()
+                    .orElseThrow(() -> new TestExecutionException("Test returned by coverage run ("
+                            + coverageResult.getTestResult() + ") is unknown"));
+            if (expected.isFailure() != actual.isFailure()) {
+                LOG.severe(() -> "Test result for " + actual + " differs when run with coverage"
+                        + "\nWithout coverage:\n" + (expected.isFailure() ? expected.failureStacktrace() : "no failure")
+                        + "\nWith coverage:\n" + (actual.isFailure() ? actual.failureStacktrace() : "no failure"));
+                throw new TestExecutionException("Test result for " + actual + " differs when run with coverage");
+            }
+            parseJacocoCoverage(expected, coverageResult.getCoverage(), classesDirectory, result);
         }
     }
     
-    private static void parseJacocoCoverage(List<TestResult> test, ExecutionDataStore executionData,
+    private static void parseJacocoCoverage(TestResult test, ExecutionDataStore executionData,
             Path classesDirectory, Map<Location, Set<TestResult>> coverage) throws TestCoverageException {
 
         final CoverageBuilder coverageBuilder = new CoverageBuilder();
@@ -438,7 +374,7 @@ class FaultLocalization {
                             if (v == null) {
                                 v = new HashSet<>();
                             }
-                            v.addAll(test);
+                            v.add(test);
                             return v;
                         });
                     }
@@ -447,7 +383,7 @@ class FaultLocalization {
         }
         
         if (!foundCoveredLine) {
-            LOG.warning(() -> "Found no coverage for tests " + test.stream().map(TestResult::toString).toList());
+            LOG.warning(() -> "Found no coverage in source directory for test " + test);
         }
     }
     

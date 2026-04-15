@@ -13,9 +13,12 @@ import java.net.ServerSocket;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -318,9 +321,31 @@ class TestExecution implements AutoCloseable {
             jacocoClient.setDump(false);
             jacocoClient.dump("localhost", jacocoPort);
             
-            out.writeObject("CLASS");
+            out.writeObject("METHODS");
             out.writeObject(className);
             out.flush();
+            
+            Map<String, ExecutionDataStore> coverages = new HashMap<>();
+            
+            Object resultState;
+            do {
+                resultState = readResult();
+                if ("TEST_FINISHED".equals(resultState)) {
+                    String testClass = readResult();
+                    String testMethod = readResult();
+                    
+                    jacocoClient.setDump(true);
+                    ExecFileLoader loader = jacocoClient.dump("localhost", jacocoPort);
+                    ExecutionDataStore execata = loader.getExecutionDataStore();
+                    coverages.put(testClass + "::" + testMethod, execata);
+                    
+                    out.writeObject("CONTINUE");
+                    out.flush();
+                    
+                } else if (!"DONE".equals(resultState)) {
+                    throw new TestExecutionException("Got invalid state from test driver: " + resultState);
+                }
+            } while (!"DONE".equals(resultState));
             
             List<TestResult> result = readResult();
             fixExpectedClassName(result, className);
@@ -328,60 +353,24 @@ class TestExecution implements AutoCloseable {
             LOG.fine(() -> result.size() + " tests run in test class " + className + ", "
                     + result.stream().filter(TestResult::isFailure).count() + " failures");
             
-            jacocoClient.setDump(true);
-            ExecFileLoader loader = jacocoClient.dump("localhost", jacocoPort);
-            
-            ExecutionDataStore execData = loader.getExecutionDataStore();
-            
-            return result.stream()
-                    .map(testResult -> new TestResultWithCoverage(testResult, execData))
-                    .toList();
+            List<TestResultWithCoverage> coverageResult = new ArrayList<>(result.size());
+            for (TestResult test : result) {
+                ExecutionDataStore coverage = coverages.remove(test.testClass() + "::" + test.testMethod());
+                if (coverage == null) {
+                    throw new TestExecutionException("Did not find coverage for test " + test);
+                }
+                coverageResult.add(new TestResultWithCoverage(test, coverage));
+            }
+            if (!coverages.isEmpty()) {
+                throw new TestExecutionException("Did not get test result for coverages: " + coverages.keySet());
+            }
+            return coverageResult;
             
         } catch (IOException e) {
             throw new TestExecutionException("Communication with test driver process failed", e);
             
         } catch (TestTimeoutException e) {
             LOG.fine(() -> "Test class " + className + " timed out");
-            throw e;
-        }
-    }
-    
-    public TestResultWithCoverage executeTestMethodWithCoverage(String className, String methodName)
-            throws TestExecutionException {
-        
-        try {
-            ExecDumpClient jacocoClient = new ExecDumpClient();
-            jacocoClient.setReset(true);
-            jacocoClient.setDump(false);
-            jacocoClient.dump("localhost", jacocoPort);
-            
-            out.writeObject("METHOD");
-            out.writeObject(className);
-            out.writeObject(methodName);
-            out.flush();
-            
-            TestResult result = readResult();
-            if (result == null) {
-                throw new TestIntegrityException("Did not get single result when running test " + className
-                        + "::" + methodName);
-            }
-            if (!result.testClass().equals(className)) {
-                LOG.warning("Test class name " + result.testClass()
-                        + " in test result differs from invoked test class " + className);
-                result = new TestResult(className, result.testMethod(), result.failureMessage(),
-                        result.failureStacktrace());
-            }
-            
-            jacocoClient.setDump(true);
-            ExecFileLoader loader = jacocoClient.dump("localhost", jacocoPort);
-            
-            return new TestResultWithCoverage(result, loader.getExecutionDataStore());
-            
-        } catch (IOException e) {
-            throw new TestExecutionException("Communication with test driver process failed", e);
-            
-        } catch (TestTimeoutException e) {
-            LOG.fine(() -> "Test method " + className + "::" + methodName + " timed out");
             throw e;
         }
     }

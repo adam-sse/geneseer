@@ -187,6 +187,16 @@ class Defects4jWrapper {
             }
             break;
             
+        case "Compress":
+            if (bug.bug() >= 30 && bug.bug() <= 47) {
+                Path offendingFile = checkoutDirectory.resolve(
+                        "src/test/java/org/apache/commons/compress/ArchiveReadTest.java");
+                FileUtils.replaceInFile(offendingFile, "public static void setUpFileList() throws Exception {",
+                        "public static void setUpFileList() throws Exception {\n"
+                        + "        FILELIST.clear();", StandardCharsets.UTF_8);
+            }
+            break;
+            
         case "Jsoup":
             if (bug.bug() >= 67 && bug.bug() <= 93) {
                 Path offendingFile = checkoutDirectory.resolve("src/test/java/org/jsoup/integration/ConnectTest.java");

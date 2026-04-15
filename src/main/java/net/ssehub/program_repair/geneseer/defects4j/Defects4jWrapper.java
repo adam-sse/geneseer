@@ -149,8 +149,6 @@ class Defects4jWrapper {
                 .run();
         checkForError(process, "Failed to checkout " + bug);
         
-        applyProjectSpecificFixesBeforeBuild(bug, target);
-        
         if (compile) {
             process = new ProcessRunner.Builder(getDefects4jBinary(), "compile")
                     .workingDirectory(target)
@@ -173,40 +171,6 @@ class Defects4jWrapper {
                 LOG.warning(() -> "defects4j stdout:\n" + stderr);
             }
             throw new IOException(message);
-        }
-    }
-    
-    private static void applyProjectSpecificFixesBeforeBuild(Bug bug, Path checkoutDirectory) throws IOException {
-        switch (bug.project()) {
-        case "Chart":
-            if (bug.bug() >= 5 && bug.bug() <= 26) {
-                Path offendingFile = checkoutDirectory.resolve(
-                        "tests/org/jfree/chart/axis/junit/SubCategoryAxisTests.java");
-                FileUtils.replaceInFile(offendingFile, "return new TestSuite(CategoryAxisTests.class);",
-                        "return new TestSuite(SubCategoryAxisTests.class);", StandardCharsets.UTF_8);
-            }
-            break;
-            
-        case "Compress":
-            if (bug.bug() >= 30 && bug.bug() <= 47) {
-                Path offendingFile = checkoutDirectory.resolve(
-                        "src/test/java/org/apache/commons/compress/ArchiveReadTest.java");
-                FileUtils.replaceInFile(offendingFile, "public static void setUpFileList() throws Exception {",
-                        "public static void setUpFileList() throws Exception {\n"
-                        + "        FILELIST.clear();", StandardCharsets.UTF_8);
-            }
-            break;
-            
-        case "Jsoup":
-            if (bug.bug() >= 67 && bug.bug() <= 93) {
-                Path offendingFile = checkoutDirectory.resolve("src/test/java/org/jsoup/integration/ConnectTest.java");
-                FileUtils.replaceInFile(offendingFile, "TestServer.stop();", "//TestServer.stop();",
-                        StandardCharsets.UTF_8);
-            }
-            break;
-            
-        default:
-            break;
         }
     }
     

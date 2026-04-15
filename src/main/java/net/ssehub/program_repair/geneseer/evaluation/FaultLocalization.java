@@ -295,9 +295,13 @@ class FaultLocalization {
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     Path relative = classesDirectory.relativize(file);
                     Path target = instrumentedDirectory.resolve(relative);
-                    try (InputStream in = Files.newInputStream(file);
-                            OutputStream out = Files.newOutputStream(target)) {
-                        instrumenter.instrumentAll(in, out, file.toString());
+                    if (file.getFileName().toString().endsWith(".class")) {
+                        try (InputStream in = Files.newInputStream(file);
+                                OutputStream out = Files.newOutputStream(target)) {
+                            instrumenter.instrumentAll(in, out, file.toString());
+                        }
+                    } else {
+                        Files.copy(file, target);
                     }
                     return FileVisitResult.CONTINUE;
                 }

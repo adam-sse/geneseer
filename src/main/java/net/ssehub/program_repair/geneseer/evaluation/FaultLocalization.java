@@ -248,26 +248,24 @@ class FaultLocalization {
     private Map<Location, Set<TestResult>> measureCoverage(List<TestResult> tests, Path classesDirectory)
             throws TestExecutionException {
         
-        Map<Location, Set<TestResult>> coverage = new HashMap<>();
-        
         Path instrumentedClassesDirectory = offlineInstrumentClasses(classesDirectory);
         
         List<Path> classpath = new ArrayList<>(this.classpath.size() + 1);
         classpath.add(instrumentedClassesDirectory);
         classpath.addAll(this.classpath);
         
+        Map<String, List<TestResult>> testsByClass = new HashMap<>();
+        for (TestResult test : tests) {
+            testsByClass
+                .computeIfAbsent(test.testClass(), key -> new LinkedList<>())
+                .add(test);
+        }
+        LOG.info(() -> "Running coverage on " + tests.size() + " test methods (in " + testsByClass.size()
+                + " classes)");
+        
+        Map<Location, Set<TestResult>> coverage = new HashMap<>();
         try (TestExecution testExec = new TestExecution(workingDirectory, classpath, encoding, true)) {
             testExec.setTimeout(Configuration.INSTANCE.setup().testExecutionTimeoutMs());
-            
-            Map<String, List<TestResult>> testsByClass = new HashMap<>();
-            for (TestResult test : tests) {
-                testsByClass
-                        .computeIfAbsent(test.testClass(), key -> new LinkedList<>())
-                        .add(test);
-            }
-            
-            LOG.info(() -> "Running coverage on " + tests.size() + " test methods (in "
-                    + testsByClass.size() + " classes)");
             
             for (Map.Entry<String, List<TestResult>> entry : testsByClass.entrySet()) {
                 measureCoverageForClass(entry.getKey(), entry.getValue(), classesDirectory, testExec, coverage);

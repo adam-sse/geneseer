@@ -254,7 +254,7 @@ class FaultLocalization {
         classpath.add(instrumentedClassesDirectory);
         classpath.addAll(this.classpath);
         
-        Map<String, List<TestResult>> testsByClass = new HashMap<>();
+        Map<String, List<TestResult>> testsByClass = new LinkedHashMap<>();
         for (TestResult test : tests) {
             testsByClass
                 .computeIfAbsent(test.testClass(), key -> new LinkedList<>())

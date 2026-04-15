@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -53,7 +51,7 @@ public class TestSuite {
                 project.getTestExecutionClassPathAbsolute(), project.getEncoding(), tempDirManager);
         this.originalSourceCode = sourceCode;
         
-        this.testMethods = new HashMap<>();
+        this.testMethods = new LinkedHashMap<>();
         for (String testClass : project.getTestClassNames()) {
             testMethods.put(testClass, new LinkedHashSet<>());
         }
@@ -107,6 +105,7 @@ public class TestSuite {
                 testResult);
     }
     
+    @SuppressWarnings("unchecked")
     public List<TestResult> evaluate(Node ast) throws EvaluationException {
         compile(ast);
         
@@ -117,11 +116,11 @@ public class TestSuite {
             }
         }
         LOG.fine(() -> "Detected " + modifiedFiles.size() + " modified files");
-        @SuppressWarnings("unchecked")
-        Set<String> relevantTestClasses = modifiedFiles.stream()
+        Set<String> relevantTestClasses = new LinkedHashSet<>();
+        modifiedFiles.stream()
                 .map(n -> (Set<String>) n.getMetadata(Metadata.COVERED_BY))
                 .flatMap(Set::stream)
-                .collect(Collectors.toSet());
+                .forEach(relevantTestClasses::add);
         LOG.fine(() -> "Only running " + relevantTestClasses.size() + " relevant test classes (out of "
                 + testMethods.size() + " total): " + relevantTestClasses);
         
@@ -194,7 +193,7 @@ public class TestSuite {
     }
     
     private static Map<Path, Node> getFileNodesByPath(Node astRoot)  throws EvaluationException {
-        Map<Path, Node> fileNodes = new HashMap<>();
+        Map<Path, Node> fileNodes = new LinkedHashMap<>();
         
         for (Node child : astRoot.childIterator()) {
             Path path = (Path) child.getMetadata(Metadata.FILE_NAME);
@@ -215,7 +214,7 @@ public class TestSuite {
             throw new TestIntegrityException("Files have changed between old and new AST");
         }
         
-        Set<Node> modifiedFiles = new HashSet<>();
+        Set<Node> modifiedFiles = new LinkedHashSet<>();
         for (Path file : newAstFiles.keySet()) {
             Node newFile = newAstFiles.get(file);
             Node oldFile = oldAstFiles.get(file);

@@ -65,7 +65,7 @@
                                 <artifactItem>
                                     <groupId>net.ssehub.program-repair</groupId>
                                     <artifactId>geneseer-test-driver</artifactId>
-                                    <version>3.0.0</version>
+                                    <version>3.1.0</version>
                                     <type>jar</type>
                                     <classifier>jar-with-dependencies</classifier>
                                     <outputDirectory>

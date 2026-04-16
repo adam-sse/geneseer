@@ -381,7 +381,7 @@ class FaultLocalization {
         }
         
         if (!foundCoveredLine) {
-            LOG.warning(() -> "Found no coverage in source directory for test " + test);
+            LOG.fine(() -> "Found no coverage in source directory for test " + test);
         }
     }
     

@@ -108,6 +108,8 @@ public class Configuration {
                 "Java compiler binary path", "javac", Function.identity());
         private Option<Integer> testExecutionTimeoutMs = new Option<>("testExecutionTimeoutMs",
                 "Test execution timeout", (int) TimeUnit.MINUTES.toMillis(2), Integer::parseInt);
+        private Option<Boolean> splitTestClassLoaders = new Option<>("splitTestClassLoaders",
+                "Split test class loaders", true, Boolean::parseBoolean);
         private Option<Double> suspiciousnessThreshold = new Option<>("suspiciousnessThreshold",
                 "Suspiciousness threshold", 0.01, Double::parseDouble);
         private Option<Integer> suspiciousStatementLimit = new Option<>("suspiciousStatementLimit",
@@ -127,6 +129,7 @@ public class Configuration {
             super.options.add(jvmBinaryPath);
             super.options.add(javaCompilerBinaryPath);
             super.options.add(testExecutionTimeoutMs);
+            super.options.add(splitTestClassLoaders);
             super.options.add(suspiciousnessThreshold);
             super.options.add(suspiciousStatementLimit);
             super.options.add(testsToRun);
@@ -147,6 +150,10 @@ public class Configuration {
         
         public int testExecutionTimeoutMs() {
             return testExecutionTimeoutMs.getValue();
+        }
+        
+        public boolean splitTestClassLoaders() {
+            return splitTestClassLoaders.getValue();
         }
         
         public double suspiciousnessThreshold() {

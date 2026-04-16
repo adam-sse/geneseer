@@ -400,8 +400,11 @@ class TestExecution implements AutoCloseable {
         command.add(cp.toString());
 
         command.add("net.ssehub.program_repair.geneseer.evaluation.TestDriver");
+        if (!Configuration.INSTANCE.setup().splitTestClassLoaders()) {
+            command.add("--no-per-test-classloader");
+        }
         if (Configuration.INSTANCE.setup().debugTestDriver()) {
-            command.add("DEBUG");
+            command.add("--debug");
         }
         return command;
     }

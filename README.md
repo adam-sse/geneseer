@@ -99,6 +99,7 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.setup.jvmBinaryPath`            | `java`                 | The path to the JVM binary to run tests. May be absolute or on the path. |
 | `--config.setup.javaCompilerBinaryPath`   | `javac`                | The path to the Java compiler to compile the project. May be absolute or on the path. |
 | `--config.setup.testExecutionTimeoutMs`   | `120000` (2 minutes)   | The number of milliseconds before a test execution is considered timed out. The test process will be killed and the tests will count as failures. |
+| `--config.setup.splitTestClassLoaders`    | `true`                 | Whether to split use separate class loaders for loading test classes. |
 | `--config.setup.suspiciousnessThreshold`  | `0.01`                 | The minimum suspiciousness value required; statements that are less suspicious will be ignored. |
 | `--config.setup.testsToRun`               | `ALL_TESTS`            | Relevant only for the Defects4J runner: Whether to run all tests or only the tests that Defects4J marked as relevant. Possible values are `ALL_TESTS` and `RELEVANT_TESTS`. |
 | `--config.setup.debugTestDriver`          | `false`                | Whether to print debug output of the test driver process to stderr. |

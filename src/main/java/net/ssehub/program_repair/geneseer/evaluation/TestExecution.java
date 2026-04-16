@@ -388,7 +388,8 @@ class TestExecution implements AutoCloseable {
         
         command.add("-Dfile.encoding=" + encoding.toString());
         command.add("-Djava.io.tmpdir=" + tempDirManager.createTemporaryDirectory());
-
+        command.add("-XX:-UsePerfData");
+        
         StringBuilder cp = new StringBuilder(GENESEER_TEST_DRIVER.toAbsolutePath().toString());
         for (Path element : classpath) {
             cp.append(File.pathSeparatorChar);

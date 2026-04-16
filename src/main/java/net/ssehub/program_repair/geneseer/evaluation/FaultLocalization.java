@@ -16,9 +16,9 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -270,13 +270,14 @@ class FaultLocalization {
         try (TestExecution testExec = new TestExecution(workingDirectory, classpath, encoding, true)) {
             testExec.setTimeout(Configuration.INSTANCE.setup().testExecutionTimeoutMs());
             
-            CoverageParserThread parserThread = new CoverageParserThread(instrumentedClassesDirectory, coverage);
+            CoverageParserThread parserThread = new CoverageParserThread(classesDirectory, coverage);
             parserThread.start();
             
             for (Map.Entry<String, List<TestResult>> entry : testsByClass.entrySet()) {
                 measureCoverageForClass(entry.getKey(), entry.getValue(), testExec, parserThread);
             }
             
+            parserThread.finish();
             ProcessRunner.untilNoInterruptedException(() -> {
                 parserThread.join();
                 return null;
@@ -332,7 +333,9 @@ class FaultLocalization {
     
     private static class CoverageParserThread extends Thread {
         
-        private Queue<WorkPackage> queue = new ConcurrentLinkedQueue<>();
+        private static final WorkPackage END_OF_WORK = new WorkPackage(null, null);
+        
+        private BlockingQueue<WorkPackage> queue = new LinkedBlockingQueue<>();
         
         private Path classesDirectory;
         
@@ -353,12 +356,16 @@ class FaultLocalization {
         public void add(WorkPackage task) {
             queue.add(task);
         }
+        
+        public void finish() {
+            queue.add(END_OF_WORK);
+        }
 
         @Override
         public void run() {
             try {
                 WorkPackage task;
-                while ((task = queue.poll()) != null) {
+                while ((task = ProcessRunner.untilNoInterruptedException(() -> queue.take())) != END_OF_WORK) {
                     parseJacocoCoverage(task.test(), task.executionData());
                 }
             } catch (TestCoverageException e) {
@@ -378,7 +385,7 @@ class FaultLocalization {
                 throw new TestCoverageException("Failed to parse jacoco data", e);
             }
         
-            boolean foundCoveredLine = false;
+            int numCoveredLines = 0;
             for (IClassCoverage classCoverage : coverageBuilder.getClasses()) {
         
                 String className = classCoverage.getName().replace('/', '.');
@@ -386,7 +393,7 @@ class FaultLocalization {
                     for (int line = methodCoverage.getFirstLine(); line <= methodCoverage.getLastLine() + 1; line++) {
                         int coveredI = methodCoverage.getLine(line).getInstructionCounter().getCoveredCount();
                         if (coveredI > 0) {
-                            foundCoveredLine = true;
+                            numCoveredLines++;
                             coverageResult.compute(new Location(className, line), (k, v) -> {
                                 if (v == null) {
                                     v = new HashSet<>();
@@ -399,9 +406,8 @@ class FaultLocalization {
                 }
             }
             
-            if (!foundCoveredLine) {
-                LOG.fine(() -> "Found no coverage in source directory for test " + test);
-            }
+            int n = numCoveredLines;
+            LOG.finer(() -> test + " covered " + n + " lines");
         }
         
     }

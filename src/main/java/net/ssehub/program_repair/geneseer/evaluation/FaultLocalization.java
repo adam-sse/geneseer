@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -421,10 +422,13 @@ class FaultLocalization {
         } catch (TestTimeoutException e) {
             throw new TestExecutionException("Test class " + className + " timed out when run with coverage");
         }
-        if (coverageResults.size() != tests.size()) {
-            int size = coverageResults.size();
-            throw new TestExecutionException("Got different number of test methods in class " + className
-                    + " when running with coverage (got " + size + ", expected " + tests.size() + ")");
+        Set<String> originalTests = getTestNames(tests);
+        Set<String> coverageTests = getTestNames(coverageResults.stream()
+                .map(TestResultWithCoverage::getTestResult)
+                .toList());
+        if (!coverageTests.equals(originalTests)) {
+            throw new TestExecutionException("Got different test methods in class " + className
+                    + " when running with coverage (got " + coverageTests + ", expected " + originalTests + ")");
         }
         
         for (TestResultWithCoverage coverageResult : coverageResults) {
@@ -443,6 +447,20 @@ class FaultLocalization {
             }
             parserThread.add(new CoverageParserThread.WorkPackage(expected, coverageResult.getCoverage()));
         }
+    }
+    
+    private static Set<String> getTestNames(List<TestResult> tests) throws TestExecutionException {
+        List<String> names = tests.stream()
+                .map(test -> test.testClass() + "::" + test.testMethod())
+                .collect(Collectors.toList());
+        Set<String> asSet = new LinkedHashSet<>(names);
+        if (asSet.size() != names.size()) {
+            for (String name : asSet) {
+                names.remove(name);
+            }
+            throw new TestExecutionException("Found duplicate test names in test result: " + names);
+        }
+        return asSet;
     }
     
     // taken from flacoco

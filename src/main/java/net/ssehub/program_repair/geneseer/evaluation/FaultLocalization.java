@@ -16,7 +16,9 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -37,6 +39,7 @@ import net.ssehub.program_repair.geneseer.evaluation.TestExecution.TestResultWit
 import net.ssehub.program_repair.geneseer.util.AstLocations;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
+import net.ssehub.program_repair.geneseer.util.ProcessRunner;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
 class FaultLocalization {
@@ -267,9 +270,22 @@ class FaultLocalization {
         try (TestExecution testExec = new TestExecution(workingDirectory, classpath, encoding, true)) {
             testExec.setTimeout(Configuration.INSTANCE.setup().testExecutionTimeoutMs());
             
+            CoverageParserThread parserThread = new CoverageParserThread(instrumentedClassesDirectory, coverage);
+            parserThread.start();
+            
             for (Map.Entry<String, List<TestResult>> entry : testsByClass.entrySet()) {
-                measureCoverageForClass(entry.getKey(), entry.getValue(), classesDirectory, testExec, coverage);
+                measureCoverageForClass(entry.getKey(), entry.getValue(), testExec, parserThread);
             }
+            
+            ProcessRunner.untilNoInterruptedException(() -> {
+                parserThread.join();
+                return null;
+            });
+            
+            if (parserThread.exception != null) {
+                throw parserThread.exception;
+            }
+            
         } finally {
             try {
                 tempDirManager.deleteTemporaryDirectory(instrumentedClassesDirectory);
@@ -314,8 +330,84 @@ class FaultLocalization {
         }
     }
     
-    private static void measureCoverageForClass(String className, List<TestResult> tests, Path classesDirectory,
-            TestExecution testExec, Map<Location, Set<TestResult>> result) throws TestExecutionException {
+    private static class CoverageParserThread extends Thread {
+        
+        private Queue<WorkPackage> queue = new ConcurrentLinkedQueue<>();
+        
+        private Path classesDirectory;
+        
+        private Map<Location, Set<TestResult>> coverageResult;
+        
+        private volatile TestCoverageException exception;
+        
+        public CoverageParserThread(Path classesDirectory, Map<Location, Set<TestResult>> coverageResult) {
+            this.classesDirectory = classesDirectory;
+            this.coverageResult = coverageResult;
+            setDaemon(true);
+            setName("CoverageParsing");
+        }
+        
+        private record WorkPackage(TestResult test, ExecutionDataStore executionData) {
+        }
+        
+        public void add(WorkPackage task) {
+            queue.add(task);
+        }
+
+        @Override
+        public void run() {
+            try {
+                WorkPackage task;
+                while ((task = queue.poll()) != null) {
+                    parseJacocoCoverage(task.test(), task.executionData());
+                }
+            } catch (TestCoverageException e) {
+                this.exception = e;
+            }
+        }
+        
+        private void parseJacocoCoverage(TestResult test, ExecutionDataStore executionData)
+                throws TestCoverageException {
+        
+            final CoverageBuilder coverageBuilder = new CoverageBuilder();
+            final Analyzer analyzer = new Analyzer(executionData, coverageBuilder);
+            
+            try {
+                analyzer.analyzeAll(classesDirectory.toFile());
+            } catch (IOException e) {
+                throw new TestCoverageException("Failed to parse jacoco data", e);
+            }
+        
+            boolean foundCoveredLine = false;
+            for (IClassCoverage classCoverage : coverageBuilder.getClasses()) {
+        
+                String className = classCoverage.getName().replace('/', '.');
+                for (IMethodCoverage methodCoverage : classCoverage.getMethods()) {
+                    for (int line = methodCoverage.getFirstLine(); line <= methodCoverage.getLastLine() + 1; line++) {
+                        int coveredI = methodCoverage.getLine(line).getInstructionCounter().getCoveredCount();
+                        if (coveredI > 0) {
+                            foundCoveredLine = true;
+                            coverageResult.compute(new Location(className, line), (k, v) -> {
+                                if (v == null) {
+                                    v = new HashSet<>();
+                                }
+                                v.add(test);
+                                return v;
+                            });
+                        }
+                    }
+                }
+            }
+            
+            if (!foundCoveredLine) {
+                LOG.fine(() -> "Found no coverage in source directory for test " + test);
+            }
+        }
+        
+    }
+    
+    private static void measureCoverageForClass(String className, List<TestResult> tests,
+            TestExecution testExec, CoverageParserThread parserThread) throws TestExecutionException {
         
         List<TestResultWithCoverage> coverageResults;
         try {
@@ -343,45 +435,7 @@ class FaultLocalization {
                         + "\nWith coverage:\n" + (actual.isFailure() ? actual.failureStacktrace() : "no failure"));
                 throw new TestExecutionException("Test result for " + actual + " differs when run with coverage");
             }
-            parseJacocoCoverage(expected, coverageResult.getCoverage(), classesDirectory, result);
-        }
-    }
-    
-    private static void parseJacocoCoverage(TestResult test, ExecutionDataStore executionData,
-            Path classesDirectory, Map<Location, Set<TestResult>> coverage) throws TestCoverageException {
-
-        final CoverageBuilder coverageBuilder = new CoverageBuilder();
-        final Analyzer analyzer = new Analyzer(executionData, coverageBuilder);
-        
-        try {
-            analyzer.analyzeAll(classesDirectory.toFile());
-        } catch (IOException e) {
-            throw new TestCoverageException("Failed to parse jacoco data", e);
-        }
-
-        boolean foundCoveredLine = false;
-        for (IClassCoverage classCoverage : coverageBuilder.getClasses()) {
-
-            String className = classCoverage.getName().replace('/', '.');
-            for (IMethodCoverage methodCoverage : classCoverage.getMethods()) {
-                for (int line = methodCoverage.getFirstLine(); line <= methodCoverage.getLastLine() + 1; line++) {
-                    int coveredI = methodCoverage.getLine(line).getInstructionCounter().getCoveredCount();
-                    if (coveredI > 0) {
-                        foundCoveredLine = true;
-                        coverage.compute(new Location(className, line), (k, v) -> {
-                            if (v == null) {
-                                v = new HashSet<>();
-                            }
-                            v.add(test);
-                            return v;
-                        });
-                    }
-                }
-            }
-        }
-        
-        if (!foundCoveredLine) {
-            LOG.fine(() -> "Found no coverage in source directory for test " + test);
+            parserThread.add(new CoverageParserThread.WorkPackage(expected, coverageResult.getCoverage()));
         }
     }
     

@@ -29,6 +29,8 @@ directory.
 * `--encoding`: The encoding of the source files of the project to repair. For example `ISO-8859-1`. If this is not
 specified, the default encoding of the operating system is used.
 * `--additional-javac-options`: A comma-separated list of additional command line options to pass to the Java compiler.
+* `--splitTestClassLoaders`: A boolean specifying whether to use separate class loaders for loading test classes
+(default is `true`).
 * `--config.*`: Configuration options start with `--config.`, see below.
 
 The classpaths (`--test-classpath` and `--compile-classpath`) can be specified with the platform-specific file separator
@@ -99,7 +101,6 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.setup.jvmBinaryPath`            | `java`                 | The path to the JVM binary to run tests. May be absolute or on the path. |
 | `--config.setup.javaCompilerBinaryPath`   | `javac`                | The path to the Java compiler to compile the project. May be absolute or on the path. |
 | `--config.setup.testExecutionTimeoutMs`   | `120000` (2 minutes)   | The number of milliseconds before a test execution is considered timed out. The test process will be killed and the tests will count as failures. |
-| `--config.setup.splitTestClassLoaders`    | `true`                 | Whether to split use separate class loaders for loading test classes. |
 | `--config.setup.suspiciousnessThreshold`  | `0.01`                 | The minimum suspiciousness value required; statements that are less suspicious will be ignored. |
 | `--config.setup.testsToRun`               | `ALL_TESTS`            | Relevant only for the Defects4J runner: Whether to run all tests or only the tests that Defects4J marked as relevant. Possible values are `ALL_TESTS` and `RELEVANT_TESTS`. |
 | `--config.setup.debugTestDriver`          | `false`                | Whether to print debug output of the test driver process to stderr. |

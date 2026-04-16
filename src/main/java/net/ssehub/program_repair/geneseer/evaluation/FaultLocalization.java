@@ -53,13 +53,16 @@ class FaultLocalization {
     
     private Charset encoding;
     
+    private boolean splitTestClassLoaders;
+    
     private TemporaryDirectoryManager tempDirManager;
     
     public FaultLocalization(Path workingDirectory, List<Path> classpath, Charset encoding,
-            TemporaryDirectoryManager tempDirManager) {
+            boolean splitTestClassLoaders, TemporaryDirectoryManager tempDirManager) {
         this.workingDirectory = workingDirectory;
         this.classpath = classpath;
         this.encoding = encoding;
+        this.splitTestClassLoaders = splitTestClassLoaders;
         this.tempDirManager = tempDirManager;
     }
     
@@ -268,7 +271,8 @@ class FaultLocalization {
                 + " classes)");
         
         Map<Location, Set<TestResult>> coverage = new HashMap<>();
-        try (TestExecution testExec = new TestExecution(workingDirectory, classpath, encoding, true)) {
+        try (TestExecution testExec = new TestExecution(workingDirectory, classpath, encoding, true,
+                splitTestClassLoaders)) {
             testExec.setTimeout(Configuration.INSTANCE.setup().testExecutionTimeoutMs());
             
             CoverageParserThread parserThread = new CoverageParserThread(classesDirectory, coverage);

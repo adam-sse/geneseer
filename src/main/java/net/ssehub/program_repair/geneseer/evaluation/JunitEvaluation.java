@@ -19,10 +19,14 @@ class JunitEvaluation {
     
     private Charset encoding;
     
-    public JunitEvaluation(Path workingDirectory, List<Path> classpath, Charset encoding) {
+    private boolean splitTestClassLoaders;
+    
+    public JunitEvaluation(Path workingDirectory, List<Path> classpath, Charset encoding,
+            boolean splitTestClassLoaders) {
         this.workingDirectory = workingDirectory;
         this.classpath = classpath;
         this.encoding = encoding;
+        this.splitTestClassLoaders = splitTestClassLoaders;
     }
 
     public List<TestResult> runTests(Path classes, Collection<String> testClasses) throws TestExecutionException {
@@ -34,7 +38,8 @@ class JunitEvaluation {
             fullClasspath.addAll(classpath);
             
             List<TestResult> executedTests = new LinkedList<>();
-            try (TestExecution testExec = new TestExecution(workingDirectory, fullClasspath, encoding, false)) {
+            try (TestExecution testExec = new TestExecution(workingDirectory, fullClasspath, encoding, false,
+                    splitTestClassLoaders)) {
                 testExec.setTimeout(Configuration.INSTANCE.setup().testExecutionTimeoutMs());
                 for (String className : testClasses) {
                     runTestCatchingTimeout(workingDirectory, fullClasspath, executedTests, testExec, className);

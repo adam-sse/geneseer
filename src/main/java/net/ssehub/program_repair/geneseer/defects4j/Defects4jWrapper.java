@@ -111,6 +111,9 @@ class Defects4jWrapper {
                 project.setAdditionalCompilerOptions(List.of("-source", "1.3", "-target", "1.2"));
             }
         }
+        if (bug.project().equals("Chart")) {
+            project.setSplitTestClassLoaders(false);
+        }
         return project;
     }
 

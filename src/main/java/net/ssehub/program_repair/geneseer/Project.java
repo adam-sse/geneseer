@@ -37,6 +37,8 @@ public class Project {
     
     private List<String> additionalCompilerOptions;
     
+    private boolean splitTestClassLoaders;
+    
     /**
      * @param projectDirectory The root directory of the project.
      * @param sourceDirectory The base directory where the Java source code files are located. May be relative to
@@ -61,6 +63,7 @@ public class Project {
         this.testClassNames = testClassNames;
         this.encoding = Charset.defaultCharset();
         this.additionalCompilerOptions = Collections.emptyList();
+        this.splitTestClassLoaders = true;
         
         checkConsistency();
     }
@@ -124,12 +127,13 @@ public class Project {
     public static String getCliUsage() {
         return "--project-directory <projectDirectory> --source-directory <sourceDirectory> "
                 + "[--compile-classpath <compilationClasspath>] --test-classpath <testExecutionClassPath> "
-                + "--test-classes <testClasses> [--encoding <encoding>] [--additional-javac-options <options>]";
+                + "--test-classes <testClasses> [--encoding <encoding>] [--additional-javac-options <options>] "
+                + "[--splitTestClassLoaders <true/false>]";
     }
     
     public static Set<String> getCliOptions() {
         return Set.of("--project-directory", "--source-directory", "--compile-classpath", "--test-classpath",
-                "--test-classes", "--encoding", "--additional-javac-options");
+                "--test-classes", "--encoding", "--additional-javac-options", "--splitTestClassLoaders");
     }
     
     public static Project readFromCommandLine(CliArguments args) throws IllegalArgumentException {
@@ -154,6 +158,10 @@ public class Project {
             project.setAdditionalCompilerOptions(Arrays.stream(args.getOption("--additional-javac-options").split(","))
                     .map(option -> option.trim())
                     .toList());
+        }
+        
+        if (args.hasOption("--splitTestClassLoaders")) {
+            project.setSplitTestClassLoaders(Boolean.parseBoolean(args.getOption("--splitTestClassLoaders")));
         }
         
         return project;
@@ -185,6 +193,10 @@ public class Project {
     
     public void setAdditionalCompilerOptions(List<String> additionalCompilerOptions) {
         this.additionalCompilerOptions = additionalCompilerOptions;
+    }
+    
+    public void setSplitTestClassLoaders(boolean splitTestClassLoaders) {
+        this.splitTestClassLoaders = splitTestClassLoaders;
     }
     
     /**
@@ -257,6 +269,10 @@ public class Project {
     
     public List<String> getAdditionalCompilerOptions() {
         return additionalCompilerOptions;
+    }
+    
+    public boolean getSplitTestClassLoaders() {
+        return splitTestClassLoaders;
     }
     
 }

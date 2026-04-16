@@ -86,10 +86,12 @@ class TestExecution implements AutoCloseable {
     
     private long timeoutMs = -1;
     
+    private boolean splitTestClassLoaders;
+    
     private int jacocoPort;
     
-    public TestExecution(Path workingDirectory, List<Path> classpath, Charset encoding, boolean withJacocoAgent)
-            throws TestExecutionException {
+    public TestExecution(Path workingDirectory, List<Path> classpath, Charset encoding, boolean withJacocoAgent,
+            boolean splitTestClassLoaders) throws TestExecutionException {
         tempDirManager = new TemporaryDirectoryManager();
         this.workingDirectory = workingDirectory;
         this.classpath = classpath;
@@ -400,7 +402,7 @@ class TestExecution implements AutoCloseable {
         command.add(cp.toString());
 
         command.add("net.ssehub.program_repair.geneseer.evaluation.TestDriver");
-        if (!Configuration.INSTANCE.setup().splitTestClassLoaders()) {
+        if (!splitTestClassLoaders) {
             command.add("--no-per-test-classloader");
         }
         if (Configuration.INSTANCE.setup().debugTestDriver()) {

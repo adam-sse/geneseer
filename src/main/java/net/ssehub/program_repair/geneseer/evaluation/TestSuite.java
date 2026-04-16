@@ -46,9 +46,10 @@ public class TestSuite {
         this.tempDirManager = tempDirManager;
         this.compiler = createCompiler(project);
         this.junitSuite = new JunitEvaluation(project.getProjectDirectory(),
-                project.getTestExecutionClassPathAbsolute(), project.getEncoding());
+                project.getTestExecutionClassPathAbsolute(), project.getEncoding(), project.getSplitTestClassLoaders());
         this.faultLocalization = new FaultLocalization(project.getProjectDirectory(),
-                project.getTestExecutionClassPathAbsolute(), project.getEncoding(), tempDirManager);
+                project.getTestExecutionClassPathAbsolute(), project.getEncoding(), project.getSplitTestClassLoaders(),
+                tempDirManager);
         this.originalSourceCode = sourceCode;
         
         this.testMethods = new LinkedHashMap<>();

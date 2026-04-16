@@ -105,15 +105,9 @@ class Defects4jWrapper {
         
         Project project = new Project(checkoutDirectory, sourceDirectory, compilationClasspath,
                 testExecutionClassPath, testClassNames);
-        if (bug.project().equals("Lang")) {
-            project.setEncoding(StandardCharsets.ISO_8859_1);
-            if (bug.bug() >= 42) {
-                project.setAdditionalCompilerOptions(List.of("-source", "1.3", "-target", "1.2"));
-            }
-        }
-        if (bug.project().equals("Chart")) {
-            project.setSplitTestClassLoaders(false);
-        }
+        
+        applyProjectSpecificFixedToProject(bug, project);
+        
         return project;
     }
 
@@ -330,6 +324,24 @@ class Defects4jWrapper {
     
     private Path defects4jResource(String pathInDefects4jRoot) {
         return defects4jHome.resolve(pathInDefects4jRoot).toAbsolutePath();
+    }
+
+    private static void applyProjectSpecificFixedToProject(Bug bug, Project project) {
+        switch (bug.project()) {
+        case "Chart":
+            project.setSplitTestClassLoaders(false);
+            break;
+        
+        case "Lang":
+            project.setEncoding(StandardCharsets.ISO_8859_1);
+            if (bug.bug() >= 42) {
+                project.setAdditionalCompilerOptions(List.of("-source", "1.3", "-target", "1.2"));
+            }
+            break;
+            
+        default:
+            break;
+        }
     }
 
     private String getDefects4jBinary() {

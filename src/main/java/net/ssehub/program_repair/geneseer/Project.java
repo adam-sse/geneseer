@@ -187,6 +187,18 @@ public class Project {
         return classpath;
     }
     
+    public void logConfiguration() {
+        LOG.config("Project configuration:");
+        LOG.config("    base directory: " + getProjectDirectory());
+        LOG.config("    source directory: " + getSourceDirectory());
+        LOG.config("    compilation classpath: " + getCompilationClasspath());
+        LOG.config("    test execution classpath: " + getTestExecutionClassPath());
+        LOG.config("    test classes (" + getTestClassNames().size() + "): " + getTestClassNames());
+        LOG.config("    encoding: " + getEncoding());
+        LOG.config("    additional compiler options: " + getAdditionalCompilerOptions());
+        LOG.config("    split test class loaders: " + getSplitTestClassLoaders());
+    }
+    
     public void setEncoding(Charset encoding) {
         this.encoding = encoding;
     }

@@ -77,14 +77,7 @@ public class Geneseer {
     }
     
     public static void main(Project project) {
-        LOG.config("Project:");
-        LOG.config("    base directory: " + project.getProjectDirectory());
-        LOG.config("    source directory: " + project.getSourceDirectory());
-        LOG.config("    compilation classpath: " + project.getCompilationClasspath());
-        LOG.config("    test execution classpath: " + project.getTestExecutionClassPath());
-        LOG.config("    test classes (" + project.getTestClassNames().size() + "): " + project.getTestClassNames());
-        LOG.config("    encoding: " + project.getEncoding());
-        LOG.config("    additional compiler options: " + project.getAdditionalCompilerOptions());
+        project.logConfiguration();
         
         TestSuite testSuite = null;
         Map<String, Object> result = new HashMap<>();

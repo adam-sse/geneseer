@@ -187,6 +187,19 @@ class Defects4jWrapper {
             }
             break;
             
+        case "Lang":
+            if (bug.bug() >= 40 && bug.bug() <= 65) {
+                Path offendingFile = checkoutDirectory.resolve(
+                        "src/test/org/apache/commons/lang/builder/StandardToStringStyleTest.java");
+                FileUtils.replaceInFile(offendingFile,
+                        "super.tearDown();\n"
+                        + "        ToStringBuilder.setDefaultStyle(STYLE);",
+                        "super.tearDown();\n"
+                        + "        ToStringBuilder.setDefaultStyle(ToStringStyle.DEFAULT_STYLE);",
+                        StandardCharsets.UTF_8);
+            }
+            break;
+            
         default:
             break;
         }

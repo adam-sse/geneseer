@@ -184,6 +184,15 @@ class Defects4jWrapper {
             }
             break;
             
+        case "JacksonDatabind":
+            if (bug.bug() >= 89) {
+                Path offendingFile = checkoutDirectory.resolve(
+                        "src/test/java/com/fasterxml/jackson/databind/interop/IllegalTypesCheckTest.java");
+                FileUtils.replaceInFile(offendingFile, "'/tmp/foobar.txt'",
+                        "'\" + System.getProperty(\"java.io.tmpdir\") + \"/foobar.txt'", StandardCharsets.UTF_8);
+            }
+            break;
+            
         default:
             break;
         }

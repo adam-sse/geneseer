@@ -176,11 +176,24 @@ class Defects4jWrapper {
     private static void applyProjectSpecificFixesBeforeBuild(Bug bug, Path checkoutDirectory) throws IOException {
         switch (bug.project()) {
         case "Chart":
-            if (bug.bug() >= 5 && bug.bug() <= 26) {
+            if (bug.bug() >= 5) {
                 Path offendingFile = checkoutDirectory.resolve(
                         "tests/org/jfree/chart/axis/junit/SubCategoryAxisTests.java");
                 FileUtils.replaceInFile(offendingFile, "return new TestSuite(CategoryAxisTests.class);",
                         "return new TestSuite(SubCategoryAxisTests.class);", StandardCharsets.UTF_8);
+            }
+            break;
+            
+        case "Lang":
+            if (bug.bug() >= 40) {
+                Path offendingFile = checkoutDirectory.resolve(
+                        "src/test/org/apache/commons/lang/builder/StandardToStringStyleTest.java");
+                FileUtils.replaceInFile(offendingFile,
+                        "super.tearDown();\n"
+                        + "        ToStringBuilder.setDefaultStyle(STYLE);",
+                        "super.tearDown();\n"
+                        + "        ToStringBuilder.setDefaultStyle(ToStringStyle.DEFAULT_STYLE);",
+                        StandardCharsets.UTF_8);
             }
             break;
             

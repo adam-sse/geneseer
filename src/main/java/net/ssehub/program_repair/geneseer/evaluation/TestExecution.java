@@ -97,6 +97,7 @@ class TestExecution implements AutoCloseable {
         this.classpath = classpath;
         this.encoding = encoding;
         this.withJacocoAgent = withJacocoAgent;
+        this.splitTestClassLoaders = splitTestClassLoaders;
         
         startProcess();
     }

@@ -13,6 +13,7 @@ import java.net.ServerSocket;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -392,6 +393,9 @@ class TestExecution implements AutoCloseable {
         command.add("-Dfile.encoding=" + encoding.toString());
         command.add("-Djava.io.tmpdir=" + tempDirManager.createTemporaryDirectory());
         command.add("-XX:-UsePerfData");
+        if (Configuration.INSTANCE.setup().debugTestDriver()) {
+            command.add("-Dgeneseer.logTimeZone=" + ZoneId.systemDefault().getId());
+        }
         
         StringBuilder cp = new StringBuilder(GENESEER_TEST_DRIVER.toAbsolutePath().toString());
         for (Path element : classpath) {

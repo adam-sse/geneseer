@@ -338,11 +338,18 @@ class Defects4jWrapper {
     private static void applyProjectSpecificFixedToProject(Bug bug, Project project) {
         switch (bug.project()) {
         case "Chart":
+        case "JacksonDatabind":
+        case "JacksonXml":
+        case "JxPath":
+        case "Mockito":
             project.setSplitTestClassLoaders(false);
             break;
         
         case "Lang":
             project.setEncoding(StandardCharsets.ISO_8859_1);
+            if (bug.bug() <= 31) {
+                project.setSplitTestClassLoaders(false);
+            }
             if (bug.bug() >= 42) {
                 project.setAdditionalCompilerOptions(List.of("-source", "1.3", "-target", "1.2"));
             }

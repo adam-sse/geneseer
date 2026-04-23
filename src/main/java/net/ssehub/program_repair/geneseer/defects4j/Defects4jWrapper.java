@@ -345,6 +345,10 @@ class Defects4jWrapper {
             project.setSplitTestClassLoaders(false);
             break;
         
+        case "Collections":
+            project.setAdditionalCompilerOptions(List.of("-source", "1.7", "-target", "1.7"));
+            break;
+            
         case "Lang":
             project.setEncoding(StandardCharsets.ISO_8859_1);
             if (bug.bug() <= 31) {

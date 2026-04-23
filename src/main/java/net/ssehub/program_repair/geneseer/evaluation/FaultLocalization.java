@@ -114,8 +114,11 @@ class FaultLocalization {
         }
         removeBelowThreshold(ast, Configuration.INSTANCE.setup().suspiciousnessThreshold());
         removeToKeepLimit(ast, Configuration.INSTANCE.setup().suspiciousStatementLimit());
-        LOG.info(() -> ast.stream().filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null).count()
-                + " suspicious statements");
+        long suspiciousStatementCount = ast.stream()
+                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                .count();
+        LOG.log(suspiciousStatementCount > 0 ? Level.INFO : Level.WARNING,
+                () -> suspiciousStatementCount + " suspicious statements");
     }
     
     private static Node findClassNode(String classNameFromSuspiciousness, Map<String, Node> classes) {

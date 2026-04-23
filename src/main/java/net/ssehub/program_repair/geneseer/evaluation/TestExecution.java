@@ -261,14 +261,6 @@ class TestExecution implements AutoCloseable {
         }
     }
 
-    private static void fixExpectedClassName(List<TestResult> result, String className) {
-        for (int i = 0; i < result.size(); i++) {
-            TestResult tr = result.get(i);
-            result.set(i, new TestResult(className, tr.testMethod(), tr.testClass(), tr.failureMessage(),
-                    tr.failureStacktrace()));
-        }
-    }
-
     public List<TestResult> executeTestClass(String className) throws TestExecutionException {
         try {
             out.writeObject("CLASS");
@@ -276,8 +268,6 @@ class TestExecution implements AutoCloseable {
             out.flush();
             
             List<TestResult> result = readResult();
-            fixExpectedClassName(result, className);
-            
             LOG.fine(() -> result.size() + " tests run in test class " + className + ", "
                     + result.stream().filter(TestResult::isFailure).count() + " failures");
             
@@ -349,8 +339,6 @@ class TestExecution implements AutoCloseable {
             } while (!"DONE".equals(resultState));
             
             List<TestResult> result = readResult();
-            fixExpectedClassName(result, className);
-            
             LOG.fine(() -> result.size() + " tests run in test class " + className + ", "
                     + result.stream().filter(TestResult::isFailure).count() + " failures");
             

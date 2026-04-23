@@ -139,8 +139,8 @@ public class TestSuite {
             }
             if (tr.isTimeout()) {
                 for (String testMethod : knownMethods) {
-                    extendedTestResult.add(new TestResult(tr.testClass(), testMethod, tr.implementingClass(),
-                            "Timeout", "Timeout"));
+                    extendedTestResult.add(new TestResult(tr.testClass(), tr.implementingClass(),
+                            testMethod, "Timeout"));
                 }
             } else {
                 if (!knownMethods.contains(tr.getMethodIdentifier())) {

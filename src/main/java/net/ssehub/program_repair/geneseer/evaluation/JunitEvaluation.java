@@ -56,7 +56,7 @@ class JunitEvaluation {
             executedTests.addAll(testExec.executeTestClass(className));
             
         } catch (TestTimeoutException e) {
-            executedTests.add(new TestResult(className, "<none>", className, "Timeout", "Timeout"));
+            executedTests.add(new TestResult(className, className, "<none>", "Timeout"));
         }
     }
     

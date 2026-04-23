@@ -439,7 +439,7 @@ class FaultLocalization {
             TestResult actual = coverageResult.getTestResult();
             TestResult expected = tests.stream()
                     .filter(t -> t.testClass().equals(actual.testClass()))
-                    .filter(t -> t.testMethod().equals(actual.testMethod()))
+                    .filter(t -> t.getMethodIdentifier().equals(actual.getMethodIdentifier()))
                     .findAny()
                     .orElseThrow(() -> new TestExecutionException("Test returned by coverage run ("
                             + coverageResult.getTestResult() + ") is unknown"));
@@ -455,14 +455,15 @@ class FaultLocalization {
     
     private static Set<String> getTestNames(List<TestResult> tests) throws TestExecutionException {
         List<String> names = tests.stream()
-                .map(test -> test.testClass() + "::" + test.testMethod())
+                .map(TestResult::getIdentifier)
                 .collect(Collectors.toList());
         Set<String> asSet = new LinkedHashSet<>(names);
         if (asSet.size() != names.size()) {
             for (String name : asSet) {
                 names.remove(name);
             }
-            throw new TestExecutionException("Found duplicate test names in test result: " + names);
+            throw new TestExecutionException("Found " + names.size() + " duplicate test names in test result: "
+                    + names);
         }
         return asSet;
     }

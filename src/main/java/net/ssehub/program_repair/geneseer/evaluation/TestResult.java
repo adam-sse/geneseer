@@ -2,8 +2,13 @@ package net.ssehub.program_repair.geneseer.evaluation;
 
 import java.io.Serializable;
 
-public record TestResult(String testClass, String testMethod, String failureMessage, String failureStacktrace)
-        implements Serializable {
+public record TestResult(
+    String testClass,
+    String testMethod,
+    String implementingClass,
+    String failureMessage,
+    String failureStacktrace
+) implements Serializable {
     
     private static final long serialVersionUID = 5281136086896771809L;
     
@@ -15,9 +20,23 @@ public record TestResult(String testClass, String testMethod, String failureMess
         return testMethod.equals("<none>") && failureMessage.equals("Timeout") && failureStacktrace.equals("Timeout");
     }
     
+    public String getIdentifier() {
+        StringBuilder result = new StringBuilder();
+        result.append(testClass).append("::").append(getMethodIdentifier());
+        return result.toString();
+    }
+    
+    public String getMethodIdentifier() {
+        StringBuilder result = new StringBuilder(testMethod);
+        if (!testClass.equals(implementingClass)) {
+            result.append('@').append(implementingClass);
+        }
+        return result.toString();
+    }
+    
     @Override
     public String toString() {
-        return testClass + "::" + testMethod;
+        return getIdentifier();
     }
 
 }

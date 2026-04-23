@@ -19,7 +19,7 @@ public class SetupTest implements IFixer {
         for (TestResult testResult : failingTests) {
             LOG.info(() -> "    * " + testResult + "\n" + testResult.failureStacktrace());
         }
-        result.put("failingTests", failingTests.stream().map(TestResult::toString).toList());
+        result.put("failingTests", failingTests.stream().map(TestResult::getIdentifier).toList());
         if (failingTests.isEmpty()) {
             result.put("result", "NO_FAILING_TESTS");
         } else {

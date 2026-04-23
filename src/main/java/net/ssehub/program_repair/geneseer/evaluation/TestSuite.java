@@ -92,11 +92,16 @@ public class TestSuite {
                 throw new TestIntegrityException("Got timeout in original evaluation (in class " + tr.testClass()
                         + ")");
             }
-            testMethods.get(tr.testClass()).add(tr.testMethod());
-            initialTestResults.put(tr.toString(), tr);
+            testMethods.get(tr.testClass()).add(tr.getMethodIdentifier());
+            initialTestResults.put(tr.getIdentifier(), tr);
         }
         if (initialTestResults.size() != testResult.size()) {
-            throw new TestIntegrityException("Got duplicate test names in test suite result");
+            List<String> testNames = testResult.stream().map(TestResult::getIdentifier).collect(Collectors.toList());
+            for (String name : initialTestResults.keySet()) {
+                testNames.remove(name);
+            }
+            throw new TestExecutionException("Found " + testNames.size() + " duplicate test names in test result: "
+                    + testNames);
         }
         LOG.info(() -> "Got " + getInitialPassingTestResults().size() + " passing and "
                 + getInitialFailingTestResults().size() + " failing tests");
@@ -134,11 +139,12 @@ public class TestSuite {
             }
             if (tr.isTimeout()) {
                 for (String testMethod : knownMethods) {
-                    extendedTestResult.add(new TestResult(tr.testClass(), testMethod, "Timeout", "Timeout"));
+                    extendedTestResult.add(new TestResult(tr.testClass(), testMethod, tr.implementingClass(),
+                            "Timeout", "Timeout"));
                 }
             } else {
-                if (!knownMethods.contains(tr.testMethod())) {
-                    throw new TestIntegrityException("Unknown test method in result: " + tr.toString());
+                if (!knownMethods.contains(tr.getMethodIdentifier())) {
+                    throw new TestIntegrityException("Unknown test method in result: " + tr.getIdentifier());
                 }
                 extendedTestResult.add(tr);
             }

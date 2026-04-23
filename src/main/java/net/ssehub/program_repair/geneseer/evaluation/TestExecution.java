@@ -264,12 +264,8 @@ class TestExecution implements AutoCloseable {
     private static void fixExpectedClassName(List<TestResult> result, String className) {
         for (int i = 0; i < result.size(); i++) {
             TestResult tr = result.get(i);
-            if (!tr.testClass().equals(className)) {
-                LOG.warning(() -> "Test class name " + tr.testClass()
-                        + " in test result differs from invoked test class " + className);
-                result.set(i, new TestResult(className, tr.testMethod(), tr.failureMessage(),
-                        tr.failureStacktrace()));
-            }
+            result.set(i, new TestResult(className, tr.testMethod(), tr.testClass(), tr.failureMessage(),
+                    tr.failureStacktrace()));
         }
     }
 
@@ -335,13 +331,14 @@ class TestExecution implements AutoCloseable {
             do {
                 resultState = readResult();
                 if ("TEST_FINISHED".equals(resultState)) {
-                    String testClass = readResult();
+                    String implementingClass = readResult();
                     String testMethod = readResult();
                     
                     jacocoClient.setDump(true);
                     ExecFileLoader loader = jacocoClient.dump("localhost", jacocoPort);
                     ExecutionDataStore execata = loader.getExecutionDataStore();
-                    coverages.put(testClass + "::" + testMethod, execata);
+                    coverages.put(className + "::" + testMethod
+                            + (!className.equals(implementingClass) ? "@" + implementingClass : ""), execata);
                     
                     out.writeObject("CONTINUE");
                     out.flush();
@@ -359,7 +356,7 @@ class TestExecution implements AutoCloseable {
             
             List<TestResultWithCoverage> coverageResult = new ArrayList<>(result.size());
             for (TestResult test : result) {
-                ExecutionDataStore coverage = coverages.remove(test.testClass() + "::" + test.testMethod());
+                ExecutionDataStore coverage = coverages.remove(test.getIdentifier());
                 if (coverage == null) {
                     throw new TestExecutionException("Did not find coverage for test " + test);
                 }

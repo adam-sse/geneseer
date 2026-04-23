@@ -28,10 +28,10 @@ class FitnessEvaluator {
     public FitnessEvaluator(TestSuite testSuite, Variant unmodifiedOriginal) {
         this.testSuite = testSuite;
         this.negativeTestNames = testSuite.getInitialFailingTestResults().stream()
-                .map(TestResult::toString)
+                .map(TestResult::getIdentifier)
                 .collect(Collectors.toSet());
         this.positiveTestNames = testSuite.getInitialPassingTestResults().stream()
-                .map(TestResult::toString)
+                .map(TestResult::getIdentifier)
                 .collect(Collectors.toSet());
         this.bestVariant = unmodifiedOriginal;
         
@@ -45,12 +45,12 @@ class FitnessEvaluator {
         
         for (TestResult test : testResult) {
             if (!test.isFailure()) {
-                if (negativeTestNames.contains(test.toString())) {
+                if (negativeTestNames.contains(test.getIdentifier())) {
                     numPassingNegative++;
-                } else if (positiveTestNames.contains(test.toString())) {
+                } else if (positiveTestNames.contains(test.getIdentifier())) {
                     numPassingPositive++;
                 } else {
-                    throw new IllegalArgumentException(test.toString()
+                    throw new IllegalArgumentException(test.getIdentifier()
                             + " is neither in positive nor negative test cases");
                 }
             }

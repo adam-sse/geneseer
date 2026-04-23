@@ -55,7 +55,7 @@ public record TestMethodContext(TestResult testResult, String code, Path file) {
                 result = found.get(0);
             } else if (found.size() > 1) {
                 int pathMatchesClassName = -1;
-                Path expected = Path.of(failingTest.testClass().replace('.', File.separatorChar) + ".java");
+                Path expected = Path.of(failingTest.implementingClass().replace('.', File.separatorChar) + ".java");
                 for (int i = 0; i < found.size(); i++) {
                     if (found.get(i).file().endsWith(expected)) {
                         if (pathMatchesClassName == -1) {
@@ -111,8 +111,8 @@ public record TestMethodContext(TestResult testResult, String code, Path file) {
             result = new TestLocation(m.group("filename"), testResult.testMethod(),
                     Integer.parseInt(m.group("lineNumber")));
         } else {
-            String testFileName = testResult.testClass()
-                    .substring(testResult.testClass().lastIndexOf('.') + 1) + ".java";
+            String testFileName = testResult.implementingClass()
+                    .substring(testResult.implementingClass().lastIndexOf('.') + 1) + ".java";
             result = new TestLocation(testFileName, testResult.testMethod(), -1);
             LOG.fine(() -> "Could not find location of test " + testResult + " in stacktrace:\n"
                     + testResult.failureStacktrace() + " -> guessing: " + result);

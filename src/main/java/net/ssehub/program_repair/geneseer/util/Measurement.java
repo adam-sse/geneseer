@@ -44,12 +44,8 @@ public class Measurement {
         return new Probe(name);
     }
     
-    public Long getAccumulatedTimings(String name) {
-        return timings.get(name);
-    }
-    
-    public Iterable<Map.Entry<String, Long>> finishedProbes() {
-        return timings.entrySet();
+    public synchronized Iterable<Map.Entry<String, Long>> finishedProbes() {
+        return Map.copyOf(timings).entrySet();
     }
 
 }

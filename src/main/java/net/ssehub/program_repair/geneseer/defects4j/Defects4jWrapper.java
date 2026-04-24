@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -112,7 +113,7 @@ class Defects4jWrapper {
     }
 
     public Set<String> getFailingTests(Bug bug) throws IOException {
-        return Arrays.stream(exportProperty(bug.getDirectory(), "tests.trigger")).collect(Collectors.toSet());
+        return new LinkedHashSet<>(Arrays.stream(exportProperty(bug.getDirectory(), "tests.trigger")).toList());
     }
     
     public Path getBinDirectory(Bug bug) throws IOException {

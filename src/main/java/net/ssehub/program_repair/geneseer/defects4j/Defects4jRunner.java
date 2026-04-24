@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +75,7 @@ public class Defects4jRunner {
             if (jsonResult.equals("FOUND_FAILING_TESTS") || jsonResult.equals("NO_FAILING_TESTS")) {
                 
                 @SuppressWarnings("unchecked")
-                Set<String> failingTests = new HashSet<>((List<String>) json.get("failingTests"));
+                Set<String> failingTests = new LinkedHashSet<>((List<String>) json.get("failingTests"));
                 Set<String> expectedFailingTests = defects4j.getFailingTests(bug);
                 
                 if (expectedFailingTests.equals(failingTests)) {

@@ -5,7 +5,6 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -13,6 +12,8 @@ import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingType;
 
+import net.ssehub.program_repair.geneseer.Result;
+import net.ssehub.program_repair.geneseer.Result.QueryStats.Snippets;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.defects4j.PatchWriter;
 import net.ssehub.program_repair.geneseer.defects4j.PatchWriter.ChangedArea;
@@ -39,7 +40,7 @@ public class LlmQueryAnalysis implements IFixer {
     }
 
     @Override
-    public Node run(Node original, TestSuite testSuite, Map<String, Object> result) throws IOException {
+    public Node run(Node original, TestSuite testSuite, Result result) throws IOException {
         Encoding tokenEncoding = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.O200K_BASE);
         List<TestResult> failingTests = testSuite.getInitialFailingTestResults(); 
         
@@ -68,13 +69,14 @@ public class LlmQueryAnalysis implements IFixer {
             }
         }
         
-        result.put("patch", Map.of("hunksInQuery", in.size(), "hunksNotInQuery", out.size()));
+        result.queryStats().setHumanPatchHunksInQuery(in.size());
+        result.queryStats().setHumanPatchHunksNotInQuery(out.size());
         if (out.size() == 0) {
-            result.put("result", "ALL_INCLUDED");
+            result.setResult("ALL_INCLUDED");
         } else if (in.size() == 0) {
-            result.put("result", "NONE_INCLUDED");
+            result.setResult("NONE_INCLUDED");
         } else {    
-            result.put("result", "PARTIALLY_INCLUDED");
+            result.setResult("PARTIALLY_INCLUDED");
         }
         Query query = llmFixer.createQuery(original, failingTests, codeSnippets);
         String queryText = query.getMessages().get(query.getMessages().size() - 1).getContent();
@@ -85,7 +87,7 @@ public class LlmQueryAnalysis implements IFixer {
         return null;
     }
 
-    private void analyzeQuery(Map<String, Object> result, Encoding tokenEncoding,
+    private void analyzeQuery(Result result, Encoding tokenEncoding,
             List<CodeSnippet> codeSnippets, Set<CodeSnippet> irrelevant, String query) {
         int relevantLines = codeSnippets.stream()
                 .filter(s -> !irrelevant.contains(s))
@@ -101,17 +103,13 @@ public class LlmQueryAnalysis implements IFixer {
                 .mapToInt(s -> tokenEncoding.countTokensOrdinary(s.getText()))
                 .sum();
         
+        result.queryStats().setLines(query.split("\n").length);
+        result.queryStats().setTokens(tokenEncoding.countTokensOrdinary(query));
         
-        result.put("query", Map.of(
-                "lines", query.split("\n").length,
-                "tokens", tokenEncoding.countTokensOrdinary(query),
-                "snippets", Map.of(
-                        "relevant", codeSnippets.stream().filter(s -> !irrelevant.contains(s)).count(),
-                        "irrelevant", irrelevant.size(),
-                        "relevantLines", relevantLines,
-                        "irrelevanLines", irrelevantLines,
-                        "relevantTokens", relevantTokens,
-                        "irrelevantTokens", irrelevantTokens)
+        result.queryStats().setSnippets(new Snippets(
+                (int) codeSnippets.stream().filter(s -> !irrelevant.contains(s)).count(), irrelevant.size(),
+                relevantLines, irrelevantLines,
+                relevantTokens, irrelevantTokens
                 ));
     }
 

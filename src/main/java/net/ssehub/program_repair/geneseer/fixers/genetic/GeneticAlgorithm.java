@@ -3,10 +3,8 @@ package net.ssehub.program_repair.geneseer.fixers.genetic;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.logging.Level;
@@ -15,6 +13,8 @@ import java.util.stream.IntStream;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Configuration.GeneticConfiguration.MutationScope;
+import net.ssehub.program_repair.geneseer.Result;
+import net.ssehub.program_repair.geneseer.Result.MutationStats;
 import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.InnerNode;
 import net.ssehub.program_repair.geneseer.code.LeafNode;
@@ -40,24 +40,20 @@ public class GeneticAlgorithm implements IFixer {
     private int generation;
     private Variant unmodifiedVariant;
     
-    private int numInsertions;
-    private int numDeletions;
-    private int numReplacements;
-    private int numFailedMutations;
-    private int numSuccessfulCrossovers;
-    private int numFailedCrossovers;
-    private int numLlmCallsOnUnmodified;
-    private int numLlmCallsOnMutated;
+    private MutationStats mutationStats;
     
     public GeneticAlgorithm(LlmFixer llmfixer) {
         this.llmFixer = llmfixer;
     }
     
     @Override
-    public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) {
+    public Node run(Node ast, TestSuite testSuite, Result result) {
         try (Probe measure = Measurement.INSTANCE.start("genetic-algorithm")) {
             this.unmodifiedVariant = new Variant(ast);
             this.fitnessEvaluator = new FitnessEvaluator(testSuite, this.unmodifiedVariant);
+            result.fitness().setMax(fitnessEvaluator.getMaxFitness());
+            result.fitness().setOriginal(unmodifiedVariant.getFitness());
+            this.mutationStats = result.mutationStats();
             
             return runInternal(result);
         }
@@ -67,12 +63,7 @@ public class GeneticAlgorithm implements IFixer {
         this.random = random;
     }
     
-    private Node runInternal(Map<String, Object> result) {
-        Map<String, Object> fitnessResult = new HashMap<>();
-        result.put("fitness", fitnessResult);
-        fitnessResult.put("original", unmodifiedVariant.getFitness());
-        fitnessResult.put("max", fitnessEvaluator.getMaxFitness());
-        
+    private Node runInternal(Result result) {
         List<Variant> population = createInitialPopulation();
         
         while (!fitnessEvaluator.hasFoundMaxFitness()
@@ -80,35 +71,19 @@ public class GeneticAlgorithm implements IFixer {
             singleGeneration(population);
         }
         
-        Map<String, Integer> mutationStats = new HashMap<>();
-        mutationStats.put("insertions", numInsertions);
-        mutationStats.put("deletions", numDeletions);
-        mutationStats.put("replacements", numReplacements);
-        mutationStats.put("failedMutations", numFailedMutations);
-        mutationStats.put("successfulCrossovers", numSuccessfulCrossovers);
-        mutationStats.put("failedCrossovers", numFailedCrossovers);
-        mutationStats.put("llmCallsOnUnmodified", numLlmCallsOnUnmodified);
-        mutationStats.put("llmCallsOnMutated", numLlmCallsOnMutated);
-        
-        result.put("mutationStats", mutationStats);
-        if (llmFixer != null) {
-            result.put("llmStats", llmFixer.createStats());
-        }
-        result.put("generation", generation);
-        fitnessResult.put("best", fitnessEvaluator.getBestVariant().getFitness());
+        result.setGeneration(generation);
+        result.fitness().setBest(fitnessEvaluator.getBestVariant().getFitness());
         
         if (fitnessEvaluator.hasFoundMaxFitness()) {
             LOG.info(() -> "Variant with max fitness: " + fitnessEvaluator.getBestVariant());
-            result.put("result", "FOUND_FIX");
+            result.setResult("FOUND_FIX");
         } else {
             LOG.info(() -> "Stopping because limit of " + Configuration.INSTANCE.genetic().generationLimit()
                     + " generations reached");
-            result.put("result", "GENERATION_LIMIT_REACHED");
+            result.setResult("GENERATION_LIMIT_REACHED");
         }
 
-        Map<String, Object> diffResult = new HashMap<>();
-        result.put("patch", diffResult);
-        diffResult.put("mutations", fitnessEvaluator.getBestVariant().getMutations());
+        result.patch().setMutations(fitnessEvaluator.getBestVariant().getMutations());
         
         return fitnessEvaluator.getBestVariant().getAst();
     }
@@ -254,9 +229,9 @@ public class GeneticAlgorithm implements IFixer {
                 
                 try (Probe measure = Measurement.INSTANCE.start("llm-mutation")) {
                     if (variant.getMutations().isEmpty()) {
-                        numLlmCallsOnUnmodified++;
+                        mutationStats.increaseLlmCallsOnUnmodified();
                     } else {
-                        numLlmCallsOnMutated++;
+                        mutationStats.increaseLlmCallsOnMutated();
                     }
                     try {
                         Optional<Node> result = llmFixer.createVariant(astRoot, variant.getFailingTests());
@@ -296,7 +271,7 @@ public class GeneticAlgorithm implements IFixer {
         
         if (!mutationAdded) {
             LOG.info(() -> "No new mutation added to " + variant.getName());
-            numFailedMutations++;
+            mutationStats.increaseFailedMutations();
         }
         if (mutationAdded || !variant.hasFitness()) {
             fitnessEvaluator.measureFitness(variant, needsFaultLocalization);
@@ -330,7 +305,7 @@ public class GeneticAlgorithm implements IFixer {
                 success = false;
             } else {
                 variant.addMutation("del " + suspicious.getTextSingleLine());
-                numDeletions++;
+                mutationStats.increaseDeletions();
                 success = true;
             }
             
@@ -346,7 +321,7 @@ public class GeneticAlgorithm implements IFixer {
                 parent.add(index, otherStatement);
                 variant.addMutation("ins " + otherStatement.getTextSingleLine()
                         + " before " + suspicious.getTextSingleLine());
-                numInsertions++;
+                mutationStats.increaseInsertions();
                 success = true;
                 
             } else {
@@ -354,7 +329,7 @@ public class GeneticAlgorithm implements IFixer {
                 parent.set(index, otherStatement);
                 variant.addMutation("rep " + suspicious.getTextSingleLine()
                         + " with " + otherStatement.getTextSingleLine());
-                numReplacements++;
+                mutationStats.increaseReplacements();
                 success = true;
             }
         }
@@ -394,10 +369,10 @@ public class GeneticAlgorithm implements IFixer {
         List<Variant> result;
         if (p1Parents.size() == 0) {
             LOG.info(() -> p1 + " and " + p2 + " don't differ, crossover not possible");
-            numFailedCrossovers++;
+            mutationStats.increaseFailedCrossovers();
             result = List.of();
         } else {
-            numSuccessfulCrossovers++;
+            mutationStats.increaseSuccessfulCrossovers();
             result = applyCrossover(p1, p2, p1Parents, p2Parents);
         }
         return result;

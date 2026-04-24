@@ -24,6 +24,7 @@ import com.google.gson.JsonParseException;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Configuration.LlmConfiguration.ProjectOutline;
+import net.ssehub.program_repair.geneseer.Result.LlmStats;
 import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.LeafNode;
 import net.ssehub.program_repair.geneseer.code.Node;
@@ -54,18 +55,8 @@ public class LlmFixer {
     
     private ISnippetRanker ranker;
     
-    private int numberOfCalls;
+    private LlmStats llmStats;
     
-    private int numberOfAnswers;
-    
-    private int numberOfUnusableAnswers;
-    
-    private int numberOfTimeouts;
-    
-    private long totalQueryTokens;
-    
-    private long totalAnswerTokens;
-
     public LlmFixer(ILlm llm, ISnippetRanker ranker, TemporaryDirectoryManager tempDirManager, Charset encoding,
             Path projectRoot) {
         this.llm = llm;
@@ -73,6 +64,10 @@ public class LlmFixer {
         this.encoding = encoding;
         this.projectRoot = projectRoot;
         this.ranker = ranker;
+    }
+    
+    public void setLlmStats(LlmStats llmStats) {
+        this.llmStats = llmStats;
     }
 
     public Optional<Node> createVariant(Node original, List<TestResult> failingTests) throws IOException {
@@ -113,7 +108,7 @@ public class LlmFixer {
         } catch (AnswerDoesNotApplyException e) {
             LOG.log(Level.WARNING, "Answer cannot be applied to variant", e);
             result = Optional.empty();
-            numberOfUnusableAnswers++;
+            llmStats.increaseUnusableAnswers();
         }
         
         return result;
@@ -335,17 +330,17 @@ public class LlmFixer {
     private String runQuery(Query query) throws IOException {
         try (Measurement.Probe m = Measurement.INSTANCE.start("llm-query")) {
             LOG.info("Sending query to LLM: " + query);
-            numberOfCalls++;
+            llmStats.increaseCalls();
             IResponse response = llm.send(query);
             if (response.getThinking() != null) {
                 LOG.fine(() -> "Got " + response.getThinking().length() + " characters of thinking trace");
             }
-            numberOfAnswers++;
-            totalQueryTokens += response.getQueryTokens();
-            totalAnswerTokens += response.getAnswerTokens();
+            llmStats.increaseAnswers();
+            llmStats.increaseTotalQueryTokens(response.getQueryTokens());
+            llmStats.increaseTotalAnswerTokens(response.getAnswerTokens());
             return response.getContent();
         } catch (HttpTimeoutException e) {
-            numberOfTimeouts++;
+            llmStats.increaseTimeouts();
             throw e;
         }
     }
@@ -479,17 +474,6 @@ public class LlmFixer {
         }
         
         Files.writeString(file, newLines.stream().collect(Collectors.joining("\n")), encoding);
-    }
-    
-    public Map<String, Object> createStats() {
-        return Map.of(
-                "calls", numberOfCalls,
-                "answers", numberOfAnswers,
-                "unusableAnswers", numberOfUnusableAnswers,
-                "timeouts", numberOfTimeouts,
-                "totalQueryTokens", totalQueryTokens,
-                "totalAnswerTokens", totalAnswerTokens
-                );
     }
     
 }

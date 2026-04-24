@@ -14,6 +14,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Project;
+import net.ssehub.program_repair.geneseer.Result.EvaluationStats;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.util.FileUtils;
@@ -37,13 +38,12 @@ public class TestSuite {
     
     private Map<String, TestResult> initialTestResults;
     
-    private int numCompilations;
+    private EvaluationStats evaluationStats;
     
-    private int numTestSuiteRuns;
-    
-    public TestSuite(Project project, Node sourceCode, TemporaryDirectoryManager tempDirManager)
-            throws EvaluationException {
+    public TestSuite(Project project, Node sourceCode, TemporaryDirectoryManager tempDirManager,
+            EvaluationStats evaluationStats) throws EvaluationException {
         this.tempDirManager = tempDirManager;
+        this.evaluationStats = evaluationStats;
         this.compiler = createCompiler(project);
         this.junitSuite = new JunitEvaluation(project.getProjectDirectory(),
                 project.getTestExecutionClassPathAbsolute(), project.getEncoding(), project.getSplitTestClassLoaders());
@@ -105,6 +105,8 @@ public class TestSuite {
         }
         LOG.info(() -> "Got " + getInitialPassingTestResults().size() + " passing and "
                 + getInitialFailingTestResults().size() + " failing tests");
+        evaluationStats.setInitialPassingTestCases(getInitialPassingTestResults().size());
+        evaluationStats.setInitialFailingTestCases(getInitialFailingTestResults().size());
         
         LOG.info("Running fault localization and annotating original code with suspiciousness");
         faultLocalization.measureAndAnnotateSuspiciousness(originalSourceCode, compiler.getOutputDirectory(),
@@ -190,12 +192,12 @@ public class TestSuite {
     }
     
     private void compile(Node ast) throws CompilationException {
-        numCompilations++;
+        evaluationStats.increaseCompilations();
         compiler.compile(ast);
     }
     
     private List<TestResult> runTests(Path binDirectory, Set<String> testClassNames) throws TestExecutionException {
-        numTestSuiteRuns++;
+        evaluationStats.increaseTestSuiteRuns();
         return junitSuite.runTests(binDirectory, testClassNames);
     }
     
@@ -247,14 +249,6 @@ public class TestSuite {
         return initialTestResults.values().stream()
                 .filter(TestResult::isFailure)
                 .collect(Collectors.toUnmodifiableList());
-    }
-    
-    public int getNumCompilations() {
-        return numCompilations;
-    }
-
-    public int getNumTestSuiteRuns() {
-        return numTestSuiteRuns;
     }
     
 }

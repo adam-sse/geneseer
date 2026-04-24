@@ -1,10 +1,10 @@
 package net.ssehub.program_repair.geneseer.fixers;
 
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import net.ssehub.program_repair.geneseer.Result;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
@@ -17,7 +17,7 @@ public class OnlyDelete implements IFixer {
     private static final Logger LOG = Logger.getLogger(OnlyDelete.class.getName());
     
     @Override
-    public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) {
+    public Node run(Node ast, TestSuite testSuite, Result result) {
         List<Node> suspicious = ast.stream()
                 .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
                 .sorted(Node.DESCENDING_SUSPICIOUSNESS)
@@ -25,14 +25,13 @@ public class OnlyDelete implements IFixer {
         
         int initialFailingTests = testSuite.getInitialFailingTestResults().size();
         int bestFailingTests = initialFailingTests;
+        result.fitness().setOriginal(initialFailingTests);
         Node bestVariant = ast;
-        Double bestSuspiciousness = null;
         
-        int tested = 0;
         for (Node toDelete : suspicious) {
             double suspiciousness = (double) toDelete.getMetadata(Metadata.SUSPICIOUSNESS);
             LOG.info("Deleting " + toDelete + " (suspiciousness: " + suspiciousness + ")");
-            tested++;
+            result.mutationStats().increaseDeletions();
             
             Node clone = ast.cheapClone(toDelete);
             toDelete = clone.findEquivalentPath(ast, toDelete);
@@ -48,7 +47,6 @@ public class OnlyDelete implements IFixer {
                 LOG.info(() -> numFailingTests + " failing tests");
                 if (numFailingTests < bestFailingTests) {
                     bestFailingTests = numFailingTests;
-                    bestSuspiciousness = suspiciousness;
                     bestVariant = clone;
                 }
                 if (numFailingTests == 0) {
@@ -63,20 +61,18 @@ public class OnlyDelete implements IFixer {
             }
         }
         
-        result.put("bestFailingTests", bestFailingTests);
-        result.put("bestSuspiciousness", bestSuspiciousness);
-        result.put("tested", tested);
+        result.fitness().setBest(bestFailingTests);
         
         if (bestFailingTests == 0) {
             LOG.info(() -> "Result: Found full fix");
-            result.put("result", "FOUND_FIX");
+            result.setResult("FOUND_FIX");
         } else if (bestFailingTests < initialFailingTests) {
             int b = bestFailingTests;
             LOG.info(() -> "Result: Improved from " + initialFailingTests + " to " + b + " failing tests");
-            result.put("result", "IMPROVED");
+            result.setResult("IMPROVED");
         } else {
             LOG.info(() -> "Result: No improvement");
-            result.put("result", "NO_CHANGE");
+            result.setResult("NO_CHANGE");
         }
         
         return bestVariant;

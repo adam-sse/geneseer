@@ -17,6 +17,7 @@ import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingType;
 
 import net.ssehub.program_repair.geneseer.Configuration;
+import net.ssehub.program_repair.geneseer.Result;
 import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
@@ -61,7 +62,7 @@ public class Outliner implements IFixer {
     }
     
     @Override
-    public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) throws IOException {
+    public Node run(Node ast, TestSuite testSuite, Result result) throws IOException {
         List<ChangedArea> changedByHumanPatch = JsonUtils.parseToListFromFile(
                 projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME), ChangedArea.class);
         
@@ -72,7 +73,7 @@ public class Outliner implements IFixer {
         createMethodOverivew(ast, testContext, changedByHumanPatch);
         createFileOverview(ast, testContext);
         
-        result.put("result", "DONE");
+        result.setResult("DONE");
         return null;
     }
     

@@ -2,11 +2,11 @@ package net.ssehub.program_repair.geneseer.fixers;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import net.ssehub.program_repair.geneseer.Result;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
@@ -25,13 +25,11 @@ public class SingleLlm implements IFixer {
     }
     
     @Override
-    public Node run(Node ast, TestSuite testSuite, Map<String, Object> result) throws IOException {
-        Optional<Node> modifiedAst;
-        try {
-            modifiedAst = llmFixer.createVariant(ast, testSuite.getInitialFailingTestResults());
-        } finally {
-            result.put("llmStats", llmFixer.createStats());
-        }
+    public Node run(Node ast, TestSuite testSuite, Result result) throws IOException {
+        int initialFailingTests = testSuite.getInitialFailingTestResults().size();
+        result.fitness().setOriginal(initialFailingTests);
+        
+        Optional<Node> modifiedAst = llmFixer.createVariant(ast, testSuite.getInitialFailingTestResults());
         
         Node patched;
         String resultString;
@@ -40,11 +38,9 @@ public class SingleLlm implements IFixer {
             try {
                 List<TestResult> evaluation = testSuite.evaluate(patched);
                 int failingTests = (int) evaluation.stream().filter(TestResult::isFailure).count();
-                result.put("modifiedFailingTests", failingTests);
-                
-                int initialFailingTests = testSuite.getInitialFailingTestResults().size();
                 LOG.info(() -> "Variant has " + failingTests + " failing test cases (original had "
                             + initialFailingTests + ")");
+                result.fitness().setBest(Math.min(initialFailingTests, failingTests));
                 if (failingTests == 0) {
                     resultString = "FOUND_FIX";
                 } else if (failingTests < initialFailingTests) {
@@ -68,7 +64,7 @@ public class SingleLlm implements IFixer {
             resultString = "VARIANT_CREATION_FAILED";
         }
         
-        result.put("result", resultString);
+        result.setResult(resultString);
         return patched;
     }
 

@@ -145,44 +145,55 @@ virtual environment like this is probably the easiest setup:
 ## Output
 
 Geneseer outputs a JSON object to stdout. It has the following structure (no order guaranteed, elements are only present
-if applicable):
+when applicable):
 
 ```json
 {
   "result": "FOUND_FIX or GENERATION_LIMIT_REACHED or ORIGINAL_UNFIT or IO_EXCEPTION or OUT_OF_MEMORY",
   "generation": 1, // the generation that was reached; not present e.g. when ORIGINAL_UNFIT
+  "exception": "exception message", // only present when applicable
+
   "fitness": {
     "original": 109.0, // the fitness of the original code
     "max": 129.0, // the maximum achievable fitness (this would constitute a full fix)
     "best": 119.0 // the fitness of the best variant
   },
+
   "patch": {
+    "diff": "the diff as produced by `git diff` for the best variant", // empty string if unmodified variant is best
     "mutations": [
       "textual description of first mutation",
       "textual description of second mutation"
       // ...
     ],
-    "diff": "the diff as produced by `git diff` for the best variant", // empty string if unmodified variant is best
     "addedLines": 5, // the number of line additions in the diff
     "removedLines": 3 // the number of line removals in the diff
   },
+
   "ast": {
-    "nodes": 123, // total nodes in AST
-    "suspicious": 66 // number of statements with any suspiciousness
+    "nodes": 123, // total number of nodes in AST
+    "statements": 80, // number of statements
+    "suspicious": 66 // number of statements with a suspiciousness > 0
   },
+
   "evaluations": {
     "compilations": 23,
-    "testSuiteRuns": 16
+    "testSuiteRuns": 16,
+    "initialPassingTestCases": 109,
+    "initialFailingTestCases": 2
   },
+
   "mutationStats": {
     "insertions": 40,
     "deletions": 45,
+    "replacements": 43,
     "failedMutations": 0,
     "successfulCrossovers": 3,
     "failedCrossovers": 7,
     "llmCallsOnUnmodified": 0,
     "llmCallsOnMutated": 0
   },
+
   "llmStats": {
     "calls": 0,
     "answers": 0,
@@ -191,6 +202,7 @@ if applicable):
     "totalQueryTokens": 0,
     "totalAnswerTokens": 0
   },
+
   "timings": { // timing measurements in ms
     "total": 4679, // (almost) complete runtime of geneseer, including initial evaluation of unmodified variant
     "genetic-algorithm": 1867, // runtime of genetic algorithm, after unmodified variant is evaluated
@@ -200,6 +212,7 @@ if applicable):
     "llm-query": 0 // total time spent querying the LLM for patches
     // ...
   },
+
   "logLines": { // number of log lines per level
     "SEVERE": 0,
     "WARNING": 6,
@@ -208,8 +221,7 @@ if applicable):
     "FINE": 0,
     "FINER": 0,
     "FINEST": 0
-  },
-  "exception": "exception message" // only present when applicable
+  }
 }
 ```
 The meaning of the `result` types is:

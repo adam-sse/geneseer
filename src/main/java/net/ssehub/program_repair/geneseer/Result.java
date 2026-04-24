@@ -249,7 +249,7 @@ public class Result {
     private QueryStats query; // set only by LlmQueryAnalysis
     
     private Map<String, Long> timings = new LinkedHashMap<>();
-    private Map<String, Integer> logStats = new LinkedHashMap<>();
+    private Map<String, Integer> logLines = new LinkedHashMap<>();
     
     
     public synchronized void setResult(String result) {
@@ -322,7 +322,7 @@ public class Result {
     }
     
     public synchronized void putLogCount(String level, int number) {
-        logStats.put(level, number);
+        logLines.put(level, number);
     }
     
 }

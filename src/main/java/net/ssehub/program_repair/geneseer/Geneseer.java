@@ -46,6 +46,9 @@ public class Geneseer {
     
     private static final Logger LOG = Logger.getLogger(Geneseer.class.getName());
     
+    private static final Object OUTPUT_LOCK = new Object();
+    private static volatile boolean resultPrinted = false;
+    
     public static void main(String[] args) {
         LOG.info(() -> "Geneseer " + VersionInfo.VERSION + " (" + VersionInfo.GIT_COMMIT
                 + (VersionInfo.GIT_DIRTY ? " dirty" : "") + ")");
@@ -79,6 +82,10 @@ public class Geneseer {
         project.logConfiguration();
         
         Result result = new Result();
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            printOutput(result, false); // no-op if printOutput() is called normally below
+        }));
+        
         boolean oom = false;
         try (Probe measure = Measurement.INSTANCE.start("total");
                 TemporaryDirectoryManager tempDirManager = new TemporaryDirectoryManager()) {
@@ -113,14 +120,31 @@ public class Geneseer {
             result.setException(e.getMessage());
             
         } catch (OutOfMemoryError e) {
-            System.out.println("{\"result\":\"OUT_OF_MEMORY\"}");
-            oom = true;
-            throw e;
+            synchronized (OUTPUT_LOCK) {
+                if (!resultPrinted) {
+                    resultPrinted = true;
+                    System.out.println("{\"result\":\"OUT_OF_MEMORY\"}");
+                }
+                oom = true;
+                throw e;
+            }
             
         } finally {
             if (!oom) {
-                addTimingsAndLogStats(result);
+                printOutput(result, true);
+            }
+        }
+    }
+    
+    private static void printOutput(Result result, boolean normallyFinished) {
+        synchronized (OUTPUT_LOCK) {
+            if (!resultPrinted) {
                 synchronized (result) {
+                    addTimingsAndLogStats(result);
+                    if (!normallyFinished) {
+                        result.setResult("KILLED");
+                    }
+                    resultPrinted = true;
                     System.out.println(JsonUtils.toJson(result));
                 }
             }
@@ -150,7 +174,7 @@ public class Geneseer {
                     createLlmFixer(project, result, tempDirManager));
             break;
         case "OUTLINER": {
-            Outliner outliner =  new Outliner(project.getProjectDirectory(), project.getSourceDirectoryAbsolute(),
+            Outliner outliner = new Outliner(project.getProjectDirectory(), project.getSourceDirectoryAbsolute(),
                     project.getEncoding());
             if (!Configuration.INSTANCE.llm().model().equals("dummy")) {
                 outliner.setLlm(LlmFactory.fromConfiguration(Configuration.INSTANCE.llm()).create());

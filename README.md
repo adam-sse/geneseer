@@ -222,7 +222,9 @@ when applicable):
     "FINE": 0,
     "FINER": 0,
     "FINEST": 0
-  }
+  },
+  
+  "geneseerVersion": {"version":"1.0.0-SNAPSHOT", "commit":"commit hash"}
 }
 ```
 The meaning of the `result` types is:

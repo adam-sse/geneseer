@@ -251,6 +251,10 @@ public class Result {
     private Map<String, Long> timings = new LinkedHashMap<>();
     private Map<String, Integer> logLines = new LinkedHashMap<>();
     
+    public record GeneseerVersion(String version, String commit) {
+    }
+    private GeneseerVersion geneseerVersion = new GeneseerVersion(VersionInfo.VERSION,
+            VersionInfo.GIT_COMMIT + (VersionInfo.GIT_DIRTY ? " dirty" : ""));
     
     public synchronized void setResult(String result) {
         this.result = result;

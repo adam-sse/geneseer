@@ -180,7 +180,8 @@ when applicable):
     "compilations": 23,
     "testSuiteRuns": 16,
     "initialPassingTestCases": 109,
-    "initialFailingTestCases": 2
+    "initialFailingTestCases": 2,
+    "initialFailingTestCasesNames": ["some.TestClass::test1", "some.TestClass::test2"]
   },
 
   "mutationStats": {

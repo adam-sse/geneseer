@@ -88,6 +88,7 @@ public class Result {
         private int testSuiteRuns;
         private Integer initialPassingTestCases;
         private Integer initialFailingTestCases;
+        private List<String> initialFailingTestCasesNames;
         public void increaseCompilations() {
             synchronized (Result.this) {
                 compilations++;
@@ -103,9 +104,10 @@ public class Result {
                 this.initialPassingTestCases = initialPassingTestCases;
             }
         }
-        public void setInitialFailingTestCases(Integer initialFailingTestCases) {
+        public void setInitialFailingTestCasesNames(List<String> initialFailingTestCasesNames) {
             synchronized (Result.this) {
-                this.initialFailingTestCases = initialFailingTestCases;
+                this.initialFailingTestCasesNames = List.copyOf(initialFailingTestCasesNames);
+                this.initialFailingTestCases = this.initialFailingTestCasesNames.size();
             }
         }
     }
@@ -202,8 +204,6 @@ public class Result {
         }
     }
     private LlmStats llmStats;
-    
-    private List<String> failingTests; // set only by SetupTest
     
     public class QueryStats {
         private Integer lines;
@@ -304,10 +304,6 @@ public class Result {
             llmStats = new LlmStats();
         }
         return llmStats;
-    }
-    
-    public synchronized void setFailingTests(List<String> failingTests) {
-        this.failingTests = List.copyOf(failingTests);
     }
     
     public synchronized QueryStats queryStats() {

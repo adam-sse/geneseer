@@ -106,7 +106,9 @@ public class TestSuite {
         LOG.info(() -> "Got " + getInitialPassingTestResults().size() + " passing and "
                 + getInitialFailingTestResults().size() + " failing tests");
         evaluationStats.setInitialPassingTestCases(getInitialPassingTestResults().size());
-        evaluationStats.setInitialFailingTestCases(getInitialFailingTestResults().size());
+        evaluationStats.setInitialFailingTestCasesNames(getInitialFailingTestResults().stream()
+                .map(TestResult::getIdentifier)
+                .toList());
         
         LOG.info("Running fault localization and annotating original code with suspiciousness");
         faultLocalization.measureAndAnnotateSuspiciousness(originalSourceCode, compiler.getOutputDirectory(),

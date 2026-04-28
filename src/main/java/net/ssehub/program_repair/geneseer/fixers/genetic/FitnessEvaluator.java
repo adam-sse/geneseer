@@ -8,6 +8,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Configuration;
+import net.ssehub.program_repair.geneseer.Result.Fitness;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
@@ -25,7 +26,9 @@ class FitnessEvaluator {
     
     private Variant bestVariant;
     
-    public FitnessEvaluator(TestSuite testSuite, Variant unmodifiedOriginal) {
+    private Fitness result;
+    
+    public FitnessEvaluator(TestSuite testSuite, Variant unmodifiedOriginal, Fitness result) {
         this.testSuite = testSuite;
         this.negativeTestNames = testSuite.getInitialFailingTestResults().stream()
                 .map(TestResult::getIdentifier)
@@ -34,9 +37,13 @@ class FitnessEvaluator {
                 .map(TestResult::getIdentifier)
                 .collect(Collectors.toSet());
         this.bestVariant = unmodifiedOriginal;
-        
         unmodifiedOriginal.setFitness(getFitness(testSuite.getInitialTestResults()),
                 testSuite.getInitialFailingTestResults());
+        
+        this.result = result;
+        result.setOriginal(unmodifiedOriginal.getFitness());
+        result.setMax(getMaxFitness());
+        result.setBest(unmodifiedOriginal.getFitness());
     }
 
     private double getFitness(Collection<TestResult> testResult) {
@@ -118,6 +125,7 @@ class FitnessEvaluator {
         if (fitness > bestVariant.getFitness()) {
             bestVariant = variant.copy();
             LOG.info(() -> "New best variant " + variant.getName() + " with fitness " + variant.getFitness());
+            result.setBest(fitness);
         }
     }
     

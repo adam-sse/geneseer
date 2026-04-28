@@ -32,7 +32,6 @@ public class SingleLlm implements IFixer {
         Optional<Node> modifiedAst = llmFixer.createVariant(ast, testSuite.getInitialFailingTestResults());
         
         Node patched;
-        String resultString;
         if (modifiedAst.isPresent()) {
             patched = modifiedAst.get();
             try {
@@ -42,29 +41,28 @@ public class SingleLlm implements IFixer {
                             + initialFailingTests + ")");
                 result.fitness().setBest(Math.min(initialFailingTests, failingTests));
                 if (failingTests == 0) {
-                    resultString = "FOUND_FIX";
+                    result.setResult("FOUND_FIX");
                 } else if (failingTests < initialFailingTests) {
-                    resultString = "IMPROVED";
+                    result.setResult("IMPROVED");
                 } else if (failingTests == initialFailingTests) {
-                    resultString = "NO_CHANGE";
+                    result.setResult("NO_CHANGE");
                 } else {
-                    resultString = "WORSENED";
+                    result.setResult("WORSENED");
                 }
                 
             } catch (CompilationException e) {
                 LOG.info("Variant did not compile");
-                resultString = "VARIANT_UNFIT";
+                result.setResult("VARIANT_UNFIT");
             } catch (EvaluationException e) {
                 LOG.log(Level.WARNING, "Failed to evaluate", e);
-                resultString = "VARIANT_UNFIT";
+                result.setResult("VARIANT_UNFIT");
             }
         } else {
             LOG.info("Could not create a variant with LLM");
             patched = null;
-            resultString = "VARIANT_CREATION_FAILED";
+            result.setResult("VARIANT_CREATION_FAILED");
         }
         
-        result.setResult(resultString);
         return patched;
     }
 

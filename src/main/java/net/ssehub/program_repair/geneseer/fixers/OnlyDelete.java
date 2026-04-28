@@ -48,6 +48,7 @@ public class OnlyDelete implements IFixer {
                 if (numFailingTests < bestFailingTests) {
                     bestFailingTests = numFailingTests;
                     bestVariant = clone;
+                    result.fitness().setBest(bestFailingTests);
                 }
                 if (numFailingTests == 0) {
                     break;
@@ -60,8 +61,6 @@ public class OnlyDelete implements IFixer {
                 LOG.log(Level.INFO, "Failed to evaluate", e);
             }
         }
-        
-        result.fitness().setBest(bestFailingTests);
         
         if (bestFailingTests == 0) {
             LOG.info(() -> "Result: Found full fix");

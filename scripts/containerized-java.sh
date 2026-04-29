@@ -15,9 +15,7 @@ podman_args=(
   --workdir "$PWD"
 )
 
-java_args=(
-    -XX:-UsePerfData # disable usage of /tmp/hsperfdata_*
-)
+java_args=()
 # if the command line parameters contain a jacoco javaagent with an open TCP port, we need to expose this port outside
 # of the container; so we check for that here:
 jacoco_port=""

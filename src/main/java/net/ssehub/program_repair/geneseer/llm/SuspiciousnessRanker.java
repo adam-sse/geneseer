@@ -16,11 +16,6 @@ public class SuspiciousnessRanker extends AbstractMethodRanker {
     }
 
     @Override
-    public boolean needsTestMethodContext() {
-        return false;
-    }
-    
-    @Override
     public LinkedHashMap<Node, Double> rankMethods(Node code, List<TestMethodContext> failingTestMethods) {
         List<Node> methods = code.stream()
                 .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)

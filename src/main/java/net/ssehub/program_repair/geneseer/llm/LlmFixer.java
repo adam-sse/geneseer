@@ -241,12 +241,18 @@ public class LlmFixer {
     }
 
     private static void writeCodeSnippets(StringBuilder prompt, List<CodeSnippet> codeSnippets) {
-        prompt.append("Here are " + codeSnippets.size() + " code snippets that may need to be fixed:");
+        prompt.append("Here are " + codeSnippets.size() + " code snippets that may need to be fixed, ordered by how"
+                + " likely I think they need to be modified (descending probability):");
         int index = 1;
         for (CodeSnippet snippet : codeSnippets) {
             prompt.append("\n\n");
             prompt.append("File ").append(snippet.getFile()).append('\n');
-            prompt.append("Code snippet number ").append(index++).append(":\n```java\n");
+            if (snippet.hasTestCoverageCount()) {
+                prompt.append("(this snippet participated in " + snippet.getNumPassingTests() + " passing and "
+                        + snippet.getNumFailingTests() + " failing test cases)\n");
+            }
+            prompt.append("Code snippet number ").append(index++).append(":\n");
+            prompt.append("```java\n");
             prompt.append(snippet.getText()).append('\n');
             prompt.append("```");
         }
@@ -255,8 +261,8 @@ public class LlmFixer {
     public List<CodeSnippet> selectMostSuspiciousMethods(Node original, List<TestResult> failingTests)
             throws IOException {
         
-        List<CodeSnippet> selected = ranker.selectCodeSnippets(original, ranker.needsTestMethodContext()
-                ? TestMethodContext.constructContext(failingTests, projectRoot, encoding) : null);
+        List<CodeSnippet> selected = ranker.selectCodeSnippets(original,
+                TestMethodContext.constructContext(failingTests, projectRoot, encoding));
         return selected;
     }
     

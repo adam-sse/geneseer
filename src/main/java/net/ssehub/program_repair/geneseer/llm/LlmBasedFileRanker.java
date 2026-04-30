@@ -201,9 +201,4 @@ public class LlmBasedFileRanker implements ISnippetRanker {
         return result;
     }
 
-    @Override
-    public boolean needsTestMethodContext() {
-        return true;
-    }
-
 }

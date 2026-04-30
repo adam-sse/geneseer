@@ -45,11 +45,6 @@ public class RagRanker extends AbstractMethodRanker {
     }
     
     @Override
-    public boolean needsTestMethodContext() {
-        return true;
-    }
-
-    @Override
     public LinkedHashMap<Node, Double> rankMethods(Node code, List<TestMethodContext> failingTestMethods)
             throws IOException {
         try (ChromaDb db = new ChromaDb(projectRoot, model, api, Configuration.INSTANCE.rag().persist())) {

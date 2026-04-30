@@ -10,6 +10,4 @@ public interface ISnippetRanker {
     public List<CodeSnippet> selectCodeSnippets(Node code, List<TestMethodContext> failingTestMethods)
             throws IOException;
     
-    public boolean needsTestMethodContext();
-    
 }

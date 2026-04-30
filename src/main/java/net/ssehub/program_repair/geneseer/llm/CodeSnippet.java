@@ -18,6 +18,12 @@ public class CodeSnippet {
     
     private List<String> newLines;
     
+    private boolean hasTestCoverageCount;
+    
+    private int numPassingTests;
+    
+    private int numFailingTests;
+    
     public CodeSnippet(Path file, LineRange lineRange, List<String> lines) {
         this.file = file;
         this.lineRange = lineRange;
@@ -67,6 +73,24 @@ public class CodeSnippet {
     
     void setNewLines(List<String> newLines) {
         this.newLines = newLines;
+    }
+    
+    void setTestCoverage(int numPassingTests, int numFailingTests) {
+        this.numPassingTests = numPassingTests;
+        this.numFailingTests = numFailingTests;
+        this.hasTestCoverageCount = true;
+    }
+    
+    public boolean hasTestCoverageCount() {
+        return hasTestCoverageCount;
+    }
+    
+    public int getNumPassingTests() {
+        return numPassingTests;
+    }
+    
+    public int getNumFailingTests() {
+        return numFailingTests;
     }
 
 }

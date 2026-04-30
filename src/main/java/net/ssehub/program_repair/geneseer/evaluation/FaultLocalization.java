@@ -33,6 +33,7 @@ import org.jacoco.core.instr.Instrumenter;
 import org.jacoco.core.runtime.OfflineInstrumentationAccessGenerator;
 
 import net.ssehub.program_repair.geneseer.Configuration;
+import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
@@ -187,12 +188,12 @@ class FaultLocalization {
         }
     }
     
-    public LinkedHashMap<Location, Double> measureSuspiciousness(List<TestResult> tests, Path classesDirectory,
+    private LinkedHashMap<Location, Double> measureSuspiciousness(List<TestResult> tests, Path classesDirectory,
             Node ast) throws TestExecutionException {
         
         try (Probe probe = Measurement.INSTANCE.start("fault-localization")) {
             Map<Location, Set<TestResult>> coverage = measureCoverage(tests, classesDirectory);
-            annotateClassBasedCoverageOnAstNodes(coverage, ast);
+            annotateTestCoverageOnClassAndMethodNodes(coverage, ast);
             
             Map<Location, Double> suspiciousness = new HashMap<>(coverage.size());
             for (Map.Entry<Location, Set<TestResult>> coverageEntry : coverage.entrySet()) {
@@ -234,7 +235,7 @@ class FaultLocalization {
         }
     }
     
-    private static void annotateClassBasedCoverageOnAstNodes(Map<Location, Set<TestResult>> coverage, Node ast) {
+    private static void annotateTestCoverageOnClassAndMethodNodes(Map<Location, Set<TestResult>> coverage, Node ast) {
         Map<String, Node> classes = getFileNodesByClassName(ast);
         for (Node clazz : classes.values()) {
             if (clazz.getMetadata(Metadata.COVERED_BY) == null) {
@@ -243,13 +244,29 @@ class FaultLocalization {
         }
         
         for (Map.Entry<Location, Set<TestResult>> entry : coverage.entrySet()) {
-            Node classNode = findClassNode(entry.getKey().className(), classes);
+            Location location = entry.getKey();
+            Node classNode = findClassNode(location.className(), classes);
             if (classNode != null) {
                 @SuppressWarnings("unchecked")
                 Set<String> coveredBy = (Set<String>) classNode.getMetadata(Metadata.COVERED_BY);
                 for (TestResult testResult : entry.getValue()) {
                     coveredBy.add(testResult.testClass());
                 }
+                
+                classNode.stream()
+                        .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
+                        .filter(n -> AstUtils.getLine(classNode, n) <= location.line())
+                        .forEach(n -> {
+                            @SuppressWarnings("unchecked")
+                            Set<String> methodCoveredBy = (Set<String>) n.getMetadata(Metadata.COVERED_BY);
+                            if (methodCoveredBy == null) {
+                                methodCoveredBy = new HashSet<>();
+                                n.setMetadata(Metadata.COVERED_BY, methodCoveredBy);
+                            }
+                            for (TestResult testResult : entry.getValue()) {
+                                methodCoveredBy.add(testResult.getIdentifier());
+                            }
+                        });
             }
         }
         

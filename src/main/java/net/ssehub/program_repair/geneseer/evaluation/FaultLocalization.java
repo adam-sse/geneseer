@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -33,7 +34,6 @@ import org.jacoco.core.instr.Instrumenter;
 import org.jacoco.core.runtime.OfflineInstrumentationAccessGenerator;
 
 import net.ssehub.program_repair.geneseer.Configuration;
-import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.Node;
 import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
@@ -72,22 +72,22 @@ class FaultLocalization {
         LOG.info("Measuring suspiciousness");
         LinkedHashMap<Location, Double> suspiciousness = measureSuspiciousness(tests, variantBinDir, ast);
         
-        Map<String, Node> classes = getFileNodesByClassName(ast);
-        Map<Node, AstLocations> locations = new HashMap<>(classes.size());
-        for (Node clazz : classes.values()) {
-            locations.put(clazz, new AstLocations(clazz));
+        Map<String, Node> fileNodesByClassName = getFileNodesByClassName(ast);
+        Map<Node, AstLocations> locations = new HashMap<>(fileNodesByClassName.size());
+        for (Node file : fileNodesByClassName.values()) {
+            locations.put(file, new AstLocations(file));
         }
         
         for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
             int line = entry.getKey().line();
             double susValue = entry.getValue();
             
-            Node classNode = findClassNode(entry.getKey().className(), classes);
-            if (classNode != null) {
-                String fileName = classNode.getMetadata(Metadata.FILE_NAME).toString();
-                List<Node> matchingStatements = classNode.stream()
+            Node fileNode = findFileNode(entry.getKey().className(), fileNodesByClassName);
+            if (fileNode != null) {
+                String fileName = fileNode.getMetadata(Metadata.FILE_NAME).toString();
+                List<Node> matchingStatements = fileNode.stream()
                         .filter(n -> n.getType() == Type.STATEMENT)
-                        .filter(n -> locations.get(classNode).getStatementsAtLine(line).contains(n))
+                        .filter(n -> locations.get(fileNode).getStatementsAtLine(line).contains(n))
                         .collect(Collectors.toList());
                 
                 if (matchingStatements.isEmpty()) {
@@ -122,7 +122,7 @@ class FaultLocalization {
                 () -> suspiciousStatementCount + " suspicious statements");
     }
     
-    private static Node findClassNode(String classNameFromSuspiciousness, Map<String, Node> classes) {
+    private static Node findFileNode(String classNameFromSuspiciousness, Map<String, Node> classes) {
         Node result = classes.get(classNameFromSuspiciousness);
         int dollarIndex;
         while (result == null && (dollarIndex = classNameFromSuspiciousness.lastIndexOf('$')) != -1) {
@@ -163,13 +163,13 @@ class FaultLocalization {
     }
 
     private static Map<String, Node> getFileNodesByClassName(Node ast) {
-        Map<String, Node> classes = new HashMap<>(ast.childCount());
+        Map<String, Node> fileNodes = new HashMap<>(ast.childCount());
         for (Node file : ast.childIterator()) {
             file.stream()
                     .filter(n -> n.getMetadata(Metadata.TYPE_NAME) != null)
-                    .forEach(n -> classes.put((String) n.getMetadata(Metadata.TYPE_NAME), file));
+                    .forEach(n -> fileNodes.put((String) n.getMetadata(Metadata.TYPE_NAME), file));
         }
-        return classes;
+        return fileNodes;
     }
     
     private static void removeParentsOfLastElement(List<Node> nodes, Node root) {
@@ -193,7 +193,7 @@ class FaultLocalization {
         
         try (Probe probe = Measurement.INSTANCE.start("fault-localization")) {
             Map<Location, Set<TestResult>> coverage = measureCoverage(tests, classesDirectory);
-            annotateTestCoverageOnClassAndMethodNodes(coverage, ast);
+            annotateTestCoverageOnFileAndMethodNodes(coverage, ast, tests);
             
             Map<Location, Double> suspiciousness = new HashMap<>(coverage.size());
             for (Map.Entry<Location, Set<TestResult>> coverageEntry : coverage.entrySet()) {
@@ -235,41 +235,66 @@ class FaultLocalization {
         }
     }
     
-    private static void annotateTestCoverageOnClassAndMethodNodes(Map<Location, Set<TestResult>> coverage, Node ast) {
-        Map<String, Node> classes = getFileNodesByClassName(ast);
-        for (Node clazz : classes.values()) {
-            if (clazz.getMetadata(Metadata.COVERED_BY) == null) {
-                clazz.setMetadata(Metadata.COVERED_BY, new HashSet<>());
+    private static void annotateTestCoverageOnFileAndMethodNodes(Map<Location, Set<TestResult>> coverage, Node ast,
+            List<TestResult> allTests) {
+        
+        Map<String, Node> filesByClassName = getFileNodesByClassName(ast);
+        initializeEmptyCoveredBy(ast, filesByClassName.values(), allTests);
+        
+        Map<Node, List<Map.Entry<Location, Set<TestResult>>>> coverageByFile
+                = new HashMap<>(coverage.size());
+        for (Map.Entry<Location, Set<TestResult>> entry : coverage.entrySet()) {
+            Node fileNode = findFileNode(entry.getKey().className(), filesByClassName);
+            if (fileNode != null) {
+                List<Map.Entry<Location, Set<TestResult>>> locationsInFile = coverageByFile.get(fileNode);
+                if (locationsInFile == null) {
+                    locationsInFile = new LinkedList<>();
+                    coverageByFile.put(fileNode, locationsInFile);
+                }
+                locationsInFile.add(entry);
             }
         }
         
-        for (Map.Entry<Location, Set<TestResult>> entry : coverage.entrySet()) {
-            Location location = entry.getKey();
-            Node classNode = findClassNode(location.className(), classes);
-            if (classNode != null) {
+        for (Map.Entry<Node, List<Map.Entry<Location, Set<TestResult>>>> entry : coverageByFile.entrySet()) {
+            Node fileNode = entry.getKey();
+            AstLocations locations = new AstLocations(fileNode);
+            
+            for (Map.Entry<Location, Set<TestResult>> coverageLocation : entry.getValue()) {
+                Location location = coverageLocation.getKey();
+                Set<TestResult> tests = coverageLocation.getValue();
+                
                 @SuppressWarnings("unchecked")
-                Set<String> coveredBy = (Set<String>) classNode.getMetadata(Metadata.COVERED_BY);
-                for (TestResult testResult : entry.getValue()) {
-                    coveredBy.add(testResult.testClass());
+                Set<String> fileCoveredBy = (Set<String>) fileNode.getMetadata(Metadata.COVERED_BY);
+                for (TestResult testResult : tests) {
+                    fileCoveredBy.add(testResult.testClass());
                 }
                 
-                classNode.stream()
-                        .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
-                        .filter(n -> AstUtils.getLine(classNode, n) <= location.line())
-                        .forEach(n -> {
-                            @SuppressWarnings("unchecked")
-                            Set<String> methodCoveredBy = (Set<String>) n.getMetadata(Metadata.COVERED_BY);
-                            if (methodCoveredBy == null) {
-                                methodCoveredBy = new HashSet<>();
-                                n.setMetadata(Metadata.COVERED_BY, methodCoveredBy);
-                            }
-                            for (TestResult testResult : entry.getValue()) {
-                                methodCoveredBy.add(testResult.getIdentifier());
-                            }
-                        });
+                for (Node method : locations.getMethodsAtLine(location.line())) {
+                    @SuppressWarnings("unchecked")
+                    Set<String> methodCoveredBy = (Set<String>) method.getMetadata(Metadata.COVERED_BY);
+                    for (TestResult testResult : tests) {
+                        methodCoveredBy.add(testResult.getIdentifier());
+                    }
+                }
+            }
+        }
+    }
+
+    private static void initializeEmptyCoveredBy(Node ast, Collection<Node> fileNodes, List<TestResult> allTests) {
+        int numTestClasses = allTests.stream()
+                .map(TestResult::testClass)
+                .collect(Collectors.toSet())
+                .size();
+        
+        for (Node fileNode : fileNodes) {
+            if (fileNode.getMetadata(Metadata.COVERED_BY) == null) {
+                fileNode.setMetadata(Metadata.COVERED_BY, new HashSet<>(numTestClasses));
             }
         }
         
+        ast.stream()
+                .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
+                .forEach(n -> n.setMetadata(Metadata.COVERED_BY, new HashSet<>(allTests.size())));
     }
     
     private Map<Location, Set<TestResult>> measureCoverage(List<TestResult> tests, Path classesDirectory)

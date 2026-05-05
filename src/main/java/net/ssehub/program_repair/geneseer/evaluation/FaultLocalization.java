@@ -70,56 +70,73 @@ class FaultLocalization {
     public void measureAndAnnotateSuspiciousness(Node ast, Path variantBinDir, List<TestResult> tests)
             throws TestExecutionException {
         LOG.info("Measuring suspiciousness");
-        LinkedHashMap<Location, Double> suspiciousness = measureSuspiciousness(tests, variantBinDir, ast);
-        
-        Map<String, Node> fileNodesByClassName = getFileNodesByClassName(ast);
-        Map<Node, AstLocations> locations = new HashMap<>(fileNodesByClassName.size());
-        for (Node file : fileNodesByClassName.values()) {
-            locations.put(file, new AstLocations(file));
-        }
-        
-        for (Map.Entry<Location, Double> entry : suspiciousness.entrySet()) {
-            int line = entry.getKey().line();
-            double susValue = entry.getValue();
+        try (Probe probe = Measurement.INSTANCE.start("fault-localization")) {
+            LinkedHashMap<Location, Suspiciousness> suspiciousness = measureSuspiciousness(tests, variantBinDir, ast);
             
-            Node fileNode = findFileNode(entry.getKey().className(), fileNodesByClassName);
-            if (fileNode != null) {
-                String fileName = fileNode.getMetadata(Metadata.FILE_NAME).toString();
-                List<Node> matchingStatements = fileNode.stream()
-                        .filter(n -> n.getType() == Type.STATEMENT)
-                        .filter(n -> locations.get(fileNode).getStatementsAtLine(line).contains(n))
-                        .collect(Collectors.toList());
-                
-                if (matchingStatements.isEmpty()) {
-                    // these are usually implicit returns at the end of void methods, at the line of the closing }
-                    LOG.fine(() -> "Found no statements for suspicious " + susValue + " at " + fileName + ":" + line);
-                } else if (matchingStatements.size() > 1) {
-                    removeParentsOfLastElement(matchingStatements, ast);
-                    if (matchingStatements.size() > 1) {
-                        LOG.fine(() -> "Found " + matchingStatements.size() + " statements for " + fileName
-                                + ":" + line + "; adding suspiciousness to all of them");
-                    }
-                }
-                
-                for (Node stmt : matchingStatements) {
-                    if (stmt.getMetadata(Metadata.SUSPICIOUSNESS) == null
-                            || ((double) stmt.getMetadata(Metadata.SUSPICIOUSNESS)) < susValue) {
-                        LOG.fine(() -> "Suspicious " + susValue + " at " + fileName + ":" + line
-                                + " '" + stmt.getTextSingleLine() + "'");
-                        stmt.setMetadata(Metadata.SUSPICIOUSNESS, susValue);
-                    }
-                }
-            } else {
-                LOG.warning(() -> "Can't find class in AST: " + entry.getKey().className());
+            Map<String, Node> fileNodesByClassName = getFileNodesByClassName(ast);
+            Map<Node, AstLocations> locations = new HashMap<>(fileNodesByClassName.size());
+            for (Node file : fileNodesByClassName.values()) {
+                locations.put(file, new AstLocations(file));
             }
+            initializeEmptyCoveredBy(ast, fileNodesByClassName.values(), tests);
+            
+            for (Map.Entry<Location, Suspiciousness> entry : suspiciousness.entrySet()) {
+                Location location = entry.getKey();
+                double susValue = entry.getValue().suspiciousness();
+                
+                Node fileNode = findFileNode(location.className(), fileNodesByClassName);
+                if (fileNode != null) {
+                    String fileName = fileNode.getMetadata(Metadata.FILE_NAME).toString();
+                    List<Node> matchingStatements = fileNode.stream()
+                            .filter(n -> n.getType() == Type.STATEMENT)
+                            .filter(n -> locations.get(fileNode).getStatementsAtLine(location.line()).contains(n))
+                            .collect(Collectors.toList());
+                    
+                    if (matchingStatements.isEmpty()) {
+                        // these are usually implicit returns at the end of void methods, at the line of the closing }
+                        LOG.fine(() -> "Found no statements for suspicious " + susValue + " at "
+                                + fileName + ":" + location.line());
+                    } else if (matchingStatements.size() > 1) {
+                        removeParentsOfLastElement(matchingStatements, ast);
+                        if (matchingStatements.size() > 1) {
+                            LOG.fine(() -> "Found " + matchingStatements.size() + " statements for " + fileName
+                                    + ":" + location.line() + "; adding suspiciousness to all of them");
+                        }
+                    }
+                    
+                    for (Node stmt : matchingStatements) {
+                        if (stmt.getMetadata(Metadata.SUSPICIOUSNESS) == null
+                                || ((double) stmt.getMetadata(Metadata.SUSPICIOUSNESS)) < susValue) {
+                            LOG.fine(() -> "Suspicious " + susValue + " at " + fileName + ":" + location.line()
+                                    + " '" + stmt.getTextSingleLine() + "'");
+                            stmt.setMetadata(Metadata.SUSPICIOUSNESS, susValue);
+                        }
+                    }
+                    
+                    @SuppressWarnings("unchecked")
+                    Set<String> fileCoveredBy = (Set<String>) fileNode.getMetadata(Metadata.COVERED_BY);
+                    for (TestResult testResult : tests) {
+                        fileCoveredBy.add(testResult.testClass());
+                    }
+                    for (Node method : locations.get(fileNode).getMethodsAtLine(location.line())) {
+                        @SuppressWarnings("unchecked")
+                        Set<String> methodCoveredBy = (Set<String>) method.getMetadata(Metadata.COVERED_BY);
+                        for (TestResult testResult : tests) {
+                            methodCoveredBy.add(testResult.getIdentifier());
+                        }
+                    }
+                } else {
+                    LOG.warning(() -> "Can't find class in AST: " + location.className());
+                }
+            }
+            removeBelowThreshold(ast, Configuration.INSTANCE.setup().suspiciousnessThreshold());
+            removeToKeepLimit(ast, Configuration.INSTANCE.setup().suspiciousStatementLimit());
+            long suspiciousStatementCount = ast.stream()
+                    .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                    .count();
+            LOG.log(suspiciousStatementCount > 0 ? Level.INFO : Level.WARNING,
+                    () -> suspiciousStatementCount + " suspicious statements");
         }
-        removeBelowThreshold(ast, Configuration.INSTANCE.setup().suspiciousnessThreshold());
-        removeToKeepLimit(ast, Configuration.INSTANCE.setup().suspiciousStatementLimit());
-        long suspiciousStatementCount = ast.stream()
-                .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                .count();
-        LOG.log(suspiciousStatementCount > 0 ? Level.INFO : Level.WARNING,
-                () -> suspiciousStatementCount + " suspicious statements");
     }
     
     private static Node findFileNode(String classNameFromSuspiciousness, Map<String, Node> classes) {
@@ -188,98 +205,6 @@ class FaultLocalization {
         }
     }
     
-    private LinkedHashMap<Location, Double> measureSuspiciousness(List<TestResult> tests, Path classesDirectory,
-            Node ast) throws TestExecutionException {
-        
-        try (Probe probe = Measurement.INSTANCE.start("fault-localization")) {
-            Map<Location, Set<TestResult>> coverage = measureCoverage(tests, classesDirectory);
-            annotateTestCoverageOnFileAndMethodNodes(coverage, ast, tests);
-            
-            Map<Location, Double> suspiciousness = new HashMap<>(coverage.size());
-            for (Map.Entry<Location, Set<TestResult>> coverageEntry : coverage.entrySet()) {
-                int nPassingNotExecuting = 0;
-                int nFailingNotExecuting = 0;
-                int nPassingExecuting = 0;
-                int nFailingExecuting = 0;
-                
-                for (TestResult test : tests) {
-                    boolean testCoversLine = coverageEntry.getValue().contains(test);
-                    
-                    if (testCoversLine) {
-                        if (test.isFailure()) {
-                            nFailingExecuting++;
-                        } else {
-                            nPassingExecuting++;
-                        }
-                    } else {
-                        if (test.isFailure()) {
-                            nFailingNotExecuting++;
-                        } else {
-                            nPassingNotExecuting++;
-                        }
-                    }
-                }
-                
-                double susValue = ochiaiFormula(nPassingNotExecuting, nFailingNotExecuting,
-                        nPassingExecuting, nFailingExecuting);
-                if (susValue > 0) {
-                    suspiciousness.put(coverageEntry.getKey(), susValue);
-                }
-            }
-            
-            LinkedHashMap<Location, Double> sortedSuspiciousness = new LinkedHashMap<>(suspiciousness.size());
-            suspiciousness.entrySet().stream()
-                    .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
-                    .forEach(e -> sortedSuspiciousness.put(e.getKey(), e.getValue()));
-            return sortedSuspiciousness;
-        }
-    }
-    
-    private static void annotateTestCoverageOnFileAndMethodNodes(Map<Location, Set<TestResult>> coverage, Node ast,
-            List<TestResult> allTests) {
-        
-        Map<String, Node> filesByClassName = getFileNodesByClassName(ast);
-        initializeEmptyCoveredBy(ast, filesByClassName.values(), allTests);
-        
-        Map<Node, List<Map.Entry<Location, Set<TestResult>>>> coverageByFile
-                = new HashMap<>(coverage.size());
-        for (Map.Entry<Location, Set<TestResult>> entry : coverage.entrySet()) {
-            Node fileNode = findFileNode(entry.getKey().className(), filesByClassName);
-            if (fileNode != null) {
-                List<Map.Entry<Location, Set<TestResult>>> locationsInFile = coverageByFile.get(fileNode);
-                if (locationsInFile == null) {
-                    locationsInFile = new LinkedList<>();
-                    coverageByFile.put(fileNode, locationsInFile);
-                }
-                locationsInFile.add(entry);
-            }
-        }
-        
-        for (Map.Entry<Node, List<Map.Entry<Location, Set<TestResult>>>> entry : coverageByFile.entrySet()) {
-            Node fileNode = entry.getKey();
-            AstLocations locations = new AstLocations(fileNode);
-            
-            for (Map.Entry<Location, Set<TestResult>> coverageLocation : entry.getValue()) {
-                Location location = coverageLocation.getKey();
-                Set<TestResult> tests = coverageLocation.getValue();
-                
-                @SuppressWarnings("unchecked")
-                Set<String> fileCoveredBy = (Set<String>) fileNode.getMetadata(Metadata.COVERED_BY);
-                for (TestResult testResult : tests) {
-                    fileCoveredBy.add(testResult.testClass());
-                }
-                
-                for (Node method : locations.getMethodsAtLine(location.line())) {
-                    @SuppressWarnings("unchecked")
-                    Set<String> methodCoveredBy = (Set<String>) method.getMetadata(Metadata.COVERED_BY);
-                    for (TestResult testResult : tests) {
-                        methodCoveredBy.add(testResult.getIdentifier());
-                    }
-                }
-            }
-        }
-    }
-
     private static void initializeEmptyCoveredBy(Node ast, Collection<Node> fileNodes, List<TestResult> allTests) {
         int numTestClasses = allTests.stream()
                 .map(TestResult::testClass)
@@ -296,6 +221,53 @@ class FaultLocalization {
                 .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
                 .filter(n -> n.getMetadata(Metadata.COVERED_BY) == null)
                 .forEach(n -> n.setMetadata(Metadata.COVERED_BY, new HashSet<>(allTests.size())));
+    }
+
+    private record Suspiciousness(double suspiciousness, Set<TestResult> coveringTests) {
+    }
+    
+    private LinkedHashMap<Location, Suspiciousness> measureSuspiciousness(List<TestResult> tests, Path classesDirectory,
+            Node ast) throws TestExecutionException {
+        
+        Map<Location, Set<TestResult>> coverage = measureCoverage(tests, classesDirectory);
+        
+        Map<Location, Suspiciousness> suspiciousness = new HashMap<>(coverage.size());
+        for (Map.Entry<Location, Set<TestResult>> coverageEntry : coverage.entrySet()) {
+            int nPassingNotExecuting = 0;
+            int nFailingNotExecuting = 0;
+            int nPassingExecuting = 0;
+            int nFailingExecuting = 0;
+            
+            for (TestResult test : tests) {
+                boolean testCoversLine = coverageEntry.getValue().contains(test);
+                
+                if (testCoversLine) {
+                    if (test.isFailure()) {
+                        nFailingExecuting++;
+                    } else {
+                        nPassingExecuting++;
+                    }
+                } else {
+                    if (test.isFailure()) {
+                        nFailingNotExecuting++;
+                    } else {
+                        nPassingNotExecuting++;
+                    }
+                }
+            }
+            
+            double susValue = ochiaiFormula(nPassingNotExecuting, nFailingNotExecuting,
+                    nPassingExecuting, nFailingExecuting);
+            if (susValue > 0) {
+                suspiciousness.put(coverageEntry.getKey(), new Suspiciousness(susValue, coverageEntry.getValue()));
+            }
+        }
+        
+        LinkedHashMap<Location, Suspiciousness> sortedSuspiciousness = new LinkedHashMap<>(suspiciousness.size());
+        suspiciousness.entrySet().stream()
+                .sorted((e1, e2) -> Double.compare(e2.getValue().suspiciousness(), e1.getValue().suspiciousness()))
+                .forEach(e -> sortedSuspiciousness.put(e.getKey(), e.getValue()));
+        return sortedSuspiciousness;
     }
     
     private Map<Location, Set<TestResult>> measureCoverage(List<TestResult> tests, Path classesDirectory)

@@ -67,64 +67,29 @@ class FaultLocalization {
         this.tempDirManager = tempDirManager;
     }
     
-    public void measureAndAnnotateSuspiciousness(Node ast, Path variantBinDir, List<TestResult> tests)
+    public void measureAndAnnotateSuspiciousness(Node ast, Path variantBinDir, List<TestResult> allTests)
             throws TestExecutionException {
         LOG.info("Measuring suspiciousness");
         try (Probe probe = Measurement.INSTANCE.start("fault-localization")) {
-            LinkedHashMap<Location, Suspiciousness> suspiciousness = measureSuspiciousness(tests, variantBinDir, ast);
+            LinkedHashMap<Location, Suspiciousness> suspiciousness
+                    = measureSuspiciousness(allTests, variantBinDir, ast);
             
             Map<String, Node> fileNodesByClassName = getFileNodesByClassName(ast);
             Map<Node, AstLocations> locations = new HashMap<>(fileNodesByClassName.size());
             for (Node file : fileNodesByClassName.values()) {
                 locations.put(file, new AstLocations(file));
             }
-            initializeEmptyCoveredBy(ast, fileNodesByClassName.values(), tests);
+            initializeEmptyCoveredBy(ast, fileNodesByClassName.values(), allTests);
             
             for (Map.Entry<Location, Suspiciousness> entry : suspiciousness.entrySet()) {
                 Location location = entry.getKey();
                 double susValue = entry.getValue().suspiciousness();
+                Set<TestResult> coveringTests = entry.getValue().coveringTests();
                 
                 Node fileNode = findFileNode(location.className(), fileNodesByClassName);
                 if (fileNode != null) {
-                    String fileName = fileNode.getMetadata(Metadata.FILE_NAME).toString();
-                    List<Node> matchingStatements = fileNode.stream()
-                            .filter(n -> n.getType() == Type.STATEMENT)
-                            .filter(n -> locations.get(fileNode).getStatementsAtLine(location.line()).contains(n))
-                            .collect(Collectors.toList());
-                    
-                    if (matchingStatements.isEmpty()) {
-                        // these are usually implicit returns at the end of void methods, at the line of the closing }
-                        LOG.fine(() -> "Found no statements for suspicious " + susValue + " at "
-                                + fileName + ":" + location.line());
-                    } else if (matchingStatements.size() > 1) {
-                        removeParentsOfLastElement(matchingStatements, ast);
-                        if (matchingStatements.size() > 1) {
-                            LOG.fine(() -> "Found " + matchingStatements.size() + " statements for " + fileName
-                                    + ":" + location.line() + "; adding suspiciousness to all of them");
-                        }
-                    }
-                    
-                    for (Node stmt : matchingStatements) {
-                        if (stmt.getMetadata(Metadata.SUSPICIOUSNESS) == null
-                                || ((double) stmt.getMetadata(Metadata.SUSPICIOUSNESS)) < susValue) {
-                            LOG.fine(() -> "Suspicious " + susValue + " at " + fileName + ":" + location.line()
-                                    + " '" + stmt.getTextSingleLine() + "'");
-                            stmt.setMetadata(Metadata.SUSPICIOUSNESS, susValue);
-                        }
-                    }
-                    
-                    @SuppressWarnings("unchecked")
-                    Set<String> fileCoveredBy = (Set<String>) fileNode.getMetadata(Metadata.COVERED_BY);
-                    for (TestResult testResult : tests) {
-                        fileCoveredBy.add(testResult.testClass());
-                    }
-                    for (Node method : locations.get(fileNode).getMethodsAtLine(location.line())) {
-                        @SuppressWarnings("unchecked")
-                        Set<String> methodCoveredBy = (Set<String>) method.getMetadata(Metadata.COVERED_BY);
-                        for (TestResult testResult : tests) {
-                            methodCoveredBy.add(testResult.getIdentifier());
-                        }
-                    }
+                    addSuspiciousnessToStatements(ast, locations, location, susValue, fileNode);
+                    addCoverageMetadataToFileAndMethods(locations, location, coveringTests, fileNode);
                 } else {
                     LOG.warning(() -> "Can't find class in AST: " + location.className());
                 }
@@ -138,7 +103,53 @@ class FaultLocalization {
                     () -> suspiciousStatementCount + " suspicious statements");
         }
     }
+
+    private static void addSuspiciousnessToStatements(Node ast, Map<Node, AstLocations> locations, Location location,
+            double susValue, Node fileNode) {
+        String fileName = fileNode.getMetadata(Metadata.FILE_NAME).toString();
+        List<Node> matchingStatements = fileNode.stream()
+                .filter(n -> n.getType() == Type.STATEMENT)
+                .filter(n -> locations.get(fileNode).getStatementsAtLine(location.line()).contains(n))
+                .collect(Collectors.toList());
+        
+        if (matchingStatements.isEmpty()) {
+            // these are usually implicit returns at the end of void methods, at the line of the closing }
+            LOG.fine(() -> "Found no statements for suspicious " + susValue + " at "
+                    + fileName + ":" + location.line());
+        } else if (matchingStatements.size() > 1) {
+            removeParentsOfLastElement(matchingStatements, ast);
+            if (matchingStatements.size() > 1) {
+                LOG.fine(() -> "Found " + matchingStatements.size() + " statements for " + fileName
+                        + ":" + location.line() + "; adding suspiciousness to all of them");
+            }
+        }
+        
+        for (Node stmt : matchingStatements) {
+            if (stmt.getMetadata(Metadata.SUSPICIOUSNESS) == null
+                    || ((double) stmt.getMetadata(Metadata.SUSPICIOUSNESS)) < susValue) {
+                LOG.fine(() -> "Suspicious " + susValue + " at " + fileName + ":" + location.line()
+                        + " '" + stmt.getTextSingleLine() + "'");
+                stmt.setMetadata(Metadata.SUSPICIOUSNESS, susValue);
+            }
+        }
+    }
     
+    private static void addCoverageMetadataToFileAndMethods(Map<Node, AstLocations> locations, Location location,
+            Set<TestResult> coveringTests, Node fileNode) {
+        @SuppressWarnings("unchecked")
+        Set<String> fileCoveredBy = (Set<String>) fileNode.getMetadata(Metadata.COVERED_BY);
+        for (TestResult testResult : coveringTests) {
+            fileCoveredBy.add(testResult.testClass());
+        }
+        for (Node method : locations.get(fileNode).getMethodsAtLine(location.line())) {
+            @SuppressWarnings("unchecked")
+            Set<String> methodCoveredBy = (Set<String>) method.getMetadata(Metadata.COVERED_BY);
+            for (TestResult testResult : coveringTests) {
+                methodCoveredBy.add(testResult.getIdentifier());
+            }
+        }
+    }
+
     private static Node findFileNode(String classNameFromSuspiciousness, Map<String, Node> classes) {
         Node result = classes.get(classNameFromSuspiciousness);
         int dollarIndex;

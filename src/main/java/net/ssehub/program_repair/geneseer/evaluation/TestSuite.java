@@ -125,7 +125,9 @@ public class TestSuite {
                 throw new TestIntegrityException("File node is missing coverage information");
             }
         }
-        LOG.fine(() -> "Detected " + modifiedFiles.size() + " modified files");
+        LOG.fine(() -> "Detected " + modifiedFiles.size() + " modified files: " + modifiedFiles.stream()
+                    .map(n -> n.getMetadata(Metadata.FILE_NAME))
+                    .toList());
         Set<String> relevantTestClasses = new LinkedHashSet<>();
         modifiedFiles.stream()
                 .map(n -> (Set<String>) n.getMetadata(Metadata.COVERED_BY))

@@ -294,6 +294,7 @@ class FaultLocalization {
         
         ast.stream()
                 .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
+                .filter(n -> n.getMetadata(Metadata.COVERED_BY) == null)
                 .forEach(n -> n.setMetadata(Metadata.COVERED_BY, new HashSet<>(allTests.size())));
     }
     

@@ -96,7 +96,7 @@ public class PatchWriter {
                     
                     Path diffFile = bug.getDirectory().resolve(HUMAN_PATCH_FILENAME);
                     LOG.info(() -> "Writing diff to " + diffFile);
-                    Files.write(diffFile, diff.getBytes(encoding));
+                    Files.writeString(diffFile, diff, encoding);
                     
                     List<ChangedArea> changedAreas = getChangedAreas(diff);
                     LOG.info(() -> changedAreas.stream().map(ChangedArea::toString).collect(Collectors.joining("\n")));

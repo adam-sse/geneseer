@@ -24,7 +24,7 @@ public class Writer {
         Path file = outputDirectory.resolve((Path) singleFileAst.getMetadata(Metadata.FILE_NAME));
         Files.createDirectories(file.getParent());
         
-        Files.write(file, toText(singleFileAst, n -> true).getBytes(encoding));
+        Files.writeString(file, toText(singleFileAst, n -> true), encoding);
     }
     
     static String toText(Node root, Predicate<Node> filter) {

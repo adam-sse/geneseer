@@ -30,7 +30,7 @@ public class JsonUtils {
     }
     
     public static void writeJson(Object obj, Path file) throws IOException {
-        Files.write(file, toJson(obj).getBytes(StandardCharsets.UTF_8));
+        Files.writeString(file, toJson(obj), StandardCharsets.UTF_8);
     }
     
     public static Map<String, Object> parseToMap(String json) throws JsonParseException {

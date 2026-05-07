@@ -50,7 +50,7 @@ public class FileUtils {
     public static void replaceInFile(Path file, String from, String to, Charset encoding) throws IOException {
         String content = Files.readString(file, encoding);
         content = content.replace(from, to);
-        Files.write(file, content.getBytes(encoding));
+        Files.writeString(file, content, encoding);
     }
     
 }

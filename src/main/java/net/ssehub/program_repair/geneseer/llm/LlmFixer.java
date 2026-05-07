@@ -479,7 +479,7 @@ public class LlmFixer {
             }
         }
         
-        Files.writeString(file, newLines.stream().collect(Collectors.joining("\n")), encoding);
+        Files.write(file, newLines.stream().collect(Collectors.joining("\n")).getBytes(encoding));
     }
     
 }

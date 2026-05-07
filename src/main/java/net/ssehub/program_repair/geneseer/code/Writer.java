@@ -1,7 +1,9 @@
 package net.ssehub.program_repair.geneseer.code;
 
 import java.io.IOException;
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Stack;
@@ -24,7 +26,30 @@ public class Writer {
         Path file = outputDirectory.resolve((Path) singleFileAst.getMetadata(Metadata.FILE_NAME));
         Files.createDirectories(file.getParent());
         
-        Files.writeString(file, toText(singleFileAst, n -> true), encoding);
+        Files.writeString(file, escapeNonEncodableForJavaSource(toText(singleFileAst, n -> true), encoding), encoding);
+    }
+    
+    public static String escapeNonEncodableForJavaSource(String str, Charset charset) {
+        CharsetEncoder encoder = charset.newEncoder();
+        StringBuilder out = new StringBuilder(str.length());
+
+        for (int i = 0; i < str.length();) {
+            int cp = str.codePointAt(i);
+            char[] chars = Character.toChars(cp);
+
+            if (encoder.canEncode(CharBuffer.wrap(chars))) {
+                out.append(chars);
+
+            } else {
+                for (char ch : chars) {
+                    out.append("\\u").append(String.format("%04X", (int) ch));
+                }
+            }
+
+            i += chars.length;
+        }
+
+        return out.toString();
     }
     
     static String toText(Node root, Predicate<Node> filter) {

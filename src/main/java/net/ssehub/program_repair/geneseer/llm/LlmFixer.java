@@ -479,7 +479,9 @@ public class LlmFixer {
             }
         }
         
-        Files.writeString(file, newLines.stream().collect(Collectors.joining("\n")), encoding);
+        String content = newLines.stream().collect(Collectors.joining("\n"));
+        content = Writer.escapeNonEncodableForJavaSource(content, encoding);
+        Files.writeString(file, content, encoding);
     }
     
 }

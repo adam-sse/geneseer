@@ -12,7 +12,7 @@ import java.util.logging.Logger;
 
 public class TemporaryDirectoryManager implements Closeable {
 
-    private static List<TemporaryDirectoryManager> openInstancens = new LinkedList<>();
+    private static List<TemporaryDirectoryManager> openInstances = new LinkedList<>();
 
     private static final Logger LOG = Logger.getLogger(TemporaryDirectoryManager.class.getName());
     
@@ -25,32 +25,41 @@ public class TemporaryDirectoryManager implements Closeable {
     
     private String name;
     
+    private volatile boolean closed = false;
+    
     public TemporaryDirectoryManager() {
         this("geneseer");
     }
     
     public TemporaryDirectoryManager(String name) {
         this.name = name;
-        synchronized (openInstancens) {
-            openInstancens.add(this);
+        synchronized (openInstances) {
+            openInstances.add(this);
         }
     }
     
-    public Path createTemporaryDirectory() throws IOException {
+    public synchronized Path createTemporaryDirectory() throws IOException, IllegalStateException {
+        if (closed) {
+            throw new IllegalStateException("already closed");
+        } 
         Path directory = Files.createTempDirectory(name);
         temporaryDirectories.add(directory);
         return directory;
     }
     
-    public void deleteTemporaryDirectory(Path temporaryDirectory) throws IOException, IllegalArgumentException {
-        if (!temporaryDirectories.remove(temporaryDirectory)) {
-            throw new IllegalArgumentException(temporaryDirectory + " is not a directory created by this manager");
+    public synchronized void deleteTemporaryDirectory(Path temporaryDirectory)
+            throws IOException, IllegalArgumentException {
+        if (!closed) {
+            if (!temporaryDirectories.remove(temporaryDirectory)) {
+                throw new IllegalArgumentException(temporaryDirectory + " is not a directory created by this manager");
+            }
+            
+            FileUtils.deleteDirectory(temporaryDirectory);
         }
-        FileUtils.deleteDirectory(temporaryDirectory);
     }
     
     @Override
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
         List<IOException> exceptions = new LinkedList<>();
         
         for (Path path : temporaryDirectories) {
@@ -61,9 +70,10 @@ public class TemporaryDirectoryManager implements Closeable {
             }
         }
         temporaryDirectories.clear();
+        closed = true;
         
-        synchronized (openInstancens) {
-            openInstancens.remove(this);
+        synchronized (openInstances) {
+            openInstances.remove(this);
         }
         
         if (!exceptions.isEmpty()) {
@@ -84,11 +94,11 @@ public class TemporaryDirectoryManager implements Closeable {
     }
     
     private static void closeAllOpenInstances() {
-        synchronized (openInstancens) {
-            logInShutdownHook("Closing " + openInstancens.size() + " open instances");
-            while (!openInstancens.isEmpty()) {
+        synchronized (openInstances) {
+            logInShutdownHook("Closing " + openInstances.size() + " open instances");
+            while (!openInstances.isEmpty()) {
                 try {
-                    openInstancens.get(0).close();
+                    openInstances.get(0).close();
                 } catch (IOException e) {
                     logInShutdownHook("Exception while closing instance: " + e.getMessage());
                 }

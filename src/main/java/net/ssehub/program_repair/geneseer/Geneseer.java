@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.StreamSupport;
@@ -46,8 +47,7 @@ public class Geneseer {
     
     private static final Logger LOG = Logger.getLogger(Geneseer.class.getName());
     
-    private static final Object OUTPUT_LOCK = new Object();
-    private static volatile boolean resultPrinted = false;
+    private static final AtomicBoolean RESULT_PRINTED = new AtomicBoolean(false);
     
     public static void main(String[] args) {
         LOG.info(() -> "Geneseer " + VersionInfo.VERSION + " (" + VersionInfo.GIT_COMMIT
@@ -120,14 +120,11 @@ public class Geneseer {
             result.setException(e.getMessage());
             
         } catch (OutOfMemoryError e) {
-            synchronized (OUTPUT_LOCK) {
-                if (!resultPrinted) {
-                    resultPrinted = true;
-                    System.out.println("{\"result\":\"OUT_OF_MEMORY\"}");
-                }
-                oom = true;
-                throw e;
+            if (RESULT_PRINTED.compareAndSet(false, true)) {
+                System.out.println("{\"result\":\"OUT_OF_MEMORY\"}");
             }
+            oom = true;
+            throw e;
             
         } finally {
             if (!oom) {
@@ -137,16 +134,14 @@ public class Geneseer {
     }
     
     private static void printOutput(Result result, boolean normallyFinished) {
-        synchronized (OUTPUT_LOCK) {
-            if (!resultPrinted) {
-                synchronized (result) {
-                    addTimingsAndLogStats(result);
-                    if (!normallyFinished) {
-                        result.setResult("KILLED");
-                    }
-                    resultPrinted = true;
-                    System.out.println(JsonUtils.toJson(result));
+        if (RESULT_PRINTED.compareAndSet(false, true)) {
+            synchronized (result) {
+                addTimingsAndLogStats(result);
+                if (!normallyFinished) {
+                    System.err.println("[Geneseer ShutdownHook] JVM shutdown requested before normal completion");
+                    result.setResult("KILLED");
                 }
+                System.out.println(JsonUtils.toJson(result));
             }
         }
     }

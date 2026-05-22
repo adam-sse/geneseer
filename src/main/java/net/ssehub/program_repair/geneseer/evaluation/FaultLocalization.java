@@ -10,7 +10,6 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -74,12 +73,12 @@ class FaultLocalization {
             LinkedHashMap<Location, Suspiciousness> suspiciousness
                     = measureSuspiciousness(allTests, variantBinDir, ast);
             
-            Map<String, Node> fileNodesByClassName = getFileNodesByClassName(ast);
-            Map<Node, AstLocations> locations = new HashMap<>(fileNodesByClassName.size());
-            for (Node file : fileNodesByClassName.values()) {
+            Map<Node, AstLocations> locations = new HashMap<>(ast.childCount());
+            for (Node file : ast.childIterator()) {
                 locations.put(file, new AstLocations(file));
             }
-            initializeEmptyCoveredBy(ast, fileNodesByClassName.values(), allTests);
+            initializeEmptyCoveredBy(ast, allTests);
+            Map<String, Node> fileNodesByClassName = getFileNodesByClassName(ast);
             
             for (Map.Entry<Location, Suspiciousness> entry : suspiciousness.entrySet()) {
                 Location location = entry.getKey();
@@ -216,13 +215,13 @@ class FaultLocalization {
         }
     }
     
-    private static void initializeEmptyCoveredBy(Node ast, Collection<Node> fileNodes, List<TestResult> allTests) {
+    private static void initializeEmptyCoveredBy(Node ast, List<TestResult> allTests) {
         int numTestClasses = allTests.stream()
                 .map(TestResult::testClass)
                 .collect(Collectors.toSet())
                 .size();
         
-        for (Node fileNode : fileNodes) {
+        for (Node fileNode : ast.childIterator()) {
             if (fileNode.getMetadata(Metadata.COVERED_BY) == null) {
                 fileNode.setMetadata(Metadata.COVERED_BY, new HashSet<>(numTestClasses));
             }

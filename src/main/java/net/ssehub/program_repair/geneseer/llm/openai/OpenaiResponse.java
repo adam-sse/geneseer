@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.google.gson.annotations.SerializedName;
 
-import net.ssehub.program_repair.geneseer.llm.Message;
+import net.ssehub.program_repair.geneseer.llm.Role;
 
 record OpenaiResponse(
         String id,
@@ -16,7 +16,11 @@ record OpenaiResponse(
     record Choice(
             FinishReason finishReason,
             int index,
-            Message delta) {
+            Delta delta) {
+    }
+    
+    record Delta(Role role, String content, String reasoningContent) {
+        
     }
     
     enum FinishReason {

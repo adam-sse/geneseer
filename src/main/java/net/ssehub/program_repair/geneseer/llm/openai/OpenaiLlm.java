@@ -20,6 +20,7 @@ import net.ssehub.program_repair.geneseer.llm.Message;
 import net.ssehub.program_repair.geneseer.llm.Query;
 import net.ssehub.program_repair.geneseer.llm.Role;
 import net.ssehub.program_repair.geneseer.llm.openai.OpenaiResponse.Choice;
+import net.ssehub.program_repair.geneseer.llm.openai.OpenaiResponse.Delta;
 import net.ssehub.program_repair.geneseer.llm.openai.OpenaiResponse.FinishReason;
 import net.ssehub.program_repair.geneseer.llm.openai.OpenaiResponse.Usage;
 
@@ -94,22 +95,22 @@ public class OpenaiLlm extends AbstractLlm {
                 .toList();
         sanityChecks(chunkedResponses, query);
         
-        List<Message> messages = chunkedResponses.stream()
+        List<Delta> messages = chunkedResponses.stream()
                 .filter(r -> !r.choices().isEmpty())
                 .map(r -> r.choices().get(0))
                 .map(Choice::delta)
                 .toList();
         
         Role role = messages.stream()
-                .map(Message::getRole)
+                .map(Delta::role)
                 .filter(Objects::nonNull)
                 .findFirst().orElse(Role.ASSISTANT);
         String combinedContent = messages.stream()
-                .map(Message::getContent)
+                .map(Delta::content)
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining());
         String combinedThinking = messages.stream()
-                .map(Message::getThinking)
+                .map(Delta::reasoningContent)
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining());
         Message combined = new Message(role, combinedContent);
@@ -226,14 +227,14 @@ public class OpenaiLlm extends AbstractLlm {
             if (choice.delta() == null) {
                 throw new JsonParseException("Message of chunk " + chunkIndex + " is null");
             }
-            if (!isEndChunk && choice.delta().getContent() == null) {
+            if (choice.delta().content() == null && choice.delta().reasoningContent() == null
+                    && !isEndChunk && chunkIndex != 0)  {
                 warnings.add("Message content of chunk " + chunkIndex + " is null");
             }
             
-            Role expectedRole = chunkIndex == 0 ? Role.ASSISTANT : null;
-            if (choice.delta().getRole() != expectedRole) {
-                warnings.add("Role of message in chunk " + chunkIndex + " is not " + expectedRole
-                        + ", but " + choice.delta().getRole());
+            if (choice.delta().role() != Role.ASSISTANT && choice.delta().role() != null) {
+                warnings.add("Role of message in chunk " + chunkIndex + " is not ASSISTANT, but "
+                        + choice.delta().role());
             }
         }
     }

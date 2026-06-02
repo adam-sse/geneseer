@@ -4,7 +4,6 @@ import java.util.List;
 
 import com.google.gson.annotations.SerializedName;
 
-import net.ssehub.program_repair.geneseer.llm.IResponse;
 import net.ssehub.program_repair.geneseer.llm.Message;
 
 record OpenaiResponse(
@@ -12,12 +11,12 @@ record OpenaiResponse(
         List<Choice> choices,
         String model,
         String object,
-        Usage usage) implements IResponse {
+        Usage usage) {
 
     record Choice(
             FinishReason finishReason,
             int index,
-            Message message) {
+            Message delta) {
     }
     
     enum FinishReason {
@@ -48,21 +47,6 @@ record OpenaiResponse(
     }
     
     record UsageDetails(Integer reasoningTokens) {
-    }
-    
-    @Override
-    public List<Message> getMessages() {
-        return choices.stream().map(Choice::message).toList();
-    }
-    
-    @Override
-    public int getQueryTokens() {
-        return usage != null ? usage.promptTokens : 0;
-    }
-    
-    @Override
-    public int getAnswerTokens() {
-        return usage != null ? usage.completionTokens : 0;
     }
     
 }

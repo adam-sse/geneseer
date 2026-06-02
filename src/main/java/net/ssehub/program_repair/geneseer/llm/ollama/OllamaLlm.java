@@ -38,7 +38,7 @@ public class OllamaLlm extends AbstractLlm {
                     Map<String, String> messageJson = new LinkedHashMap<>();
                     messageJson.put("role", m.getRole().name().toLowerCase());
                     messageJson.put("content", m.getContent());
-                    return m;
+                    return messageJson;
                 })
                 .toList());
         json.put("stream", false);

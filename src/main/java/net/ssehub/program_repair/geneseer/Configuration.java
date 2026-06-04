@@ -176,10 +176,14 @@ public class Configuration {
                 Random random = new Random(getValue());
                 byte[] probe = new byte[16];
                 random.nextBytes(probe);
-                StringBuilder str = new StringBuilder(probe.length * 2);
-                str.append(" (16-byte ");
-                str.append(random.getClass().getName());
-                str.append(" probe:");
+                
+                StringBuilder str = new StringBuilder();
+                str.append(getValue())
+                        .append(" (")
+                        .append(probe.length)
+                        .append("-byte ")
+                        .append(random.getClass().getName())
+                        .append(" probe:");
                 for (int i = 0; i < probe.length; i++) {
                     if (i % 4 == 0) {
                         str.append(' ');
@@ -187,7 +191,7 @@ public class Configuration {
                     str.append(String.format("%02x", probe[i]));
                 }
                 str.append(')');
-                return Long.toString(getValue()) + str.toString();
+                return str.toString();
             };
         };
         private Option<Integer> populationSize = new Option<>("populationSize",

@@ -1,6 +1,7 @@
 package net.ssehub.program_repair.geneseer;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.Set;
@@ -49,10 +50,16 @@ public class Geneseer {
     
     private static final AtomicBoolean RESULT_PRINTED = new AtomicBoolean(false);
     
-    public static void main(String[] args) {
-        LOG.info(() -> "Geneseer " + VersionInfo.VERSION + " (" + VersionInfo.GIT_COMMIT
+    public static void logStartup(String extraInfo) {
+        LOG.info(() -> "Geneseer " + extraInfo + VersionInfo.VERSION + " (" + VersionInfo.GIT_COMMIT
                 + (VersionInfo.GIT_DIRTY ? " dirty" : "") + ")");
-        
+        LOG.config(() -> "Running on " + System.getProperty("java.vm.name") + " "
+                + System.getProperty("java.vm.version") + " (" + System.getProperty("java.vm.vendor") + ")");
+        LOG.config(() -> "JVM args: " + ManagementFactory.getRuntimeMXBean().getInputArguments());
+    }
+    
+    public static void main(String[] args) {
+        logStartup("");
         Project project = initializeProjectsAndConfiguration(args);
         main(project);
     }

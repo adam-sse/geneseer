@@ -18,7 +18,6 @@ import com.google.gson.JsonParseException;
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.Geneseer;
 import net.ssehub.program_repair.geneseer.Project;
-import net.ssehub.program_repair.geneseer.VersionInfo;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
 import net.ssehub.program_repair.geneseer.util.JsonUtils;
@@ -104,8 +103,7 @@ public class Defects4jRunner {
     }
     
     public static void main(String[] args) {
-        LOG.info(() -> "Geneseer (Defects4jRunner) " + VersionInfo.VERSION + " (" + VersionInfo.GIT_COMMIT
-                + (VersionInfo.GIT_DIRTY ? " dirty" : "") + ")");
+        Geneseer.logStartup("(Defects4jRunner) ");
         
         Set<String> cliOptions = new HashSet<>();
         cliOptions.add("--defects4j");

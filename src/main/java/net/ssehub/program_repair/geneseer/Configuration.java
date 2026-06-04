@@ -5,6 +5,7 @@ import java.net.URL;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -170,7 +171,25 @@ public class Configuration {
     public static class GeneticConfiguration extends Section {
 
         private Option<Long> randomSeed = new Option<>("randomSeed",
-                "Random seed", 0L, Long::parseLong);
+                "Random seed", 0L, Long::parseLong) {
+            protected String valueAsString() {
+                Random random = new Random(getValue());
+                byte[] probe = new byte[16];
+                random.nextBytes(probe);
+                StringBuilder str = new StringBuilder(probe.length * 2);
+                str.append(" (16-byte ");
+                str.append(random.getClass().getName());
+                str.append(" probe:");
+                for (int i = 0; i < probe.length; i++) {
+                    if (i % 4 == 0) {
+                        str.append(' ');
+                    }
+                    str.append(String.format("%02x", probe[i]));
+                }
+                str.append(')');
+                return Long.toString(getValue()) + str.toString();
+            };
+        };
         private Option<Integer> populationSize = new Option<>("populationSize",
                 "Population size", 40, Integer::parseInt);
         private Option<Integer> generationLimit = new Option<>("generationLimit",

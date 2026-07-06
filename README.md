@@ -257,3 +257,46 @@ program each time you execute it.
 This project has `geneseer-test-driver` as a dependency in Maven. This is not available in the default Maven
 repositories, so you need to install it to your local Maven repository. See
 [the README of geneseer-test-driver](https://github.com/adam-sse/geneseer-test-driver#compiling).
+
+## Publications
+
+geneseer was used in the following peer-reviewed papers:
+
+A. Krafczyk and K. Schmid, "Integrating a large language model into search-based automated program repair,"
+in *Proceedings of the 33rd International Conference on Software Analysis, Evolution and Reengineering (SANER'26)*,
+IEEE, Mar. 2026, pp. 80-85. doi: [10.1109/SANER67736.2026.00017](https://doi.org/10.1109/SANER67736.2026.00017).
+<details><summary>Abstract</summary>
+Automated program repair (APR) approaches aim at generating patches for bugs that are indicated by failing test cases.
+Traditionally, search-based approaches that explore a large search space guided by a fitness function are the common
+approaches to address APR. More recently large language models (LLMs) have been proposed independently to achieve the
+goal of APR. In this paper, we propose and evaluate a combination of these two fundamentally different approaches.
+ <br>
+Our experiment shows an increase of over 15 percentage points in number of fixable bugs that is only reachable by the
+combined approach and not reachable by the standalone search-based or LLM approaches. As a caveat, the effort required
+for the combined approach (runtime and cost of LLM-calls) is higher than of the standalone LLM-approach.
+</details>
+
+A. Krafczyk and K. Schmid, "Reproducible automated program repair is hard – experiences with the Defects4J dataset,"
+in *Proceedings of the 30th International Conference on Evaluation and Assessment in Software Engineering (EASE'26)*,
+ACM, Jun. 2026. doi: [10.1145/3816483.3816574](https://doi.org/10.1145/3816483.3816574).
+<details><summary>Abstract</summary>
+In the research of automated program repair (APR), benchmark datasets consisting of known defects in combination with
+test suites that indicate the defects are of high importance. They allow for an evidence-based comparison of different
+APR approaches. In our own work on APR we found significant challenges when working with widely used defect datasets,
+which go beyond mere repeatability of defects via test cases. We summarize these identified challenges and related
+lessons learned to bring them to the attention of the APR community and quantify the potential impact of them.
+<br>
+In particular, we investigate the widely used benchmark Defects4J, which has according to Google Scholar over
+1,800 citations. It consists of 835 defects from 17 open-source Java projects; a hand-curated collection of defects,
+test suites that clearly indicate the defect, and human patches where any unrelated changes are removed. We find that,
+when executing the test suites with strict requirements for reproducibility in APR settings (beyond merely reproducing
+the defect via test cases), 180 (21.6 %) of the defects are not suitable for evaluation experiments. Further, we find
+that an additional 59 (7.1 %) defects have test suites that are obviously under-specified, as deleting a single
+statement from the code base makes all test cases pass, although the human-written patch does not only delete code.
+<br>
+Our contributions are: a systematic collection of requirements for defect datasets for APR beyond traditional
+reproducibility of defects, a description of practical experiences and quantitative analysis of problems with the
+Defects4J dataset, as well as an implementation of an evaluation framework for APR tools for Java programs. This
+evaluation framework does stricter checking for indications of inadequate test suites, to avoid otherwise unnoticed
+problems in the test suite, such as flaky tests.
+</details>

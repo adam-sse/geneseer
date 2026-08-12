@@ -97,7 +97,7 @@ Here is a list of possible keys, their meaning, and the default values:
 
 | Key                                       |  Default Value         | Description                                                |
 |-------------------------------------------|------------------------|------------------------------------------------------------|
-| `--config.setup.fixer`                    | `GENESEER`             | The fixer to use. Possible values: `GENESEER`, `LLM_SINGLE`, `SETUP_TEST`, `ONLY_DELETE`, `LLM_QUERY_ANALYSIS` |
+| `--config.setup.fixer`                    | `GENESEER`             | The fixer to use. Possible values: `GENESEER`, `LLM_FIXER`, `SETUP_TEST`, `ONLY_DELETE`, `LLM_QUERY_ANALYSIS` |
 | `--config.setup.jvmBinaryPath`            | `java`                 | The path to the JVM binary to run tests. May be absolute or on the path. |
 | `--config.setup.javaCompilerBinaryPath`   | `javac`                | The path to the Java compiler to compile the project. May be absolute or on the path. |
 | `--config.setup.testExecutionTimeoutMs`   | `120000` (2 minutes)   | The number of milliseconds before a test execution is considered timed out. The test process will be killed and the tests will count as failures. |
@@ -125,6 +125,7 @@ Here is a list of possible keys, their meaning, and the default values:
 | `--config.llm.maxCodeContext`             | `100`                  | The maximum number of lines of code to supply as code context in a query to the LLM. This does not include test code. |
 | `--config.llm.projectOutline`             | `PARTIAL`              | The type of project outline to add to the prompt. Possible values: `FULL`, `PARTIAL`, `NONE` |
 | `--config.llm.structuredOutput`           | `false`                | If set to `true`, enforce structured output of the LLM via JSON schema. |
+| `--config.llm.numQueries`                 | `5`                    | For `LLM_FIXER` only: how many variants to create.
 | `--config.rag.chromadbWorkerPythonBinaryPath`| not set             | Path to the `python` binary with necessary `chromadb` and `ollama` dependencies installed, see [Setup for RAG](#setup-for-rag) below. |
 | `--config.rag.model`                      | not set                | The name of the model to use for embedding. |
 | `--config.rag.api`                        | not set                | The Ollama API host (e.g. `http://localhost:11434`) used for embedding. |

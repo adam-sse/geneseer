@@ -16,7 +16,8 @@ record OpenaiResponse(
     record Choice(
             FinishReason finishReason,
             int index,
-            Delta delta) {
+            Delta delta,
+            Delta message) {
     }
     
     record Delta(Role role, String content, String reasoningContent) {

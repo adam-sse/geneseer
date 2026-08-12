@@ -2,11 +2,13 @@ package net.ssehub.program_repair.geneseer.llm;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.logging.Logger;
 
 import net.ssehub.program_repair.geneseer.Configuration.LlmConfiguration;
 import net.ssehub.program_repair.geneseer.llm.ollama.OllamaLlm;
 import net.ssehub.program_repair.geneseer.llm.openai.OpenaiLlm;
+import net.ssehub.program_repair.geneseer.llm.openai.OpenaiSavedAnswers;
 
 public class LlmFactory {
     
@@ -98,18 +100,23 @@ public class LlmFactory {
                 throw new IllegalArgumentException("No API provider specified with + before URL");
             }
             String provider = api.substring(0, splitIndex);
-            URL url = parse(api.substring(splitIndex + 1));
+            String url = api.substring(splitIndex + 1);
             
             if (provider.equals("openai")) {
-                OpenaiLlm con = new OpenaiLlm(model, url);
-                applyCommonSettings(con);
-                result = con;
-                if (contextSize != null) {
-                    LOG.warning(() -> "Context size setting is not supported for openai API");
+                if (url.startsWith("saved:")) {
+                    Path path = Path.of(url.substring("saved:".length()));
+                    result = new OpenaiSavedAnswers(path);
+                } else {
+                    OpenaiLlm con = new OpenaiLlm(model, parse(url));
+                    applyCommonSettings(con);
+                    result = con;
+                    if (contextSize != null) {
+                        LOG.warning(() -> "Context size setting is not supported for openai API");
+                    }
                 }
                 
             } else if (provider.equals("ollama")) {
-                OllamaLlm con = new OllamaLlm(model, url);
+                OllamaLlm con = new OllamaLlm(model, parse(url));
                 applyCommonSettings(con);
                 con.setContextSize(contextSize);
                 result = con;

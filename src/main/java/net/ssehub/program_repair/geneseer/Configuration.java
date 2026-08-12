@@ -294,6 +294,8 @@ public class Configuration {
         }
         private Option<Boolean> structuredOutput = new Option<>("structuredOutput",
                 "Structured output", false, Boolean::parseBoolean);
+        private Option<Integer> numQueries = new Option<Integer>("numQueries",
+                "Number of queries to send for LLM fixer", 5, Integer::parseInt);
         
         public LlmConfiguration() {
             super("llm", "LLM Configuration", new LinkedList<>());
@@ -310,6 +312,7 @@ public class Configuration {
             super.options.add(maxCodeContext);
             super.options.add(projectOutline);
             super.options.add(structuredOutput);
+            super.options.add(numQueries);
         }
         
         public String model() {
@@ -362,6 +365,10 @@ public class Configuration {
         
         public boolean structuredOutput() {
             return structuredOutput.getValue();
+        }
+        
+        public int numQueries() {
+            return numQueries.getValue();
         }
     }
     

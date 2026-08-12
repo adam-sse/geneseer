@@ -19,11 +19,11 @@ import net.ssehub.program_repair.geneseer.code.ParsingException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.fixers.IFixer;
+import net.ssehub.program_repair.geneseer.fixers.Llm;
 import net.ssehub.program_repair.geneseer.fixers.LlmQueryAnalysis;
 import net.ssehub.program_repair.geneseer.fixers.OnlyDelete;
 import net.ssehub.program_repair.geneseer.fixers.Outliner;
 import net.ssehub.program_repair.geneseer.fixers.SetupTest;
-import net.ssehub.program_repair.geneseer.fixers.SingleLlm;
 import net.ssehub.program_repair.geneseer.fixers.genetic.GeneticAlgorithm;
 import net.ssehub.program_repair.geneseer.llm.ILlm;
 import net.ssehub.program_repair.geneseer.llm.ISnippetRanker;
@@ -162,8 +162,8 @@ public class Geneseer {
                             ? createLlmFixer(project, result, tempDirManager)
                             : null);
             break;
-        case "LLM_SINGLE":
-            fixer = new SingleLlm(createLlmFixer(project, result, tempDirManager));
+        case "LLM_FIXER":
+            fixer = new Llm(createLlmFixer(project, result, tempDirManager));
             break;
         case "SETUP_TEST":
             fixer = new SetupTest();

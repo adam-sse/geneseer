@@ -52,6 +52,14 @@ public abstract class AbstractLlm implements ILlm {
             throw new IllegalArgumentException(e);
         }
         
+        this.gson = createGson();
+        
+        this.http = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(30))
+                .build();
+    }
+    
+    public static Gson createGson() {
         GsonBuilder gsonBuilder = new GsonBuilder();
         gsonBuilder.setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES);
         gsonBuilder.registerTypeAdapter(Role.class, new TypeAdapter<Role>() {
@@ -64,11 +72,7 @@ public abstract class AbstractLlm implements ILlm {
                 return Role.valueOf(in.nextString().toUpperCase());
             }
         });
-        this.gson = gsonBuilder.create();
-        
-        this.http = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(30))
-                .build();
+        return gsonBuilder.create();
     }
     
     protected String getModel() {

@@ -2,6 +2,7 @@ package net.ssehub.program_repair.geneseer.fixers;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -21,6 +22,7 @@ import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.llm.CodeSnippet;
 import net.ssehub.program_repair.geneseer.llm.LlmFixer;
+import net.ssehub.program_repair.geneseer.llm.Message;
 import net.ssehub.program_repair.geneseer.llm.Query;
 import net.ssehub.program_repair.geneseer.util.JsonUtils;
 
@@ -83,8 +85,32 @@ public class LlmQueryAnalysis implements IFixer {
         LOG.info(() -> "Query:\n" + queryText);
         analyzeQuery(result, tokenEncoding, codeSnippets, irrelevant, queryText);
         
-        JsonUtils.writeJson(query, projectRoot.resolve(LLM_QUERY_FILENAME));
+        JsonUtils.writeJson(new QueryWithSnippets(query, codeSnippets), projectRoot.resolve(LLM_QUERY_FILENAME));
         return null;
+    }
+    
+    private static class QueryWithSnippets extends Query {
+        
+        private List<CodeSnippetWithoutLines> codeSnippets;
+        
+        public QueryWithSnippets(Query base, List<CodeSnippet> snippets) {
+            for (Message message : base.getMessages()) {
+                addMessage(message);
+            }
+            if (base.getSeed() != null) {
+                setSeed(base.getSeed());
+            }
+            setJsonSchema(base.getJsonSchema());
+            codeSnippets = new ArrayList<>(snippets.size());
+            for (CodeSnippet snippet : snippets) {
+                codeSnippets.add(new CodeSnippetWithoutLines(snippet.getFile().toString(),
+                        snippet.getLineRange().start(), snippet.getLineRange().end()));
+            }
+        }
+        
+    }
+    
+    private static record CodeSnippetWithoutLines(String file, int lineStart, int lineEnd) {
     }
 
     private void analyzeQuery(Result result, Encoding tokenEncoding,

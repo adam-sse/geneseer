@@ -13,21 +13,21 @@ import net.ssehub.program_repair.geneseer.evaluation.CompilationException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
-import net.ssehub.program_repair.geneseer.llm.LlmFixer;
+import net.ssehub.program_repair.geneseer.llm.AbstractLlmMutator;
 
-public class Llm implements IFixer {
+public class LlmFixer implements IFixer {
 
-    private static final Logger LOG = Logger.getLogger(Llm.class.getName());
+    private static final Logger LOG = Logger.getLogger(LlmFixer.class.getName());
     
-    private LlmFixer llmFixer;
+    private AbstractLlmMutator llmMutator;
     
-    public Llm(LlmFixer llmFixer) {
-        this.llmFixer = llmFixer;
+    public LlmFixer(AbstractLlmMutator llmMutator) {
+        this.llmMutator = llmMutator;
     }
     
     @Override
     public boolean needsFaultLocalization() {
-        return true;
+        return llmMutator.needsFaultLocalization();
     }
     
     @Override
@@ -42,7 +42,7 @@ public class Llm implements IFixer {
         for (int i = 1; i <= numQueries; i++) {
             LOG.info("Running query " + i + " of " + numQueries);
             
-            Optional<Node> modifiedAst = llmFixer.createVariant(ast, testSuite.getInitialFailingTestResults());
+            Optional<Node> modifiedAst = llmMutator.createVariant(ast, testSuite.getInitialFailingTestResults());
             if (modifiedAst.isPresent()) {
                 Node patched = modifiedAst.get();
                 try {

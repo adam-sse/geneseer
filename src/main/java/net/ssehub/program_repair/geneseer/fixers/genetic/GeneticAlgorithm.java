@@ -22,7 +22,7 @@ import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.fixers.IFixer;
-import net.ssehub.program_repair.geneseer.llm.LlmFixer;
+import net.ssehub.program_repair.geneseer.llm.AbstractLlmMutator;
 import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.Measurement.Probe;
 
@@ -34,15 +34,15 @@ public class GeneticAlgorithm implements IFixer {
     
     private FitnessEvaluator fitnessEvaluator;
     
-    private LlmFixer llmFixer;
+    private AbstractLlmMutator llmMutator;
     
     private int generation;
     private Variant unmodifiedVariant;
     
     private Result result;
     
-    public GeneticAlgorithm(LlmFixer llmfixer) {
-        this.llmFixer = llmfixer;
+    public GeneticAlgorithm(AbstractLlmMutator llmMutator) {
+        this.llmMutator = llmMutator;
     }
     
     @Override
@@ -234,7 +234,7 @@ public class GeneticAlgorithm implements IFixer {
                         result.mutationStats().increaseLlmCallsOnMutated();
                     }
                     try {
-                        Optional<Node> result = llmFixer.createVariant(astRoot, variant.getFailingTests());
+                        Optional<Node> result = llmMutator.createVariant(astRoot, variant.getFailingTests());
                         if (result.isPresent()) {
                             astRoot = result.get();
                             variant.setAst(astRoot);

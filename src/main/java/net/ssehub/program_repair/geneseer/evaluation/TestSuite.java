@@ -121,27 +121,11 @@ public class TestSuite {
         }
     }
     
-    @SuppressWarnings("unchecked")
+    
     public List<TestResult> evaluate(Node ast) throws EvaluationException {
         compile(ast);
         
-        Set<Node> modifiedFiles = computeModifiedFiles(originalSourceCode, ast);
-        for (Node modifiedFile : modifiedFiles) {
-            if (modifiedFile.getMetadata(Metadata.COVERED_BY) == null) {
-                throw new TestIntegrityException("File node is missing coverage information");
-            }
-        }
-        LOG.fine(() -> "Detected " + modifiedFiles.size() + " modified files: " + modifiedFiles.stream()
-                    .map(n -> n.getMetadata(Metadata.FILE_NAME))
-                    .toList());
-        Set<String> relevantTestClasses = new LinkedHashSet<>();
-        modifiedFiles.stream()
-                .map(n -> (Set<String>) n.getMetadata(Metadata.COVERED_BY))
-                .flatMap(Set::stream)
-                .forEach(relevantTestClasses::add);
-        LOG.fine(() -> "Only running " + relevantTestClasses.size() + " relevant test classes (out of "
-                + testMethods.size() + " total): " + relevantTestClasses);
-        
+        Set<String> relevantTestClasses = getRelevantTestClasses(ast);
         List<TestResult> testResult = runTests(compiler.getOutputDirectory(), relevantTestClasses);
         List<TestResult> extendedTestResult = new LinkedList<>();
         for (TestResult tr : testResult) {
@@ -176,6 +160,34 @@ public class TestSuite {
         }
         
         return extendedTestResult;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Set<String> getRelevantTestClasses(Node ast) throws EvaluationException, TestIntegrityException {
+        Set<String> relevantTestClasses = new LinkedHashSet<>();
+        if (faultLocalization != null) {
+            Set<Node> modifiedFiles = computeModifiedFiles(originalSourceCode, ast);
+            for (Node modifiedFile : modifiedFiles) {
+                if (modifiedFile.getMetadata(Metadata.COVERED_BY) == null) {
+                    throw new TestIntegrityException("File node is missing coverage information");
+                }
+            }
+            LOG.fine(() -> "Detected " + modifiedFiles.size() + " modified files: " + modifiedFiles.stream()
+                    .map(n -> n.getMetadata(Metadata.FILE_NAME))
+                        .toList());
+            modifiedFiles.stream()
+                    .map(n -> (Set<String>) n.getMetadata(Metadata.COVERED_BY))
+                    .flatMap(Set::stream)
+                    .forEach(relevantTestClasses::add);
+            LOG.fine(() -> "Only running " + relevantTestClasses.size() + " relevant test classes (out of "
+                    + testMethods.size() + " total): " + relevantTestClasses);
+            
+        } else {
+            relevantTestClasses.addAll(testMethods.keySet());
+            LOG.fine(() -> "Did not run fault localization, so need to run all " + relevantTestClasses.size()
+                    + " test classes");
+        }
+        return relevantTestClasses;
     }
     
     public List<TestResult> runAndAnnotateFaultLocalization(Node ast) throws EvaluationException {

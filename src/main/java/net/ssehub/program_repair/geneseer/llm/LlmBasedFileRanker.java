@@ -137,7 +137,7 @@ public class LlmBasedFileRanker implements ISnippetRanker {
         
         StringBuilder prompt = new StringBuilder();
         prompt.append("## FAILING TESTS\n");
-        LlmFixer.writeFailingTestCases(prompt, failingTestMethods);
+        AbstractLlmMutator.writeFailingTestCases(prompt, failingTestMethods);
         
         prompt.append("## PROJECT FILE INVENTORY\n");
         files.stream()
@@ -146,7 +146,7 @@ public class LlmBasedFileRanker implements ISnippetRanker {
         prompt.append("\n");
         
         prompt.append("## SYMBOL SIGNATURES (top-level functions and classes)\n");
-        prompt.append(LlmFixer.createProjectOutline(code, null));
+        prompt.append(AbstractLlmMutator.createProjectOutline(code, null));
         
         prompt.append("\n\n");
         prompt.append("## IMPORT GRAPH (file → imports)\n");

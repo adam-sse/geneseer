@@ -19,19 +19,22 @@ import net.ssehub.program_repair.geneseer.code.ParsingException;
 import net.ssehub.program_repair.geneseer.evaluation.EvaluationException;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 import net.ssehub.program_repair.geneseer.fixers.IFixer;
-import net.ssehub.program_repair.geneseer.fixers.Llm;
+import net.ssehub.program_repair.geneseer.fixers.LlmFixer;
 import net.ssehub.program_repair.geneseer.fixers.LlmQueryAnalysis;
 import net.ssehub.program_repair.geneseer.fixers.OnlyDelete;
 import net.ssehub.program_repair.geneseer.fixers.Outliner;
 import net.ssehub.program_repair.geneseer.fixers.SetupTest;
 import net.ssehub.program_repair.geneseer.fixers.genetic.GeneticAlgorithm;
+import net.ssehub.program_repair.geneseer.llm.AbstractLlmMutator;
 import net.ssehub.program_repair.geneseer.llm.ILlm;
 import net.ssehub.program_repair.geneseer.llm.ISnippetRanker;
 import net.ssehub.program_repair.geneseer.llm.LlmBasedFileRanker;
 import net.ssehub.program_repair.geneseer.llm.LlmFactory;
-import net.ssehub.program_repair.geneseer.llm.LlmFixer;
+import net.ssehub.program_repair.geneseer.llm.LiveLlmMutator;
 import net.ssehub.program_repair.geneseer.llm.RagRanker;
+import net.ssehub.program_repair.geneseer.llm.SavedLlmMutator;
 import net.ssehub.program_repair.geneseer.llm.SuspiciousnessRanker;
+import net.ssehub.program_repair.geneseer.llm.openai.OpenaiSavedAnswers;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
@@ -164,11 +167,11 @@ public class Geneseer {
         switch (Configuration.INSTANCE.setup().fixer()) {
         case "GENETIC_ALGORITHM":
             fixer = new GeneticAlgorithm(Configuration.INSTANCE.genetic().llmMutationProbability() > 0.0
-                            ? createLlmFixer(project, result, tempDirManager)
+                            ? createLlmMutator(project, result, tempDirManager)
                             : null);
             break;
         case "LLM_FIXER":
-            fixer = new Llm(createLlmFixer(project, result, tempDirManager));
+            fixer = new LlmFixer(createLlmMutator(project, result, tempDirManager));
             break;
         case "SETUP_TEST":
             fixer = new SetupTest();
@@ -178,7 +181,7 @@ public class Geneseer {
             break;
         case "LLM_QUERY_ANALYSIS":
             fixer = new LlmQueryAnalysis(project.getProjectDirectory(),
-                    createLlmFixer(project, result, tempDirManager));
+                    createLlmMutator(project, result, tempDirManager));
             break;
         case "OUTLINER": {
             Outliner outliner = new Outliner(project.getProjectDirectory(), project.getSourceDirectoryAbsolute(),
@@ -196,35 +199,42 @@ public class Geneseer {
         return fixer;
     }
     
-    private static LlmFixer createLlmFixer(Project project, Result result, TemporaryDirectoryManager tempDirManager)
-            throws IllegalArgumentException {
+    private static AbstractLlmMutator createLlmMutator(Project project, Result result,
+            TemporaryDirectoryManager tempDirManager) throws IllegalArgumentException {
         LlmFactory factory = LlmFactory.fromConfiguration(Configuration.INSTANCE.llm());
         ILlm llm = factory.create();
         
-        ISnippetRanker ranker;
-        switch (Configuration.INSTANCE.llm().codeContextSelection()) {
-        case SUSPICIOUSNESS:
-            ranker = new SuspiciousnessRanker(Configuration.INSTANCE.llm().maxCodeContext());
-            break;
-        case RAG:
-            ranker = new RagRanker(project.getProjectDirectory(),
-                    Configuration.INSTANCE.llm().maxCodeContext(),
-                    Configuration.INSTANCE.rag().model(),
-                    Configuration.INSTANCE.rag().api());
-            break;
-        case LLM:
-            ranker = new LlmBasedFileRanker(llm);
-            break;
-        default:
-            throw new IllegalArgumentException("Invalid code context selection: "
-                    + Configuration.INSTANCE.llm().codeContextSelection());
+        AbstractLlmMutator llmMutator;
+        if (llm instanceof OpenaiSavedAnswers savedLlm) {
+            llmMutator = new SavedLlmMutator(savedLlm, tempDirManager, project.getEncoding(),
+                    project.getProjectDirectory());
+            
+        } else {
+            ISnippetRanker ranker;
+            switch (Configuration.INSTANCE.llm().codeContextSelection()) {
+            case SUSPICIOUSNESS:
+                ranker = new SuspiciousnessRanker(Configuration.INSTANCE.llm().maxCodeContext());
+                break;
+            case RAG:
+                ranker = new RagRanker(project.getProjectDirectory(),
+                        Configuration.INSTANCE.llm().maxCodeContext(),
+                        Configuration.INSTANCE.rag().model(),
+                        Configuration.INSTANCE.rag().api());
+                break;
+            case LLM:
+                ranker = new LlmBasedFileRanker(llm);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid code context selection: "
+                        + Configuration.INSTANCE.llm().codeContextSelection());
+            }
+            
+            llmMutator = new LiveLlmMutator(llm, ranker, tempDirManager, project.getEncoding(),
+                    project.getProjectDirectory());
         }
         
-        LlmFixer llmFixer = new LlmFixer(llm, ranker, tempDirManager, project.getEncoding(),
-                project.getProjectDirectory());
-        llmFixer.setLlmStats(result.llmStats());
-        
-        return llmFixer;
+        llmMutator.setLlmStats(result.llmStats());
+        return llmMutator;
     }
     
     private static void analyzeDiffOfPatched(Result result, Node original, Node patched, Charset encoding,

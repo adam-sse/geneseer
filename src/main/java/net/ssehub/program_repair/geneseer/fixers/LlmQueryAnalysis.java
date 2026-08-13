@@ -20,8 +20,8 @@ import net.ssehub.program_repair.geneseer.defects4j.PatchWriter;
 import net.ssehub.program_repair.geneseer.defects4j.PatchWriter.ChangedArea;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
+import net.ssehub.program_repair.geneseer.llm.AbstractLlmMutator;
 import net.ssehub.program_repair.geneseer.llm.CodeSnippet;
-import net.ssehub.program_repair.geneseer.llm.LlmFixer;
 import net.ssehub.program_repair.geneseer.llm.Message;
 import net.ssehub.program_repair.geneseer.llm.Query;
 import net.ssehub.program_repair.geneseer.util.JsonUtils;
@@ -34,11 +34,11 @@ public class LlmQueryAnalysis implements IFixer {
     
     private Path projectRoot;
     
-    private LlmFixer llmFixer;
+    private AbstractLlmMutator llmMutator;
     
-    public LlmQueryAnalysis(Path projectRoot, LlmFixer llmFixer) {
+    public LlmQueryAnalysis(Path projectRoot, AbstractLlmMutator llmMutator) {
         this.projectRoot = projectRoot;
-        this.llmFixer = llmFixer;
+        this.llmMutator = llmMutator;
     }
     
     @Override
@@ -51,7 +51,7 @@ public class LlmQueryAnalysis implements IFixer {
         Encoding tokenEncoding = Encodings.newDefaultEncodingRegistry().getEncoding(EncodingType.O200K_BASE);
         List<TestResult> failingTests = testSuite.getInitialFailingTestResults(); 
         
-        List<CodeSnippet> codeSnippets = llmFixer.selectMostSuspiciousMethods(original, failingTests);
+        List<CodeSnippet> codeSnippets = llmMutator.selectMostSuspiciousMethods(original, failingTests);
         
         List<ChangedArea> changedByHumanPatch = JsonUtils.parseToListFromFile(
                 projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME), ChangedArea.class);
@@ -85,7 +85,7 @@ public class LlmQueryAnalysis implements IFixer {
         } else {    
             result.setResult("PARTIALLY_INCLUDED");
         }
-        Query query = llmFixer.createQuery(original, failingTests, codeSnippets);
+        Query query = llmMutator.createQuery(original, failingTests, codeSnippets);
         String queryText = query.getMessages().get(query.getMessages().size() - 1).getContent();
         LOG.info(() -> "Query:\n" + queryText);
         analyzeQuery(result, tokenEncoding, codeSnippets, irrelevant, queryText);

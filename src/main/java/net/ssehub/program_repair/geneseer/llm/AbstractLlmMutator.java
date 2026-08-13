@@ -1,7 +1,6 @@
 package net.ssehub.program_repair.geneseer.llm;
 
 import java.io.IOException;
-import java.net.http.HttpTimeoutException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,16 +35,13 @@ import net.ssehub.program_repair.geneseer.code.Writer;
 import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.util.AstDiff;
 import net.ssehub.program_repair.geneseer.util.JsonUtils;
-import net.ssehub.program_repair.geneseer.util.Measurement;
 import net.ssehub.program_repair.geneseer.util.TemporaryDirectoryManager;
 
-public class LlmFixer {
+public abstract class AbstractLlmMutator {
 
-    private static final Logger LOG = Logger.getLogger(LlmFixer.class.getName());
+    private static final Logger LOG = Logger.getLogger(AbstractLlmMutator.class.getName());
     
     private static final String SYSTEM_MESSAGE = "You are an automated program repair tool for Java programs.";
-    
-    private ILlm llm;
     
     private TemporaryDirectoryManager tempDirManager;
     
@@ -53,23 +49,32 @@ public class LlmFixer {
     
     private Path projectRoot;
     
-    private ISnippetRanker ranker;
-    
     private LlmStats llmStats;
     
-    public LlmFixer(ILlm llm, ISnippetRanker ranker, TemporaryDirectoryManager tempDirManager, Charset encoding,
-            Path projectRoot) {
-        this.llm = llm;
+    public AbstractLlmMutator(TemporaryDirectoryManager tempDirManager, Charset encoding, Path projectRoot) {
         this.tempDirManager = tempDirManager;
         this.encoding = encoding;
         this.projectRoot = projectRoot;
-        this.ranker = ranker;
     }
+    
+    public abstract boolean needsFaultLocalization();
     
     public void setLlmStats(LlmStats llmStats) {
         this.llmStats = llmStats;
     }
-
+    
+    protected LlmStats getLlmStats() {
+        return llmStats;
+    }
+    
+    protected Path getProjectRoot() {
+        return projectRoot;
+    }
+    
+    protected Charset getEncoding() {
+        return encoding;
+    }
+    
     public Optional<Node> createVariant(Node original, List<TestResult> failingTests) throws IOException {
         List<CodeSnippet> codeSnippets = selectMostSuspiciousMethods(original, failingTests);
         Query query = createQuery(original, failingTests, codeSnippets);
@@ -113,7 +118,7 @@ public class LlmFixer {
         
         return result;
     }
-
+    
     private Node parseModifiedCode(Node original, Map<Path, List<CodeSnippet>> modifiedSnippetsByFile)
             throws IOException, AnswerDoesNotApplyException {
         Path sourceDir = tempDirManager.createTemporaryDirectory();
@@ -158,6 +163,9 @@ public class LlmFixer {
             tempDirManager.deleteTemporaryDirectory(sourceDir);
         }
     }
+    
+    public abstract List<CodeSnippet> selectMostSuspiciousMethods(Node original, List<TestResult> failingTests)
+            throws IOException;
 
     public Query createQuery(Node code, List<TestResult> failingTests, List<CodeSnippet> codeSnippets) {
         List<TestMethodContext> testMethodContext = TestMethodContext.constructContext(failingTests,
@@ -258,13 +266,7 @@ public class LlmFixer {
         }
     }
 
-    public List<CodeSnippet> selectMostSuspiciousMethods(Node original, List<TestResult> failingTests)
-            throws IOException {
-        
-        List<CodeSnippet> selected = ranker.selectCodeSnippets(original,
-                TestMethodContext.constructContext(failingTests, projectRoot, encoding));
-        return selected;
-    }
+    
     
     static String createProjectOutline(Node astRoot, List<CodeSnippet> filterByCodeSnippets) {
         StringBuilder outline = new StringBuilder();
@@ -333,23 +335,7 @@ public class LlmFixer {
         }
     }
     
-    private String runQuery(Query query) throws IOException {
-        try (Measurement.Probe m = Measurement.INSTANCE.start("llm-query")) {
-            LOG.info("Sending query to LLM: " + query);
-            llmStats.increaseCalls();
-            IResponse response = llm.send(query);
-            if (response.getThinking() != null) {
-                LOG.fine(() -> "Got " + response.getThinking().length() + " characters of thinking trace");
-            }
-            llmStats.increaseAnswers();
-            llmStats.increaseTotalQueryTokens(response.getQueryTokens());
-            llmStats.increaseTotalAnswerTokens(response.getAnswerTokens());
-            return response.getContent();
-        } catch (HttpTimeoutException e) {
-            llmStats.increaseTimeouts();
-            throw e;
-        }
-    }
+    protected abstract String runQuery(Query query) throws IOException;
     
     private void parseUnstructuredAnswer(String answer, List<CodeSnippet> snippets) throws AnswerDoesNotApplyException {
         Pattern pattern = Pattern.compile("Code snippet number (?<number>\\d+)", Pattern.CASE_INSENSITIVE);

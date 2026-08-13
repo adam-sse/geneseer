@@ -28,12 +28,17 @@ public class OpenaiSavedAnswers implements ILlm {
         this.gson = AbstractLlm.createGson();
     }
     
-    @Override
-    public Response send(Query query) throws IOException {
+    public Path getNextAnswerFile() throws IOException {
         Path answerFile = responseDirectory.resolve("answer-" + nextAnswer + ".json");
         if (!Files.isRegularFile(answerFile)) {
             throw new FileNotFoundException(answerFile.getFileName() + " doesn't exist");
         }
+        return answerFile;
+    }
+    
+    @Override
+    public Response send(Query query) throws IOException {
+        Path answerFile = getNextAnswerFile();
         nextAnswer++;
         
         OpenaiResponse response = gson.fromJson(Files.readString(answerFile, StandardCharsets.UTF_8),
@@ -53,5 +58,5 @@ public class OpenaiSavedAnswers implements ILlm {
         
         return new Response(List.of(message), queryTokens, answerTokens);
     }
-
+    
 }

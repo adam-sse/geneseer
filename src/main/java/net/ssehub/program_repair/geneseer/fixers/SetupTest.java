@@ -13,6 +13,11 @@ public class SetupTest implements IFixer {
     private static final Logger LOG = Logger.getLogger(SetupTest.class.getName());
     
     @Override
+    public boolean needsFaultLocalization() {
+        return true;
+    }
+    
+    @Override
     public Node run(Node ast, TestSuite testSuite, Result result) {
         List<TestResult> failingTests = testSuite.getInitialFailingTestResults();
         LOG.info(() -> failingTests.size() + " failing tests:");

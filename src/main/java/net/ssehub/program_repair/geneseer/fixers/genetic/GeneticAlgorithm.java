@@ -46,6 +46,11 @@ public class GeneticAlgorithm implements IFixer {
     }
     
     @Override
+    public boolean needsFaultLocalization() {
+        return true;
+    }
+    
+    @Override
     public Node run(Node ast, TestSuite testSuite, Result result) {
         this.result = result;
         try (Probe measure = Measurement.INSTANCE.start("genetic-algorithm")) {

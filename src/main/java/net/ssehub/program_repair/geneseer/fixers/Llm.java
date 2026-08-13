@@ -26,6 +26,11 @@ public class Llm implements IFixer {
     }
     
     @Override
+    public boolean needsFaultLocalization() {
+        return true;
+    }
+    
+    @Override
     public Node run(Node ast, TestSuite testSuite, Result result) throws IOException {
         int initialFailingTests = testSuite.getInitialFailingTestResults().size();
         result.fitness().setOriginal(initialFailingTests);

@@ -40,16 +40,18 @@ public class TestSuite {
     
     private EvaluationStats evaluationStats;
     
-    public TestSuite(Project project, Node sourceCode, TemporaryDirectoryManager tempDirManager,
-            EvaluationStats evaluationStats) throws EvaluationException {
+    public TestSuite(Project project, Node sourceCode, boolean withFaulLocalization,
+            TemporaryDirectoryManager tempDirManager, EvaluationStats evaluationStats) throws EvaluationException {
         this.tempDirManager = tempDirManager;
         this.evaluationStats = evaluationStats;
         this.compiler = createCompiler(project);
         this.junitSuite = new JunitEvaluation(project.getProjectDirectory(),
                 project.getTestExecutionClassPathAbsolute(), project.getEncoding(), project.getSplitTestClassLoaders());
-        this.faultLocalization = new FaultLocalization(project.getProjectDirectory(),
-                project.getTestExecutionClassPathAbsolute(), project.getEncoding(), project.getSplitTestClassLoaders(),
-                tempDirManager);
+        if (withFaulLocalization) {
+            this.faultLocalization = new FaultLocalization(project.getProjectDirectory(),
+                    project.getTestExecutionClassPathAbsolute(), project.getEncoding(),
+                    project.getSplitTestClassLoaders(), tempDirManager);
+        }
         this.originalSourceCode = sourceCode;
         
         this.testMethods = new LinkedHashMap<>();
@@ -110,9 +112,13 @@ public class TestSuite {
                 .map(TestResult::getIdentifier)
                 .toList());
         
-        LOG.info("Running fault localization and annotating original code with suspiciousness");
-        faultLocalization.measureAndAnnotateSuspiciousness(originalSourceCode, compiler.getOutputDirectory(),
-                testResult);
+        if (faultLocalization != null) {
+            LOG.info("Running fault localization and annotating original code with suspiciousness");
+            faultLocalization.measureAndAnnotateSuspiciousness(originalSourceCode, compiler.getOutputDirectory(),
+                    testResult);
+        } else {
+            LOG.info("Not running fault localization because the selected fixer does not require it");
+        }
     }
     
     @SuppressWarnings("unchecked")
@@ -190,7 +196,9 @@ public class TestSuite {
                     + " (expected " + initialTestResults.size() + ")");
         }
         
-        faultLocalization.measureAndAnnotateSuspiciousness(ast, compiler.getOutputDirectory(), testResult);
+        if (faultLocalization != null) {
+            faultLocalization.measureAndAnnotateSuspiciousness(ast, compiler.getOutputDirectory(), testResult);
+        }
         
         return testResult;
     }

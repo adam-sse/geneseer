@@ -17,6 +17,11 @@ public class OnlyDelete implements IFixer {
     private static final Logger LOG = Logger.getLogger(OnlyDelete.class.getName());
     
     @Override
+    public boolean needsFaultLocalization() {
+        return true;
+    }
+    
+    @Override
     public Node run(Node ast, TestSuite testSuite, Result result) {
         List<Node> suspicious = ast.stream()
                 .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)

@@ -106,12 +106,17 @@ public class Geneseer {
                     .filter(n -> n.getType() == Type.STATEMENT)
                     .count());
             
-            TestSuite testSuite = new TestSuite(project, ast, tempDirManager, result.evaluationStats());
-            result.astStats().setSuspicious((int) ast.stream()
-                    .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
-                    .count());
+            IFixer fixer = createFixer(project, result, tempDirManager);
             
-            Node patched = createFixer(project, result, tempDirManager).run(ast, testSuite, result);
+            TestSuite testSuite = new TestSuite(project, ast, fixer.needsFaultLocalization(),
+                    tempDirManager, result.evaluationStats());
+            if (fixer.needsFaultLocalization()) {
+                result.astStats().setSuspicious((int) ast.stream()
+                        .filter(n -> n.getMetadata(Metadata.SUSPICIOUSNESS) != null)
+                        .count());
+            }
+            
+            Node patched = fixer.run(ast, testSuite, result);
             if (patched != null) {
                 analyzeDiffOfPatched(result, ast, patched, project.getEncoding(), tempDirManager);
             }

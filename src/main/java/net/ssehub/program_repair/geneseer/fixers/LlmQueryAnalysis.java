@@ -40,6 +40,11 @@ public class LlmQueryAnalysis implements IFixer {
         this.projectRoot = projectRoot;
         this.llmFixer = llmFixer;
     }
+    
+    @Override
+    public boolean needsFaultLocalization() {
+        return true;
+    }
 
     @Override
     public Node run(Node original, TestSuite testSuite, Result result) throws IOException {

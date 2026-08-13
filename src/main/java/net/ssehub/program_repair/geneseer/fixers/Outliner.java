@@ -62,6 +62,11 @@ public class Outliner implements IFixer {
     }
     
     @Override
+    public boolean needsFaultLocalization() {
+        return true;
+    }
+    
+    @Override
     public Node run(Node ast, TestSuite testSuite, Result result) throws IOException {
         List<ChangedArea> changedByHumanPatch = JsonUtils.parseToListFromFile(
                 projectRoot.resolve(PatchWriter.CHANGED_AREAS_FILENAME), ChangedArea.class);

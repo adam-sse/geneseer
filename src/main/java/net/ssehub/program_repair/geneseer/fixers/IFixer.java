@@ -9,5 +9,7 @@ import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
 public interface IFixer {
 
     public Node run(Node ast, TestSuite testSuite, Result result) throws IOException;
+ 
+    public boolean needsFaultLocalization();
     
 }

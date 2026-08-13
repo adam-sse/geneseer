@@ -285,10 +285,10 @@ public class Configuration {
         public enum CodeContextSelection {
             SUSPICIOUSNESS, RAG, LLM
         }
-        private Option<Integer> maxCodeContext = new Option<>("maxCodeContext", "Max code context lines", 100,
+        private Option<Integer> maxCodeContext = new Option<>("maxCodeContext", "Max code context lines", 2000,
                 Integer::parseInt);
         private Option<ProjectOutline> projectOutline = new Option<>("projectOutline",
-                "Project outline in prompt", ProjectOutline.PARTIAL, v -> ProjectOutline.valueOf(v.toUpperCase()));
+                "Project outline in prompt", ProjectOutline.NONE, v -> ProjectOutline.valueOf(v.toUpperCase()));
         public enum ProjectOutline {
             FULL, PARTIAL, NONE
         }

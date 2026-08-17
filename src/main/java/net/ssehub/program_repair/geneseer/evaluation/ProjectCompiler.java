@@ -113,45 +113,47 @@ class ProjectCompiler {
     public void compile(Node ast) throws CompilationException {
         try (Probe probe = Measurement.INSTANCE.start("compilation")) {
             Set<Path> filesToCompile = writeModifiedFiles(ast);
-            List<String> command = buildCommand(filesToCompile);
-            
-            LOG.finer(() -> {
-                String log;
-                if (command.size() <= 10) {
-                    log = "Running " + command;
-                } else {
-                    log = "Running " + Stream.concat(command.stream().limit(10), Stream.of("<...>")).toList();
-                }
-                return log;
-            });
-            ProcessRunner process = new ProcessRunner.Builder(command)
+            if (!filesToCompile.isEmpty()) {
+                List<String> command = buildCommand(filesToCompile);
+                
+                LOG.finer(() -> {
+                    String log;
+                    if (command.size() <= 10) {
+                        log = "Running " + command;
+                    } else {
+                        log = "Running " + Stream.concat(command.stream().limit(10), Stream.of("<...>")).toList();
+                    }
+                    return log;
+                });
+                ProcessRunner process = new ProcessRunner.Builder(command)
                         .workingDirectory(sourceDirectory)
                         .captureOutput(true)
                         .run();
-            
-            String stderr = new String(process.getStderr());
-            List<String> errors = parseOutput(stderr);
-            boolean success = process.getExitCode() == 0 && errors.isEmpty();
-            String resultMessage = "Compilation " + (success ? "" : "not ") + "successful ("
-                    + errors.size() + " errors)";
-            
-            LOG.log(logResult ? Level.INFO : Level.FINE, resultMessage);
-            if (logResult && !success) {
-                if (!errors.isEmpty()) {
-                    for (String error : errors) {
-                        for (String line : error.split("\n")) {
+                
+                String stderr = new String(process.getStderr());
+                List<String> errors = parseOutput(stderr);
+                boolean success = process.getExitCode() == 0 && errors.isEmpty();
+                String resultMessage = "Compilation " + (success ? "" : "not ") + "successful ("
+                        + errors.size() + " errors)";
+                
+                LOG.log(logResult ? Level.INFO : Level.FINE, resultMessage);
+                if (logResult && !success) {
+                    if (!errors.isEmpty()) {
+                        for (String error : errors) {
+                            for (String line : error.split("\n")) {
+                                LOG.info(line);
+                            }
+                        }
+                    } else if (!stderr.isBlank()) {
+                        for (String line : stderr.split("\n")) {
                             LOG.info(line);
                         }
                     }
-                } else if (!stderr.isBlank()) {
-                    for (String line : stderr.split("\n")) {
-                        LOG.info(line);
-                    }
                 }
-            }
-            
-            if (!success) {
-                throw new CompilationException(resultMessage);
+                
+                if (!success) {
+                    throw new CompilationException(resultMessage);
+                }
             }
         } catch (IOException e) {
             LOG.log(Level.SEVERE, "Failed to run compiler process", e);
@@ -229,7 +231,9 @@ class ProjectCompiler {
                     }
                 }
                 
-                LOG.fine(() -> "Only compiling " + modifiedFiles.size() + " modified files: " + modifiedFiles);
+                LOG.fine(() -> modifiedFiles.isEmpty()
+                        ? ("No files modified, no compilation necessary")
+                        : ("Only compiling " + modifiedFiles.size() + " modified files: " + modifiedFiles));
             }
             
         } catch (IOException e) {

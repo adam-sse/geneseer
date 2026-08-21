@@ -34,6 +34,11 @@ public class OpenaiLlm extends AbstractLlm {
     }
     
     @Override
+    public String getName() {
+        return getModel();
+    }
+    
+    @Override
     protected Map<String, Object> queryToJson(Query query) {
         Map<String, Object> json = new LinkedHashMap<>();
         
@@ -58,10 +63,6 @@ public class OpenaiLlm extends AbstractLlm {
         json.put("temperature", getTemperature());
         json.put("stream", true);
         json.put("stream_options", Map.of("include_usage", true));
-        
-        if (query.getSeed() != null) {
-            LOG.warning("Specifying a seed is not supported by the openai API");
-        }
         
         return json;
     }

@@ -37,6 +37,10 @@ public class Configuration {
             return options.stream().filter(o -> o.key.equals(key)).findFirst().orElse(null);
         }
         
+        List<Option<?>> getOptions() {
+            return options;
+        }
+        
     }
     
     public static class Option<T> {
@@ -278,27 +282,9 @@ public class Configuration {
                 Function.identity());
         private Option<Double> temperature = new Option<>("temperature", "Temperature", Double::parseDouble);
         private Option<Long> contextSize = new Option<>("contextSize", "Context window size", Long::parseLong);
-        private Option<Long> seed = new Option<>("seed", "Seed", Long::parseLong);
-        private Option<CodeContextSelection> codeContextSelection = new Option<>("codeContextSelection",
-                "Method for selecting code context", CodeContextSelection.SUSPICIOUSNESS,
-                v -> CodeContextSelection.valueOf(v.toUpperCase()));
-        public enum CodeContextSelection {
-            SUSPICIOUSNESS, RAG, LLM
-        }
-        private Option<Integer> maxCodeContext = new Option<>("maxCodeContext", "Max code context lines", 2000,
-                Integer::parseInt);
-        private Option<ProjectOutline> projectOutline = new Option<>("projectOutline",
-                "Project outline in prompt", ProjectOutline.NONE, v -> ProjectOutline.valueOf(v.toUpperCase()));
-        public enum ProjectOutline {
-            FULL, PARTIAL, NONE
-        }
-        private Option<Boolean> structuredOutput = new Option<>("structuredOutput",
-                "Structured output", false, Boolean::parseBoolean);
-        private Option<Integer> numQueries = new Option<Integer>("numQueries",
-                "Number of queries to send for LLM fixer", 5, Integer::parseInt);
         
-        public LlmConfiguration() {
-            super("llm", "LLM Configuration", new LinkedList<>());
+        public LlmConfiguration(int index) {
+            super("llm-" + index, "LLM #" + index, new LinkedList<>());
             super.options.add(model);
             super.options.add(api);
             super.options.add(apiToken);
@@ -307,12 +293,6 @@ public class Configuration {
             super.options.add(thinkingDelimiter);
             super.options.add(temperature);
             super.options.add(contextSize);
-            super.options.add(seed);
-            super.options.add(codeContextSelection);
-            super.options.add(maxCodeContext);
-            super.options.add(projectOutline);
-            super.options.add(structuredOutput);
-            super.options.add(numQueries);
         }
         
         public String model() {
@@ -347,8 +327,35 @@ public class Configuration {
             return contextSize.getValue();
         }
         
-        public Long seed() {
-            return seed.getValue();
+    }
+    
+    public static class CommonLlmConfiguration extends Section {
+        
+        private Option<CodeContextSelection> codeContextSelection = new Option<>("codeContextSelection",
+                "Method for selecting code context", CodeContextSelection.SUSPICIOUSNESS,
+                v -> CodeContextSelection.valueOf(v.toUpperCase()));
+        public enum CodeContextSelection {
+            SUSPICIOUSNESS, RAG, LLM
+        }
+        private Option<Integer> maxCodeContext = new Option<>("maxCodeContext", "Max code context lines", 2000,
+                Integer::parseInt);
+        private Option<ProjectOutline> projectOutline = new Option<>("projectOutline",
+                "Project outline in prompt", ProjectOutline.NONE, v -> ProjectOutline.valueOf(v.toUpperCase()));
+        public enum ProjectOutline {
+            FULL, PARTIAL, NONE
+        }
+        private Option<Boolean> structuredOutput = new Option<>("structuredOutput",
+                "Structured output", false, Boolean::parseBoolean);
+        private Option<Integer> numQueries = new Option<Integer>("numQueries",
+                "Number of queries to send for LLM fixer", 5, Integer::parseInt);
+        
+        public CommonLlmConfiguration() {
+            super("llm", "Common LLM Configuration", new LinkedList<>());
+            super.options.add(codeContextSelection);
+            super.options.add(maxCodeContext);
+            super.options.add(projectOutline);
+            super.options.add(structuredOutput);
+            super.options.add(numQueries);
         }
         
         public CodeContextSelection codeContextSelection() {
@@ -416,11 +423,25 @@ public class Configuration {
     
     private SetupConfiguration setup = new SetupConfiguration();
     private GeneticConfiguration genetic = new GeneticConfiguration();
-    private LlmConfiguration llm = new LlmConfiguration();
+    private CommonLlmConfiguration llm = new CommonLlmConfiguration();
+    private List<LlmConfiguration> llmConnections = new LinkedList<>();
     private RagConfiguration rag = new RagConfiguration();
     
-    private List<Section> sections = List.of(setup, genetic, llm, rag);
+    private List<Section> sections;
     
+    private Configuration() {
+        sections = new LinkedList<>();
+        sections.add(setup);
+        sections.add(genetic);
+        sections.add(llm);
+        for (int i = 0; i < 10; i++) {
+            LlmConfiguration con = new LlmConfiguration(i);
+            llmConnections.add(con);
+            sections.add(con);
+        }
+        sections.add(rag);
+    }
+
     private Section getSection(String key) {
         return sections.stream().filter(s -> s.key.equals(key)).findFirst().orElse(null);
     }
@@ -446,6 +467,21 @@ public class Configuration {
             }
         }
         
+        boolean changed = false;
+        while (!llmConnections.isEmpty() && !changed) {
+            LlmConfiguration con = llmConnections.get(llmConnections.size() - 1);
+            changed = false;
+            for (Option<?> opt : con.getOptions()) {
+                if (opt.changed) {
+                    changed = true;
+                    break;
+                }
+            }
+            if (!changed) {
+                llmConnections.remove(llmConnections.size() - 1);
+                sections.remove(con);
+            }
+        }
     }
     
     public void log() {
@@ -491,8 +527,16 @@ public class Configuration {
         return genetic;
     }
     
-    public LlmConfiguration llm() {
+    public CommonLlmConfiguration commonLlm() {
         return llm;
+    }
+    
+    public int numLlms() {
+        return llmConnections.size();
+    }
+    
+    public LlmConfiguration llm(int index) {
+        return llmConnections.get(index);
     }
     
     public RagConfiguration rag() {

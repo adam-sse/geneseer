@@ -72,6 +72,11 @@ Code snippet number 1:
     }
     
     @Override
+    public String getName() {
+        return "dummy";
+    }
+    
+    @Override
     public DummyResponse send(Query query) throws IOException {
         LOG.fine(() -> "Got query: " + query);
         

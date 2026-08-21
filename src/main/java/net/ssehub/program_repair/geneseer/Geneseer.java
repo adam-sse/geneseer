@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.nio.charset.Charset;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -166,12 +168,19 @@ public class Geneseer {
         IFixer fixer;
         switch (Configuration.INSTANCE.setup().fixer()) {
         case "GENETIC_ALGORITHM":
-            fixer = new GeneticAlgorithm(Configuration.INSTANCE.genetic().llmMutationProbability() > 0.0
-                            ? createLlmMutator(project, result, tempDirManager)
-                            : null);
+            List<AbstractLlmMutator> llmMutators = null;
+            if (Configuration.INSTANCE.genetic().llmMutationProbability() > 0.0) {
+                llmMutators = new LinkedList<>();
+                for (int i = 0; i < Configuration.INSTANCE.numLlms(); i++) {
+                    llmMutators.add(createLlmMutator(project, result,
+                            LlmFactory.fromConfiguration(Configuration.INSTANCE.llm(i)), tempDirManager));
+                }
+            }
+            fixer = new GeneticAlgorithm(llmMutators);
             break;
         case "LLM_FIXER":
-            fixer = new LlmFixer(createLlmMutator(project, result, tempDirManager));
+            fixer = new LlmFixer(createLlmMutator(project, result,
+                    LlmFactory.fromConfiguration(Configuration.INSTANCE.llm(0)), tempDirManager));
             break;
         case "SETUP_TEST":
             fixer = new SetupTest();
@@ -181,13 +190,14 @@ public class Geneseer {
             break;
         case "LLM_QUERY_ANALYSIS":
             fixer = new LlmQueryAnalysis(project.getProjectDirectory(),
-                    createLlmMutator(project, result, tempDirManager));
+                    createLlmMutator(project, result, LlmFactory.fromConfiguration(Configuration.INSTANCE.llm(0)),
+                            tempDirManager));
             break;
         case "OUTLINER": {
             Outliner outliner = new Outliner(project.getProjectDirectory(), project.getSourceDirectoryAbsolute(),
                     project.getEncoding());
-            if (!Configuration.INSTANCE.llm().model().equals("dummy")) {
-                outliner.setLlm(LlmFactory.fromConfiguration(Configuration.INSTANCE.llm()).create());
+            if (Configuration.INSTANCE.numLlms() > 0) {
+                outliner.setLlm(LlmFactory.fromConfiguration(Configuration.INSTANCE.llm(0)).create());
             }
             fixer = outliner;
             break;
@@ -199,9 +209,8 @@ public class Geneseer {
         return fixer;
     }
     
-    private static AbstractLlmMutator createLlmMutator(Project project, Result result,
+    private static AbstractLlmMutator createLlmMutator(Project project, Result result, LlmFactory factory,
             TemporaryDirectoryManager tempDirManager) throws IllegalArgumentException {
-        LlmFactory factory = LlmFactory.fromConfiguration(Configuration.INSTANCE.llm());
         ILlm llm = factory.create();
         
         AbstractLlmMutator llmMutator;
@@ -211,13 +220,13 @@ public class Geneseer {
             
         } else {
             ISnippetRanker ranker;
-            switch (Configuration.INSTANCE.llm().codeContextSelection()) {
+            switch (Configuration.INSTANCE.commonLlm().codeContextSelection()) {
             case SUSPICIOUSNESS:
-                ranker = new SuspiciousnessRanker(Configuration.INSTANCE.llm().maxCodeContext());
+                ranker = new SuspiciousnessRanker(Configuration.INSTANCE.commonLlm().maxCodeContext());
                 break;
             case RAG:
                 ranker = new RagRanker(project.getProjectDirectory(),
-                        Configuration.INSTANCE.llm().maxCodeContext(),
+                        Configuration.INSTANCE.commonLlm().maxCodeContext(),
                         Configuration.INSTANCE.rag().model(),
                         Configuration.INSTANCE.rag().api());
                 break;
@@ -226,7 +235,7 @@ public class Geneseer {
                 break;
             default:
                 throw new IllegalArgumentException("Invalid code context selection: "
-                        + Configuration.INSTANCE.llm().codeContextSelection());
+                        + Configuration.INSTANCE.commonLlm().codeContextSelection());
             }
             
             llmMutator = new LiveLlmMutator(llm, ranker, tempDirManager, project.getEncoding(),

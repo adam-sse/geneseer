@@ -9,8 +9,6 @@ public class Query {
 
     private List<Message> messages;
     
-    private Long seed;
-    
     private Map<String, ?> jsonSchema;
     
     public Query() {
@@ -23,14 +21,6 @@ public class Query {
     
     public List<Message> getMessages() {
         return Collections.unmodifiableList(messages);
-    }
-    
-    public void setSeed(long seed) {
-        this.seed = seed;
-    }
-    
-    public Long getSeed() {
-        return seed;
     }
     
     public void setJsonSchema(Map<String, ?> jsonSchema) {
@@ -46,10 +36,6 @@ public class Query {
         StringBuilder builder = new StringBuilder();
         builder.append("Query[messages=");
         builder.append(messages);
-        if (seed != null) {
-            builder.append(", seed=");
-            builder.append(seed);
-        }
         if (jsonSchema != null) {
             builder.append(", jsonSchema=");
             builder.append(jsonSchema);

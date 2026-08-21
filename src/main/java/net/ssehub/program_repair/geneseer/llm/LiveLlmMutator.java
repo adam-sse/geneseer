@@ -28,6 +28,11 @@ public class LiveLlmMutator extends AbstractLlmMutator {
     }
     
     @Override
+    public String getName() {
+        return llm.getName();
+    }
+    
+    @Override
     public boolean needsFaultLocalization() {
         return true;
     }

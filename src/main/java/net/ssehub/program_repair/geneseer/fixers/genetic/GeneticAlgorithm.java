@@ -34,15 +34,15 @@ public class GeneticAlgorithm implements IFixer {
     
     private FitnessEvaluator fitnessEvaluator;
     
-    private AbstractLlmMutator llmMutator;
+    private List<AbstractLlmMutator> llmMutators;
     
     private int generation;
     private Variant unmodifiedVariant;
     
     private Result result;
     
-    public GeneticAlgorithm(AbstractLlmMutator llmMutator) {
-        this.llmMutator = llmMutator;
+    public GeneticAlgorithm(List<AbstractLlmMutator> llmMutators) {
+        this.llmMutators = llmMutators;
     }
     
     @Override
@@ -221,7 +221,8 @@ public class GeneticAlgorithm implements IFixer {
         
         if (!suspiciousStatements.isEmpty()) {
             if (random.nextDouble() < Configuration.INSTANCE.genetic().llmMutationProbability()) {
-                LOG.info(() -> "Using LLM to mutate " + variant.getName());
+                AbstractLlmMutator llmMutator = llmMutators.get(random.nextInt(llmMutators.size()));
+                LOG.info(() -> "Using LLM " + llmMutator.getName() + " to mutate " + variant.getName());
                 if (!variant.hasFitness()) {
                     LOG.fine(() -> "Running tests on variant as it has no fitness and thus no failing tests yet");
                     fitnessEvaluator.measureFitness(variant, false);
@@ -238,16 +239,16 @@ public class GeneticAlgorithm implements IFixer {
                         if (result.isPresent()) {
                             astRoot = result.get();
                             variant.setAst(astRoot);
-                            variant.addMutation("LLM");
+                            variant.addMutation("LLM " + llmMutator.getName());
                             mutationAdded = true;
                             if (generation < Configuration.INSTANCE.genetic().generationLimit()) {
                                 needsFaultLocalization = true;
                             }
                         } else {
-                            LOG.info(() -> "Got no mutation from LLM");
+                            LOG.info(() -> "Got no mutation from LLM " + llmMutator.getName());
                         }
                     } catch (IOException e) {
-                        LOG.log(Level.WARNING, "IOException while querying LLM", e);
+                        LOG.log(Level.WARNING, "IOException while querying LLM " + llmMutator.getName(), e);
                     }
                 }
                 

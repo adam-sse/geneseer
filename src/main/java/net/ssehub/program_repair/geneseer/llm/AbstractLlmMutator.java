@@ -22,7 +22,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 
 import net.ssehub.program_repair.geneseer.Configuration;
-import net.ssehub.program_repair.geneseer.Configuration.LlmConfiguration.ProjectOutline;
+import net.ssehub.program_repair.geneseer.Configuration.CommonLlmConfiguration.ProjectOutline;
 import net.ssehub.program_repair.geneseer.Result.LlmStats;
 import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.LeafNode;
@@ -57,6 +57,8 @@ public abstract class AbstractLlmMutator {
         this.projectRoot = projectRoot;
     }
     
+    public abstract String getName();
+    
     public abstract boolean needsFaultLocalization();
     
     public void setLlmStats(LlmStats llmStats) {
@@ -83,7 +85,7 @@ public abstract class AbstractLlmMutator {
         
         Optional<Node> result;
         try {
-            if (Configuration.INSTANCE.llm().structuredOutput()) {
+            if (Configuration.INSTANCE.commonLlm().structuredOutput()) {
                 parseStructuredAnswer(answer, codeSnippets);
             } else {
                 parseUnstructuredAnswer(answer, codeSnippets);
@@ -171,9 +173,9 @@ public abstract class AbstractLlmMutator {
         List<TestMethodContext> testMethodContext = TestMethodContext.constructContext(failingTests,
                 projectRoot, encoding);
         String projectOutline = null;
-        if (Configuration.INSTANCE.llm().projectOutine() != ProjectOutline.NONE) {
+        if (Configuration.INSTANCE.commonLlm().projectOutine() != ProjectOutline.NONE) {
             projectOutline = createProjectOutline(code,
-                    Configuration.INSTANCE.llm().projectOutine() == ProjectOutline.FULL ? null : codeSnippets);
+                    Configuration.INSTANCE.commonLlm().projectOutine() == ProjectOutline.FULL ? null : codeSnippets);
         }
         
         Query query = new Query();
@@ -189,7 +191,7 @@ public abstract class AbstractLlmMutator {
         writeFailingTestCases(prompt, testMethodContext);
         writeProjectOutline(prompt, projectOutline);
         writeCodeSnippets(prompt, codeSnippets);
-        if (Configuration.INSTANCE.llm().structuredOutput()) {
+        if (Configuration.INSTANCE.commonLlm().structuredOutput()) {
             prompt.append("\n\nOutput the fixed code snippets! You must adhere to the following JSON schema. You may"
                     + " modify multiple code snippets. Do not output code snippets that you did not modify. Output"
                     + " the complete fixed code that is given to you, even if only a small part of it is changed.\n")
@@ -205,9 +207,6 @@ public abstract class AbstractLlmMutator {
         
         LOG.fine(() -> "Prompt:\n" + prompt);
         query.addMessage(new Message(Role.USER, prompt.toString()));
-        if (Configuration.INSTANCE.llm().seed() != null) {
-            query.setSeed(Configuration.INSTANCE.llm().seed());
-        }
         return query;
     }
 
@@ -237,7 +236,7 @@ public abstract class AbstractLlmMutator {
     private static void writeProjectOutline(StringBuilder prompt, String projectOutline) {
         if (projectOutline != null) {
             prompt.append("Here is a");
-            if (Configuration.INSTANCE.llm().projectOutine() == ProjectOutline.PARTIAL) {
+            if (Configuration.INSTANCE.commonLlm().projectOutine() == ProjectOutline.PARTIAL) {
                 prompt.append(" partial");
             } else {
                 prompt.append("n");

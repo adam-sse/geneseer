@@ -102,9 +102,6 @@ public class LlmQueryAnalysis implements IFixer {
             for (Message message : base.getMessages()) {
                 addMessage(message);
             }
-            if (base.getSeed() != null) {
-                setSeed(base.getSeed());
-            }
             setJsonSchema(base.getJsonSchema());
             codeSnippets = new ArrayList<>(snippets.size());
             for (CodeSnippet snippet : snippets) {

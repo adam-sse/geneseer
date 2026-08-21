@@ -35,7 +35,7 @@ public class LlmFixer implements IFixer {
         int initialFailingTests = testSuite.getInitialFailingTestResults().size();
         result.fitness().setOriginal(initialFailingTests);
         
-        int numQueries = Configuration.INSTANCE.llm().numQueries();
+        int numQueries = Configuration.INSTANCE.commonLlm().numQueries();
         int numFixed = 0;
         Node best = null;
         int bestFixedTests = testSuite.getInitialFailingTestResults().size();

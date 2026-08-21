@@ -28,6 +28,11 @@ public class OpenaiSavedAnswers implements ILlm {
         this.gson = AbstractLlm.createGson();
     }
     
+    @Override
+    public String getName() {
+        return responseDirectory.getFileName().toString();
+    }
+    
     public Path getNextAnswerFile() throws IOException {
         Path answerFile = responseDirectory.resolve("answer-" + nextAnswer + ".json");
         if (!Files.isRegularFile(answerFile)) {

@@ -28,6 +28,11 @@ public class SavedLlmMutator extends AbstractLlmMutator {
     }
     
     @Override
+    public String getName() {
+        return savedLlm.getName();
+    }
+    
+    @Override
     public boolean needsFaultLocalization() {
         return false;
     }

@@ -24,6 +24,11 @@ public class OllamaLlm extends AbstractLlm {
         super(model, apiUrl);
     }
     
+    @Override
+    public String getName() {
+        return getModel();
+    }
+    
     public void setContextSize(Long contextSize) {
         this.contextSize = contextSize;
     }
@@ -56,7 +61,6 @@ public class OllamaLlm extends AbstractLlm {
         }
         
         Map<String, Object> options = new LinkedHashMap<>();
-        options.put("seed", query.getSeed());
         options.put("temperature", getTemperature());
         options.put("num_ctx", contextSize);
         if (options.size() > 0) {

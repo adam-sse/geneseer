@@ -107,7 +107,7 @@ public class Outliner implements IFixer {
     private void createMethodOverivew(Node ast, List<TestMethodContext> testContext,
             List<ChangedArea> changedByHumanPatch) throws IOException {
         
-        RagRanker ragRanker = new RagRanker(projectRoot, Integer.MAX_VALUE,
+        RagRanker ragRanker = new RagRanker(projectRoot, Integer.MAX_VALUE, llm,
                 Configuration.INSTANCE.rag().model(), Configuration.INSTANCE.rag().api());
         LinkedHashMap<Node, Double> ragDistances = ragRanker.rankMethods(ast, testContext);
         

@@ -3,95 +3,125 @@ package net.ssehub.program_repair.geneseer.llm;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.Node;
+import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
+import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.llm.rag.ChromaDb;
 import net.ssehub.program_repair.geneseer.llm.rag.ChromaDb.Method;
-import net.ssehub.program_repair.geneseer.llm.rag.ChromaDb.MethodWithSimilarity;
 
 public class RagRanker extends AbstractMethodRanker {
-    
+
     private static final Logger LOG = Logger.getLogger(RagRanker.class.getName());
     
     private Path projectRoot;
     
-    private String model;
+    private ILlm llm;
     
-    private URL api;
+    private String embeddingModel;
     
-    public RagRanker(Path projectRoot, int lineLimit, String model, URL api) throws IllegalArgumentException {
+    private URL embeddingApi;
+    
+    public RagRanker(Path projectRoot, int lineLimit, ILlm llm, String ragModel, URL ragApi)
+            throws IllegalArgumentException {
         super(lineLimit);
+        
         this.projectRoot = projectRoot;
-        if (model == null) {
+        this.llm = llm;
+        
+        if (ragModel == null) {
             throw new IllegalArgumentException("RAG embedding model not set");
         }
-        this.model = model;
-        if (api == null) {
+        this.embeddingModel = ragModel;
+        if (ragApi == null) {
             throw new IllegalArgumentException("RAG embedding API not set");
         }
-        this.api = api;
+        this.embeddingApi = ragApi;
         
         if (Configuration.INSTANCE.rag().chromadbWorkerPythonBinaryPath() == null) {
             throw new IllegalArgumentException("Path to python for chromadb-worker.py script not set");
         }
     }
-    
+
     @Override
     public LinkedHashMap<Node, Double> rankMethods(Node code, List<TestMethodContext> failingTestMethods)
             throws IOException {
-        try (ChromaDb db = new ChromaDb(projectRoot, model, api, Configuration.INSTANCE.rag().persist())) {
-            List<Method> allMethods = code.stream()
-                    .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
-                    .map(m -> {
-                        String className = AstUtils.getEnclosingClass(code, m);
-                        if (className == null) {
-                            className = "<none>";
-                        }
-                        return new Method(m.getTextFormatted(),
-                                AstUtils.getSignature(m), className,
-                                AstUtils.getFile(code, m), AstUtils.getLine(code, m),
-                                m);
-                    })
-                    .toList();
-            
-            int existing = db.getEntryCount();
-            if (existing != allMethods.size()) {
-                if (existing > 0) {
-                    LOG.info("Clearing existing database because entry count does not match");
-                    db.clear();
-                }
-                LOG.info(() -> "Storing " + allMethods.size() + " entries in database");
-                db.storeMethods(allMethods);
-            } else {
-                LOG.info("Existing database size matches, reusing...");
-            }
-
-            Map<Node, Double> methodDistances = new HashMap<>();
-            for (TestMethodContext testMethod : failingTestMethods) {
-                if (testMethod.code() != null) {
-                    for (MethodWithSimilarity method : db.query(testMethod.code(), getLineLimit(), allMethods)) {
-                        if (!methodDistances.containsKey(method.ast())
-                                || methodDistances.get(method.ast()) > method.distance()) {
-                            methodDistances.put(method.ast(), method.distance());
-                        }
+        
+        Set<String> failingTestMethodIdentifiers = failingTestMethods.stream()
+                .map(TestMethodContext::testResult)
+                .map(TestResult::getIdentifier)
+                .collect(Collectors.toUnmodifiableSet());
+        
+        @SuppressWarnings("unchecked")
+        List<Method> methodsCoveredByFailingTests = code.stream()
+                .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
+                .filter(n -> !Collections.disjoint(
+                        (Set<String>) n.getMetadata(Metadata.COVERED_BY), failingTestMethodIdentifiers))
+                .map(m -> {
+                    String className = AstUtils.getEnclosingClass(code, m);
+                    if (className == null) {
+                        className = "<none>";
                     }
-                }
-            }
+                    return new Method(m.getTextFormatted(),
+                            AstUtils.getSignature(m), className,
+                            AstUtils.getFile(code, m), AstUtils.getLine(code, m),
+                            m);
+                })
+                .toList();
+        
+        try (ChromaDb db = new ChromaDb(projectRoot, embeddingModel, embeddingApi, false)) {
+            LOG.fine(() -> "Adding " + methodsCoveredByFailingTests.size()
+                    + " methods covered by failing tests to ChromaDB");
+            db.storeMethods(methodsCoveredByFailingTests);
             
-            LinkedHashMap<Node, Double> sortedSuspiciousness = new LinkedHashMap<>(methodDistances.size());
-            methodDistances.entrySet().stream()
-                    .sorted((e1, e2) -> Double.compare(e1.getValue(), e2.getValue())) // ascending distances
-                    .forEach(e -> sortedSuspiciousness.put(e.getKey(), e.getValue()));
+            String query = functionalityExtraction(failingTestMethods);
+            
+            LinkedHashMap<Node, Double> sortedSuspiciousness = new LinkedHashMap<>(methodsCoveredByFailingTests.size());
+            db.query(query, getLineLimit(), methodsCoveredByFailingTests).stream()
+                    .sorted((m1, m2) -> Double.compare(m1.distance(), m2.distance())) // ascending distances
+                    .forEach(m -> sortedSuspiciousness.put(m.ast(), m.distance()));
+            
             return sortedSuspiciousness;
         }
+    }
+    
+    private String functionalityExtraction(List<TestMethodContext> failingTestMethods) throws IOException {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Your task is to identify faulty program behavior. One or more unit tests"
+                + " have failed due to the same underlying functionality issue. Given the following test failure"
+                + " information (including multiple test codes, and stack traces), extract **only** the underlying"
+                + " functional logic that failed. Your output should be a clean, concise description of the shared"
+                + " functionality that failed to be implemented correctly.\n"
+                + "\n"
+                + "Requirements:\n"
+                + "- Focus on what functionality failed, not how the tests failed.\n"
+                + "- Include any relevant objects, inputs, and expected behavior if available.\n"
+                + "- The description should be precise and suitable for use as a semantic query to retrieve code"
+                + " (in natural language).\n"
+                + "- Avoid unrelated details.\n\n");
+        
+        AbstractLlmMutator.writeFailingTestCases(prompt, failingTestMethods);
+        
+        LOG.fine(() -> "Prompt for functionality extraction:\n" + prompt);
+        Query query = new Query();
+        query.addMessage(new Message(Role.SYSTEM,
+                "You are a code assistant helping to identify faulty program behavior."));
+        query.addMessage(new Message(Role.USER, prompt.toString()));
+        
+        IResponse response = llm.send(query);
+        String functionalityDescription = response.getContent();
+        LOG.info(() -> "Functionality description of failing test cases: " + functionalityDescription);
+        
+        return functionalityDescription;
     }
 
 }

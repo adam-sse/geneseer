@@ -30,9 +30,9 @@ import net.ssehub.program_repair.geneseer.fixers.genetic.GeneticAlgorithm;
 import net.ssehub.program_repair.geneseer.llm.AbstractLlmMutator;
 import net.ssehub.program_repair.geneseer.llm.ILlm;
 import net.ssehub.program_repair.geneseer.llm.ISnippetRanker;
+import net.ssehub.program_repair.geneseer.llm.LiveLlmMutator;
 import net.ssehub.program_repair.geneseer.llm.LlmBasedFileRanker;
 import net.ssehub.program_repair.geneseer.llm.LlmFactory;
-import net.ssehub.program_repair.geneseer.llm.LiveLlmMutator;
 import net.ssehub.program_repair.geneseer.llm.RagRanker;
 import net.ssehub.program_repair.geneseer.llm.SavedLlmMutator;
 import net.ssehub.program_repair.geneseer.llm.SuspiciousnessRanker;
@@ -227,6 +227,7 @@ public class Geneseer {
             case RAG:
                 ranker = new RagRanker(project.getProjectDirectory(),
                         Configuration.INSTANCE.commonLlm().maxCodeContext(),
+                        llm,
                         Configuration.INSTANCE.rag().model(),
                         Configuration.INSTANCE.rag().api());
                 break;

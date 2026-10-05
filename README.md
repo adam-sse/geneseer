@@ -97,7 +97,7 @@ Here is a list of possible keys, their meaning, and the default values:
 
 | Key                                       |  Default Value         | Description                                                |
 |-------------------------------------------|------------------------|------------------------------------------------------------|
-| `--config.setup.fixer`                    | `GENESEER`             | The fixer to use. Possible values: `GENESEER`, `LLM_FIXER`, `SETUP_TEST`, `ONLY_DELETE`, `LLM_QUERY_ANALYSIS` |
+| `--config.setup.fixer`                    | `GENETIC_ALGORITHM`    | The fixer to use. Possible values: `GENETIC_ALGORITHM`, `LLM_FIXER`, `SETUP_TEST`, `ONLY_DELETE`, `OUTLINER`, `LLM_QUERY_ANALYSIS` |
 | `--config.setup.jvmBinaryPath`            | `java`                 | The path to the JVM binary to run tests. May be absolute or on the path. |
 | `--config.setup.javaCompilerBinaryPath`   | `javac`                | The path to the Java compiler to compile the project. May be absolute or on the path. |
 | `--config.setup.testExecutionTimeoutMs`   | `120000` (2 minutes)   | The number of milliseconds before a test execution is considered timed out. The test process will be killed and the tests will count as failures. |

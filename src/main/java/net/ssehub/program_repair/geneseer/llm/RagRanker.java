@@ -3,19 +3,14 @@ package net.ssehub.program_repair.geneseer.llm;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.code.AstUtils;
 import net.ssehub.program_repair.geneseer.code.Node;
-import net.ssehub.program_repair.geneseer.code.Node.Metadata;
 import net.ssehub.program_repair.geneseer.code.Node.Type;
-import net.ssehub.program_repair.geneseer.evaluation.TestResult;
 import net.ssehub.program_repair.geneseer.llm.rag.ChromaDb;
 import net.ssehub.program_repair.geneseer.llm.rag.ChromaDb.Method;
 
@@ -56,16 +51,8 @@ public class RagRanker extends AbstractMethodRanker {
     public LinkedHashMap<Node, Double> rankMethods(Node code, List<TestMethodContext> failingTestMethods)
             throws IOException {
         
-        Set<String> failingTestMethodIdentifiers = failingTestMethods.stream()
-                .map(TestMethodContext::testResult)
-                .map(TestResult::getIdentifier)
-                .collect(Collectors.toUnmodifiableSet());
-        
-        @SuppressWarnings("unchecked")
-        List<Method> methodsCoveredByFailingTests = code.stream()
+        List<Method> allMethods = code.stream()
                 .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
-                .filter(n -> !Collections.disjoint(
-                        (Set<String>) n.getMetadata(Metadata.COVERED_BY), failingTestMethodIdentifiers))
                 .map(m -> {
                     String className = AstUtils.getEnclosingClass(code, m);
                     if (className == null) {
@@ -79,14 +66,13 @@ public class RagRanker extends AbstractMethodRanker {
                 .toList();
         
         try (ChromaDb db = new ChromaDb(projectRoot, embeddingModel, embeddingApi, false)) {
-            LOG.fine(() -> "Adding " + methodsCoveredByFailingTests.size()
-                    + " methods covered by failing tests to ChromaDB");
-            db.storeMethods(methodsCoveredByFailingTests);
+            LOG.fine(() -> "Adding " + allMethods.size() + " methods to ChromaDB");
+            db.storeMethods(allMethods);
             
             String query = functionalityExtraction(failingTestMethods);
             
-            LinkedHashMap<Node, Double> sortedSuspiciousness = new LinkedHashMap<>(methodsCoveredByFailingTests.size());
-            db.query(query, getLineLimit(), methodsCoveredByFailingTests).stream()
+            LinkedHashMap<Node, Double> sortedSuspiciousness = new LinkedHashMap<>(allMethods.size());
+            db.query(query, getLineLimit(), allMethods).stream()
                     .sorted((m1, m2) -> Double.compare(m1.distance(), m2.distance())) // ascending distances
                     .forEach(m -> sortedSuspiciousness.put(m.ast(), m.distance()));
             

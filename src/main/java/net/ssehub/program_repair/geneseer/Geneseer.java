@@ -31,7 +31,6 @@ import net.ssehub.program_repair.geneseer.llm.AbstractLlmMutator;
 import net.ssehub.program_repair.geneseer.llm.ILlm;
 import net.ssehub.program_repair.geneseer.llm.ISnippetRanker;
 import net.ssehub.program_repair.geneseer.llm.LiveLlmMutator;
-import net.ssehub.program_repair.geneseer.llm.LlmBasedFileRanker;
 import net.ssehub.program_repair.geneseer.llm.LlmFactory;
 import net.ssehub.program_repair.geneseer.llm.RagRanker;
 import net.ssehub.program_repair.geneseer.llm.SavedLlmMutator;
@@ -230,9 +229,6 @@ public class Geneseer {
                         llm,
                         Configuration.INSTANCE.rag().model(),
                         Configuration.INSTANCE.rag().api());
-                break;
-            case LLM:
-                ranker = new LlmBasedFileRanker(llm);
                 break;
             default:
                 throw new IllegalArgumentException("Invalid code context selection: "

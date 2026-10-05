@@ -6,10 +6,8 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.DoubleSummaryStatistics;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.knuddels.jtokkit.Encodings;
@@ -25,9 +23,7 @@ import net.ssehub.program_repair.geneseer.code.Node.Type;
 import net.ssehub.program_repair.geneseer.defects4j.PatchWriter;
 import net.ssehub.program_repair.geneseer.defects4j.PatchWriter.ChangedArea;
 import net.ssehub.program_repair.geneseer.evaluation.TestSuite;
-import net.ssehub.program_repair.geneseer.llm.CodeSnippet;
 import net.ssehub.program_repair.geneseer.llm.ILlm;
-import net.ssehub.program_repair.geneseer.llm.LlmBasedFileRanker;
 import net.ssehub.program_repair.geneseer.llm.RagRanker;
 import net.ssehub.program_repair.geneseer.llm.TestMethodContext;
 import net.ssehub.program_repair.geneseer.util.JsonUtils;
@@ -107,9 +103,14 @@ public class Outliner implements IFixer {
     private void createMethodOverivew(Node ast, List<TestMethodContext> testContext,
             List<ChangedArea> changedByHumanPatch) throws IOException {
         
-        RagRanker ragRanker = new RagRanker(projectRoot, Integer.MAX_VALUE, llm,
-                Configuration.INSTANCE.rag().model(), Configuration.INSTANCE.rag().api());
-        LinkedHashMap<Node, Double> ragDistances = ragRanker.rankMethods(ast, testContext);
+        LinkedHashMap<Node, Double> ragDistances;
+        if (llm != null) {
+            RagRanker ragRanker = new RagRanker(projectRoot, Integer.MAX_VALUE, llm,
+                    Configuration.INSTANCE.rag().model(), Configuration.INSTANCE.rag().api());
+            ragDistances = ragRanker.rankMethods(ast, testContext);
+        } else {
+            ragDistances = new LinkedHashMap<>();
+        }
         
         List<Method> methods = ast.stream()
                 .filter(n -> n.getType() == Type.METHOD || n.getType() == Type.CONSTRUCTOR)
@@ -165,29 +166,20 @@ public class Outliner implements IFixer {
                 (int) stats.getCount(), maxSus, stats.getSum(), avgSus, ragDistances.get(method));
     }
     
-    public record File(String path, int lines, int tokens, Integer llmRanking) {
+    public record File(String path, int lines, int tokens) {
     }
     
     private void createFileOverview(Node ast, List<TestMethodContext> testContext) throws IOException {
-        Map<Path, Integer> llmRanking = new HashMap<>();
-        if (llm != null) {
-            LlmBasedFileRanker llmFileRanker = new LlmBasedFileRanker(llm);
-            List<CodeSnippet> selectedSnippets = llmFileRanker.selectCodeSnippets(ast, testContext);
-            for (int i = 0; i < selectedSnippets.size(); i++) {
-                llmRanking.put(selectedSnippets.get(i).getFile(), i + 1);
-            }
-        }
-        
         List<File> files = Files.walk(sourceDirectory)
                 .filter(Files::isRegularFile)
                 .filter(f -> f.getFileName().toString().endsWith(".java"))
-                .map(f -> createFileStats(sourceDirectory, f, llmRanking))
+                .map(f -> createFileStats(sourceDirectory, f))
                 .toList();
         
         JsonUtils.writeJson(files, projectRoot.resolve(FILE_OVERVIEW_FILENAME));
     }
     
-    private File createFileStats(Path sourceDirectory, Path absoluteFilePath, Map<Path, Integer> llmRanking)
+    private File createFileStats(Path sourceDirectory, Path absoluteFilePath)
             throws UncheckedIOException {
         int numLines;
         int numTokens;
@@ -201,8 +193,7 @@ public class Outliner implements IFixer {
         }
         
         Path relativeFilePath = sourceDirectory.relativize(absoluteFilePath);
-        Integer llmRank = llmRanking.get(relativeFilePath);
-        return new File(relativeFilePath.toString(), numLines, numTokens, llmRank);
+        return new File(relativeFilePath.toString(), numLines, numTokens);
     }
     
 }

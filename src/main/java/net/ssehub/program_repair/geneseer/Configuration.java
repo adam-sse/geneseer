@@ -335,7 +335,7 @@ public class Configuration {
                 "Method for selecting code context", CodeContextSelection.SUSPICIOUSNESS,
                 v -> CodeContextSelection.valueOf(v.toUpperCase()));
         public enum CodeContextSelection {
-            SUSPICIOUSNESS, RAG, LLM
+            SUSPICIOUSNESS, RAG
         }
         private Option<Integer> maxCodeContext = new Option<>("maxCodeContext", "Max code context lines", 2000,
                 Integer::parseInt);

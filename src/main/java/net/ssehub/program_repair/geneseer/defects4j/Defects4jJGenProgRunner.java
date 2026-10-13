@@ -37,8 +37,8 @@ public class Defects4jJGenProgRunner {
     
     private Bug bug;
     
-    public void setDefects4jPath(Path defects4jHome) {
-        this.defects4j = new Defects4jWrapper(defects4jHome);
+    public void setDefects4jPath(Path defects4jHome, Defects4JVersion version) {
+        this.defects4j = new Defects4jWrapper(defects4jHome, version);
     }
     
     public void setBug(Bug bug) {
@@ -233,7 +233,8 @@ public class Defects4jJGenProgRunner {
         Configuration.INSTANCE.log();
         
         Defects4jJGenProgRunner runner = new Defects4jJGenProgRunner();
-        runner.setDefects4jPath(Path.of(cli.getOptionOrThrow("--defects4j")));
+        runner.setDefects4jPath(Path.of(cli.getOptionOrThrow("--defects4j")),
+                Configuration.INSTANCE.setup().defects4jVersion());
         
         if (cli.getRemaining().size() == 1) {
             String[] parts = cli.getRemaining().get(0).split("/");

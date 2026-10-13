@@ -25,11 +25,14 @@ class Defects4jWrapper {
     
     private Path defects4jHome;
     
-    public Defects4jWrapper(Path defects4jHome) throws IllegalArgumentException {
+    private Defects4JVersion defects4jVersion;
+    
+    public Defects4jWrapper(Path defects4jHome, Defects4JVersion version) throws IllegalArgumentException {
         this.defects4jHome = defects4jHome;
         if (!Files.isRegularFile(Path.of(getDefects4jBinary()))) {
             throw new IllegalArgumentException(getDefects4jBinary() + " does not exist");
         }
+        this.defects4jVersion = version;
     }
     
     public List<Bug> getAllBugs() throws IOException, IllegalArgumentException {
@@ -174,14 +177,16 @@ class Defects4jWrapper {
         }
     }
     
-    private static void applyProjectSpecificFixesBeforeBuild(Bug bug, Path checkoutDirectory) throws IOException {
+    private void applyProjectSpecificFixesBeforeBuild(Bug bug, Path checkoutDirectory) throws IOException {
         switch (bug.project()) {
         case "Chart":
-            if (bug.bug() >= 5) {
-                Path offendingFile = checkoutDirectory.resolve(
-                        "tests/org/jfree/chart/axis/junit/SubCategoryAxisTests.java");
-                FileUtils.replaceInFile(offendingFile, "return new TestSuite(CategoryAxisTests.class);",
-                        "return new TestSuite(SubCategoryAxisTests.class);", StandardCharsets.UTF_8);
+            if (defects4jVersion.major() < 3) {
+                if (bug.bug() >= 5) {
+                    Path offendingFile = checkoutDirectory.resolve(
+                            "tests/org/jfree/chart/axis/junit/SubCategoryAxisTests.java");
+                    FileUtils.replaceInFile(offendingFile, "return new TestSuite(CategoryAxisTests.class);",
+                            "return new TestSuite(SubCategoryAxisTests.class);", StandardCharsets.UTF_8);
+                }
             }
             break;
             
@@ -283,9 +288,11 @@ class Defects4jWrapper {
             List<Path> testExecutionClassPath, List<String> testClassNames) {
         switch (bug.project()) {
         case "Cli":
-            testExecutionClassPath.remove(Path.of("file"));
-            testExecutionClassPath.remove(Path.of("${test.classes.dir}"));
-            testExecutionClassPath.remove(Path.of("${classes.dir}"));
+            if (defects4jVersion.major() < 3) {
+                testExecutionClassPath.remove(Path.of("file"));
+                testExecutionClassPath.remove(Path.of("${test.classes.dir}"));
+                testExecutionClassPath.remove(Path.of("${classes.dir}"));
+            }
             break;
             
         case "Closure":
@@ -296,12 +303,16 @@ class Defects4jWrapper {
             break;
             
         case "Compress":
-            testExecutionClassPath.remove(Path.of("${dependency.jar}"));
+            if (defects4jVersion.major() < 3) {
+                testExecutionClassPath.remove(Path.of("${dependency.jar}"));
+            }
             break;
             
         case "JacksonXml":
-            compilationClasspath.removeIf(p -> p.getFileName().toString().equals("stax-api-1.0-2.jar"));
-            testExecutionClassPath.removeIf(p -> p.getFileName().toString().equals("stax-api-1.0-2.jar"));
+            if (defects4jVersion.major() < 3) {
+                compilationClasspath.removeIf(p -> p.getFileName().toString().equals("stax-api-1.0-2.jar"));
+                testExecutionClassPath.removeIf(p -> p.getFileName().toString().equals("stax-api-1.0-2.jar"));
+            }
             break;
             
         case "Mockito":
@@ -312,13 +323,16 @@ class Defects4jWrapper {
             break;
             
         case "Math":
-            if (bug.bug() >= 100) {
-                compilationClasspath.add(defects4jResource("framework/projects/Math/lib/commons-discovery-0.5.jar"));
+            if (defects4jVersion.major() < 3) {
+                if (bug.bug() >= 100) {
+                    compilationClasspath.add(
+                            defects4jResource("framework/projects/Math/lib/commons-discovery-0.5.jar"));
+                }
+                if (bug.bug() < 85) {
+                    testExecutionClassPath.add(Path.of("src/main/resources"));
+                }
+                testClassNames.remove("org.apache.commons.math3.genetics.FixedElapsedTimeTest");
             }
-            if (bug.bug() < 85) {
-                testExecutionClassPath.add(Path.of("src/main/resources"));
-            }
-            testClassNames.remove("org.apache.commons.math3.genetics.FixedElapsedTimeTest");
             break;
             
         default:
@@ -336,7 +350,7 @@ class Defects4jWrapper {
         return defects4jHome.resolve(pathInDefects4jRoot).toAbsolutePath();
     }
 
-    private static void applyProjectSpecificFixedToProject(Bug bug, Project project) {
+    private void applyProjectSpecificFixedToProject(Bug bug, Project project) {
         switch (bug.project()) {
         case "Chart":
         case "JacksonDatabind":
@@ -351,12 +365,14 @@ class Defects4jWrapper {
             break;
             
         case "Lang":
-            project.setEncoding(StandardCharsets.ISO_8859_1);
             if (bug.bug() <= 31) {
                 project.setSplitTestClassLoaders(false);
             }
             if (bug.bug() >= 42) {
                 project.setAdditionalCompilerOptions(List.of("-source", "1.3", "-target", "1.2"));
+            }
+            if (defects4jVersion.major() < 3) {
+                project.setEncoding(StandardCharsets.ISO_8859_1);
             }
             break;
             

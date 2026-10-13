@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
+import net.ssehub.program_repair.geneseer.defects4j.Defects4JVersion;
 import net.ssehub.program_repair.geneseer.util.CliArguments;
 
 public class Configuration {
@@ -117,6 +118,8 @@ public class Configuration {
                 "Suspiciousness threshold", 0.01, Double::parseDouble);
         private Option<Integer> suspiciousStatementLimit = new Option<>("suspiciousStatementLimit",
                 "Suspicious statement limit", 500, Integer::parseInt);
+        private Option<Defects4JVersion> defects4jVersion = new Option<>("defects4jVersion",
+                "Defects4J version", Defects4JVersion.V_3_0_1, v -> Defects4JVersion.valueOf(v.toUpperCase()));
         private Option<TestsToRun> testsToRun = new Option<>("testsToRun",
                 "Tests to run", TestsToRun.ALL_TESTS, v -> TestsToRun.valueOf(v.toUpperCase()));
         private Option<Boolean> debugTestDriver = new Option<>("debugTestDriver",
@@ -134,6 +137,7 @@ public class Configuration {
             super.options.add(testExecutionTimeoutMs);
             super.options.add(suspiciousnessThreshold);
             super.options.add(suspiciousStatementLimit);
+            super.options.add(defects4jVersion);
             super.options.add(testsToRun);
             super.options.add(debugTestDriver);
         }
@@ -160,6 +164,10 @@ public class Configuration {
         
         public int suspiciousStatementLimit() {
             return suspiciousStatementLimit.getValue();
+        }
+        
+        public Defects4JVersion defects4jVersion() {
+            return defects4jVersion.getValue();
         }
         
         public TestsToRun testsToRun() {

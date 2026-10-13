@@ -14,6 +14,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import net.ssehub.program_repair.geneseer.Configuration;
 import net.ssehub.program_repair.geneseer.defects4j.Defects4jWrapper.Version;
 import net.ssehub.program_repair.geneseer.llm.CodeSnippet;
 import net.ssehub.program_repair.geneseer.logging.LoggingConfiguration;
@@ -38,8 +39,8 @@ public class PatchWriter {
 
     private List<Bug> bugs;
     
-    public PatchWriter(Path defects4jPath) {
-        this.defects4j = new Defects4jWrapper(defects4jPath);
+    public PatchWriter(Defects4jWrapper defects4j) {
+        this.defects4j = defects4j;
     }
     
     public void selectAllBugs() throws IOException {
@@ -159,7 +160,8 @@ public class PatchWriter {
     public static void main(String[] args) throws IOException {
         CliArguments cli = new CliArguments(args, Set.of("--defects4j"));
         
-        PatchWriter patchWriter = new PatchWriter(Path.of(cli.getOptionOrThrow("--defects4j")));
+        PatchWriter patchWriter = new PatchWriter(new Defects4jWrapper(
+                Path.of(cli.getOptionOrThrow("--defects4j")), Configuration.INSTANCE.setup().defects4jVersion()));
         
         if (cli.getRemaining().isEmpty()) {
             patchWriter.selectAllBugs();

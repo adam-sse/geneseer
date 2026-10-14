@@ -316,7 +316,11 @@ class Defects4jWrapper {
             break;
             
         case "Mockito":
-            compilationClasspath.add(defects4jResource("framework/projects/lib/junit-4.11.jar"));
+            if (defects4jVersion.major() < 3) {
+                compilationClasspath.add(defects4jResource("framework/projects/lib/junit-4.11.jar"));
+            } else {
+                compilationClasspath.add(defects4jResource("framework/projects/lib/junit-4.12-hamcrest-1.3.jar"));
+            }
             compilationClasspath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
             testExecutionClassPath.removeIf(p -> p.endsWith("hamcrest-all-1.3.jar"));
             addIfExists(checkoutDirectory, Path.of("build/classes/main"), testExecutionClassPath);
@@ -368,10 +372,10 @@ class Defects4jWrapper {
             if (bug.bug() <= 31) {
                 project.setSplitTestClassLoaders(false);
             }
-            if (bug.bug() >= 42) {
-                project.setAdditionalCompilerOptions(List.of("-source", "1.3", "-target", "1.2"));
-            }
             if (defects4jVersion.major() < 3) {
+                if (bug.bug() >= 42) {
+                    project.setAdditionalCompilerOptions(List.of("-source", "1.3", "-target", "1.2"));
+                }
                 project.setEncoding(StandardCharsets.ISO_8859_1);
             }
             break;
